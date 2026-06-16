@@ -510,20 +510,22 @@ tr:hover td{background:#fafafa}
 <script>
 // ★ Supabase Edge Function URL — Supabase 설정 후 아래 값을 교체하세요
 const SUPA_URL='https://yijkwuiqnviapztqskak.supabase.co/functions/v1/proxy-api';
+const SUPA_KEY='sb_publishable_xa9hIIRRb6_YWc8MGWNhlA_3Ch6NAiF';
+const _sh={'Content-Type':'application/json','apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY};
 
 // Supabase Edge Function 헬퍼 (키 저장 / 프록시 호출)
 async function storeApiKey(service,key){
-  const r=await fetch(SUPA_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'store-key',service,key})});
+  const r=await fetch(SUPA_URL,{method:'POST',headers:_sh,body:JSON.stringify({action:'store-key',service,key})});
   return r.json();
 }
 async function proxyApiCall(service,path,params={}){
-  const r=await fetch(SUPA_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'call',service,path,params})});
+  const r=await fetch(SUPA_URL,{method:'POST',headers:_sh,body:JSON.stringify({action:'call',service,path,params})});
   if(r.status===401){const d=await r.json();throw new Error(d.error||'fh_auth');}
   if(!r.ok)throw new Error('proxy_error:'+r.status);
   return r.json();
 }
 function _deleteApiKeyOnServer(service){
-  fetch(SUPA_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'delete-key',service})}).catch(()=>{});
+  fetch(SUPA_URL,{method:'POST',headers:_sh,body:JSON.stringify({action:'delete-key',service})}).catch(()=>{});
 }
 
 // ─ 글로벌 설정 및 변수 초기화
