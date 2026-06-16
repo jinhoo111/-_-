@@ -1,22 +1,153 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>투자 대시보드</title>
 <style>
+/* ════════════════════════════════════════
+   DESIGN TOKENS  (단일 변경 포인트)
+   ════════════════════════════════════════ */
+:root {
+  /* ── Text ── */
+  --color-text-primary:       #1a1a1a;
+  --color-text-secondary:     #555;
+  --color-text-subtle:        #666;
+  --color-text-tertiary:      #888;
+  --color-text-muted:         #bbb;
+  --color-text-disabled:      #aaa;
+  --color-text-strong:        #333;
+  --color-text-secondary-alt: #374151;
+  --color-text-warm:          #44403c;
+  --color-text-placeholder:   #9ca3af;
+
+  /* ── Surface ── */
+  --color-bg-base:     #f8f7f4;
+  --color-bg-surface:  #fff;
+  --color-bg-subtle:   #fafafa;
+  --color-bg-muted:    #f5f5f3;
+  --color-bg-overlay:  #f0efec;
+  --color-bg-archive:  #f8f8f8;
+  --color-bg-badge:    #f3f4f6;
+  --color-edit-highlight: #fffef0;
+
+  /* ── Border ── */
+  --color-border-default: #e8e8e8;
+  --color-border-input:   #ddd;
+  --color-border-strong:  #999;
+  --color-border-subtle:  #e5e7eb;
+  --color-border-muted:   #e5e5e5;
+  --color-border-faint:   #f5f5f5;
+
+  /* ── Success ── */
+  --color-success:         #0a8a57;
+  --color-success-dark:    #15803d;
+  --color-success-deep:    #065f46;
+  --color-success-deeper:  #064e3b;
+  --color-success-text:    #166534;
+  --color-success-bg:      #dcfce7;
+  --color-success-bg-soft: #d1fae5;
+  --color-success-bg-light:#f0fdf4;
+  --color-success-border:  #bbf7d0;
+
+  /* ── Error ── */
+  --color-error:        #d63031;
+  --color-error-text:   #991b1b;
+  --color-error-bg:     #fee2e2;
+  --color-error-subtle: #fef2f2;
+  --color-error-border: #fecaca;
+
+  /* ── Warning ── */
+  --color-warning:        #d97706;
+  --color-warning-bright: #f59e0b;
+  --color-warning-dark:   #b45309;
+  --color-warning-deeper: #78350f;
+  --color-warning-text:   #92400e;
+  --color-warning-bg:     #fef3c7;
+  --color-warning-subtle: #fffbeb;
+  --color-warning-border: #fde68a;
+
+  /* ── Info ── */
+  --color-info:          #1e40af;
+  --color-info-text:     #1e3a8a;
+  --color-info-deep:     #075985;
+  --color-info-bg:       #dbeafe;
+  --color-info-border:   #bfdbfe;
+  --color-trade-long-bg: #eff6ff;
+
+  /* ── Accent / Purple ── */
+  --color-accent:             #6b21a8;
+  --color-accent-dark:        #5b21b6;
+  --color-accent-mid:         #6d28d9;
+  --color-accent-deeper:      #4c1d95;
+  --color-accent-indigo:      #4f46e5;
+  --color-accent-soft:        #6366f1;
+  --color-accent-bg:          #f3e8ff;
+  --color-accent-bg-soft:     #ede9fe;
+  --color-accent-subtle:      #eef2ff;
+  --color-accent-border:      #c4b5fd;
+  --color-accent-border-soft: #c7d2fe;
+
+  /* ── Trade Type ── */
+  --color-trade-short-bg:   #fff7ed;
+  --color-trade-short-text: #c2410c;
+  --color-trade-long-text:  #1d4ed8;
+
+  /* ── Broker Badges ── */
+  --color-broker-kakao-bg:    #fef9c3;
+  --color-broker-kakao-text:  #854d0e;
+  --color-broker-mirae-bg:    #e0e7ff;
+  --color-broker-mirae-text:  #3730a3;
+  --color-broker-shinhan-bg:  #e0f2fe;
+  --color-broker-hanhwa-bg:   #ffedd5;
+  --color-broker-hanhwa-text: #9a3412;
+  --color-broker-daesin-bg:   #ccfbf1;
+  --color-broker-daesin-text: #134e4a;
+
+  /* ── Type Scale ── */
+  --text-2xs:   9px;
+  --text-xs:   10px;
+  --text-sm:   11px;
+  --text-base: 12px;
+  --text-table:12.5px;
+  --text-md:   13px;
+  --text-lg:   14px;
+  --text-xl:   15px;
+  --text-2xl:  16px;
+  --text-3xl:  17px;
+
+  /* ── Spacing (4pt grid) ── */
+  --space-1:  4px;
+  --space-2:  8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-7: 28px;
+  --space-8: 32px;
+
+  /* ── Border Radius ── */
+  --radius-sm:   4px;
+  --radius-md:   6px;
+  --radius-lg:   8px;
+  --radius-xl:  10px;
+  --radius-2xl: 12px;
+  --radius-pill:20px;
+  --radius-full:50%;
+}
+
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#1a1a1a;background:#f8f7f4;min-height:100vh}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:var(--color-text-primary);background:var(--color-bg-base);min-height:100vh}
 
 
 /* ── NAV ── */
-.nav{background:#fff;border-bottom:1px solid #e8e8e8;padding:0 1.5rem;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:99}
-.nav-logo{font-size:15px;font-weight:700;padding:12px 0;letter-spacing:-.3px}
+.nav{background:var(--color-bg-surface);border-bottom:1px solid var(--color-border-default);padding:0 1.5rem;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:99}
+.nav-logo{font-size:var(--text-xl);font-weight:700;padding:12px 0;letter-spacing:-.3px}
 .nav-tabs{display:flex;gap:0;overflow-x:auto}
 .nav-tabs::-webkit-scrollbar{display:none}
-.nav-tab{padding:12px 14px;font-size:13px;cursor:pointer;border:none;background:transparent;color:#888;border-bottom:2px solid transparent;white-space:nowrap;transition:all .15s;font-family:inherit}
-.nav-tab.on{color:#1a1a1a;font-weight:600;border-bottom-color:#1a1a1a}
-.nav-tab:hover:not(.on){color:#1a1a1a;background:#f8f7f4}
+.nav-tab{padding:12px 14px;font-size:var(--text-md);cursor:pointer;border:none;background:transparent;color:var(--color-text-tertiary);border-bottom:2px solid transparent;white-space:nowrap;transition:all .15s;font-family:inherit}
+.nav-tab.on{color:var(--color-text-primary);font-weight:600;border-bottom-color:var(--color-text-primary)}
+.nav-tab:hover:not(.on){color:var(--color-text-primary);background:var(--color-bg-base)}
 .nav-right{display:flex;gap:6px;padding:8px 0;flex-shrink:0}
 
 /* ── LAYOUT ── */
@@ -24,134 +155,168 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#1
 .page.on{display:block}
 
 /* ── COMMON COMPONENTS ── */
-.up{color:#0a8a57}.down{color:#d63031}.neu{color:#888}
-.btn{font-size:12px;padding:6px 11px;border:1px solid #ddd;border-radius:8px;background:#fff;cursor:pointer;color:#1a1a1a;display:inline-flex;align-items:center;gap:4px;font-family:inherit;transition:all .12s;white-space:nowrap}
-.btn:hover{background:#f0efec}.btn:disabled{opacity:.4;cursor:not-allowed}
-.section-lbl{font-size:11px;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px}
-.card{background:#fff;border:1px solid #e8e8e8;border-radius:12px;padding:14px 16px;margin-bottom:8px}
-.pill{font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;display:inline-block}
+.up{color:var(--color-success)}.down{color:var(--color-error)}.neu{color:var(--color-text-tertiary)}
+.btn{font-size:var(--text-base);padding:6px 11px;border:1px solid var(--color-border-input);border-radius:8px;background:var(--color-bg-surface);cursor:pointer;color:var(--color-text-primary);display:inline-flex;align-items:center;gap:4px;font-family:inherit;transition:all .12s;white-space:nowrap}
+.btn:hover{background:var(--color-bg-overlay)}.btn:disabled{opacity:.4;cursor:not-allowed}
+.section-lbl{font-size:var(--text-sm);font-weight:600;color:var(--color-text-tertiary);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px}
+.card{background:var(--color-bg-surface);border:1px solid var(--color-border-default);border-radius:12px;padding:14px 16px;margin-bottom:8px}
+.pill{font-size:var(--text-xs);font-weight:700;padding:2px 8px;border-radius:20px;display:inline-block}
 .filter-row{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:.875rem}
-.fbtn{font-size:11px;padding:3px 10px;border-radius:20px;border:1px solid #ddd;background:transparent;cursor:pointer;color:#888;font-family:inherit;transition:all .12s}
-.fbtn.on{background:#1a1a1a;color:#fff;border-color:#1a1a1a}
-.inner-tab-bar{display:flex;border-bottom:1px solid #e5e5e5;margin-bottom:1rem;overflow-x:auto;gap:0}
+.fbtn{font-size:var(--text-sm);padding:3px 10px;border-radius:20px;border:1px solid var(--color-border-input);background:transparent;cursor:pointer;color:var(--color-text-tertiary);font-family:inherit;transition:all .12s}
+.fbtn.on{background:var(--color-text-primary);color:var(--color-bg-surface);border-color:var(--color-text-primary)}
+.inner-tab-bar{display:flex;border-bottom:1px solid var(--color-border-muted);margin-bottom:1rem;overflow-x:auto;gap:0}
 .inner-tab-bar::-webkit-scrollbar{display:none}
-.itab{padding:8px 13px;font-size:13px;cursor:pointer;border:none;background:transparent;color:#888;border-bottom:2px solid transparent;white-space:nowrap;font-family:inherit;transition:all .15s}
-.itab.on{color:#1a1a1a;font-weight:600;border-bottom-color:#1a1a1a}
-.itab:hover:not(.on){background:#f8f7f4;color:#1a1a1a}
+.itab{padding:8px 13px;font-size:var(--text-md);cursor:pointer;border:none;background:transparent;color:var(--color-text-tertiary);border-bottom:2px solid transparent;white-space:nowrap;font-family:inherit;transition:all .15s}
+.itab.on{color:var(--color-text-primary);font-weight:600;border-bottom-color:var(--color-text-primary)}
+.itab:hover:not(.on){background:var(--color-bg-base);color:var(--color-text-primary)}
 .ipanel{display:none}.ipanel.on{display:block}
 .spin{display:inline-block;animation:sp 1s linear infinite}
 @keyframes sp{to{transform:rotate(360deg)}}
-.err-box{background:#fef2f2;color:#991b1b;border-radius:8px;padding:9px 12px;font-size:12px;margin-top:8px;border:1px solid #fecaca;line-height:1.5}
-.info-box{background:#eff6ff;color:#1e40af;border-radius:8px;padding:9px 12px;font-size:12px;margin-bottom:10px;border:1px solid #bfdbfe;line-height:1.6}
-.empty{text-align:center;padding:2rem 1rem;color:#888;font-size:13px}
+.err-box{background:var(--color-error-subtle);color:var(--color-error-text);border-radius:8px;padding:9px 12px;font-size:var(--text-base);margin-top:8px;border:1px solid var(--color-error-border);line-height:1.5}
+.info-box{background:var(--color-trade-long-bg);color:var(--color-info);border-radius:8px;padding:9px 12px;font-size:var(--text-base);margin-bottom:10px;border:1px solid var(--color-info-border);line-height:1.6}
+.empty{text-align:center;padding:2rem 1rem;color:var(--color-text-tertiary);font-size:var(--text-md)}
 
 /* ── METRICS ── */
 .metrics{display:grid;grid-template-columns:1fr 1fr 1fr 80px 1.3fr 1.3fr;gap:8px;margin-bottom:1.25rem}
-.metric{background:#fff;border:1px solid #e8e8e8;border-radius:10px;padding:10px 12px}
-.metric-label{font-size:11px;color:#888;margin-bottom:3px}
-.metric-value{font-size:15px;font-weight:700;font-family:monospace}
+.metric{background:var(--color-bg-surface);border:1px solid var(--color-border-default);border-radius:10px;padding:10px 12px}
+.metric-label{font-size:var(--text-sm);color:var(--color-text-tertiary);margin-bottom:3px}
+.metric-value{font-size:var(--text-xl);font-weight:700;font-family:monospace}
 .metric-sm{max-width:none}
 
 /* ── TABLE ── */
 .tbl-wrap{overflow-x:auto}
-table{width:100%;border-collapse:collapse;font-size:12.5px}
-th{font-size:11px;font-weight:600;color:#888;padding:6px 8px;border-bottom:1px solid #e8e8e8;text-align:left;white-space:nowrap;background:#fafafa}
-td{padding:9px 8px;border-bottom:1px solid #f5f5f5;vertical-align:middle;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-tr:hover td{background:#fafafa}
+table{width:100%;border-collapse:collapse;font-size:var(--text-table)}
+th{font-size:var(--text-sm);font-weight:600;color:var(--color-text-tertiary);padding:6px 8px;border-bottom:1px solid var(--color-border-default);text-align:left;white-space:nowrap;background:var(--color-bg-subtle)}
+td{padding:9px 8px;border-bottom:1px solid var(--color-border-faint);vertical-align:middle;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+tr:hover td{background:var(--color-bg-subtle)}
 
 /* ── INDEX CARDS ── */
 .idx-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(135px,1fr));gap:8px;margin-bottom:1rem}
-.idx-card{background:#fff;border:1px solid #e8e8e8;border-radius:10px;padding:10px 12px}
+.idx-card{background:var(--color-bg-surface);border:1px solid var(--color-border-default);border-radius:10px;padding:10px 12px}
 .idx-card-link{cursor:pointer;position:relative}
-.idx-card-link:hover{border-color:#999;background:#fafafa}
-.idx-link-icon{position:absolute;top:6px;right:8px;font-size:10px;color:#bbb;line-height:1;transition:color .12s}
-.idx-card-link:hover .idx-link-icon{color:#1e40af}
-.idx-sec{font-size:10px;color:#bbb;text-transform:uppercase;letter-spacing:.06em;margin-bottom:2px}
-.idx-name{font-size:13px;font-weight:600;margin-bottom:2px}
-.idx-val{font-size:16px;font-weight:700;font-family:monospace}
-.idx-chg{font-size:11px;margin-top:1px}
+.idx-card-link:hover{border-color:var(--color-border-strong);background:var(--color-bg-subtle)}
+.idx-link-icon{position:absolute;top:6px;right:8px;font-size:var(--text-xs);color:var(--color-text-muted);line-height:1;transition:color .12s}
+.idx-card-link:hover .idx-link-icon{color:var(--color-info)}
+.idx-sec{font-size:var(--text-xs);color:var(--color-text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:2px}
+.idx-name{font-size:var(--text-md);font-weight:600;margin-bottom:2px}
+.idx-val{font-size:var(--text-2xl);font-weight:700;font-family:monospace}
+.idx-chg{font-size:var(--text-sm);margin-top:1px}
 
 
 /* ── MEMO ── */
-.memo-card{background:#fff;border:1px solid #e8e8e8;border-radius:10px;padding:10px 12px;margin-bottom:6px}
-.memo-card.important{border-color:#f59e0b;background:#fffbeb}
+.memo-card{background:var(--color-bg-surface);border:1px solid var(--color-border-default);border-radius:10px;padding:10px 12px;margin-bottom:6px}
+.memo-card.important{border-color:var(--color-warning-bright);background:var(--color-warning-subtle)}
 .memo-meta{display:flex;justify-content:space-between;margin-bottom:4px}
-.memo-time{font-size:11px;color:#bbb}
-.memo-text{font-size:13px;line-height:1.65}
+.memo-time{font-size:var(--text-sm);color:var(--color-text-muted)}
+.memo-text{font-size:var(--text-md);line-height:1.65}
 .tag-btns{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:6px}
-.tbtn{font-size:11px;padding:3px 10px;border-radius:20px;border:1px solid #ddd;background:transparent;cursor:pointer;color:#888;font-family:inherit}
+.tbtn{font-size:var(--text-sm);padding:3px 10px;border-radius:20px;border:1px solid var(--color-border-input);background:transparent;cursor:pointer;color:var(--color-text-tertiary);font-family:inherit}
 .tbtn.sel{font-weight:700}
 .memo-compose{display:flex;gap:7px;margin-top:6px}
-.memo-compose textarea{flex:1;font-size:13px;padding:8px 10px;border:1px solid #ddd;border-radius:8px;background:#fff;color:#1a1a1a;resize:none;height:54px;font-family:inherit;line-height:1.5}
-.memo-compose textarea:focus{outline:none;border-color:#999}
-.important-preview{background:#fffbeb;border:1px solid #f59e0b;border-radius:10px;padding:10px 12px;margin-bottom:10px}
-.important-preview-item{display:flex;align-items:flex-start;gap:7px;padding:5px 0;border-bottom:1px solid #fde68a;cursor:pointer}
+.memo-compose textarea{flex:1;font-size:var(--text-md);padding:8px 10px;border:1px solid var(--color-border-input);border-radius:8px;background:var(--color-bg-surface);color:var(--color-text-primary);resize:none;height:54px;font-family:inherit;line-height:1.5}
+.memo-compose textarea:focus{outline:none;border-color:var(--color-border-strong)}
+.important-preview{background:var(--color-warning-subtle);border:1px solid var(--color-warning-bright);border-radius:10px;padding:10px 12px;margin-bottom:10px}
+.important-preview-item{display:flex;align-items:flex-start;gap:7px;padding:5px 0;border-bottom:1px solid var(--color-warning-border);cursor:pointer}
 .important-preview-item:last-child{border-bottom:none}
 .important-preview-item:hover{opacity:.8}
 .memo-view-tabs{display:flex;gap:6px;margin-bottom:.75rem}
-.memo-vtab{font-size:12px;padding:5px 16px;border-radius:20px;border:1px solid #ddd;background:#fff;cursor:pointer;color:#888;font-family:inherit;font-weight:500}
-.memo-vtab.active{background:#1a1a1a;color:#fff;border-color:#1a1a1a;font-weight:700}
-.archive-card{background:#f8f8f8;border:1px solid #e8e8e8;border-radius:10px;padding:10px 12px;margin-bottom:6px}
-.archive-completed-at{font-size:11px;color:#6366f1;font-weight:600}
+.memo-vtab{font-size:var(--text-base);padding:5px 16px;border-radius:20px;border:1px solid var(--color-border-input);background:var(--color-bg-surface);cursor:pointer;color:var(--color-text-tertiary);font-family:inherit;font-weight:500}
+.memo-vtab.active{background:var(--color-text-primary);color:var(--color-bg-surface);border-color:var(--color-text-primary);font-weight:700}
+.archive-card{background:var(--color-bg-archive);border:1px solid var(--color-border-default);border-radius:10px;padding:10px 12px;margin-bottom:6px}
+.archive-completed-at{font-size:var(--text-sm);color:var(--color-accent-soft);font-weight:600}
 
 /* ── NEWS ── */
-.news-card{padding:13px 0;border-bottom:1px solid #f0efec}
+.news-card{padding:13px 0;border-bottom:1px solid var(--color-bg-overlay)}
 .news-card:last-child{border-bottom:none}
 .nc-meta{display:flex;gap:6px;align-items:center;margin-bottom:5px;flex-wrap:wrap}
-.nc-src{font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;background:#dbeafe;color:#1e40af}
-.nc-time{font-size:11px;color:#bbb}
-.nc-title{font-size:13px;font-weight:600;line-height:1.45;margin-bottom:3px}
+.nc-src{font-size:var(--text-xs);font-weight:700;padding:2px 8px;border-radius:20px;background:var(--color-info-bg);color:var(--color-info)}
+.nc-time{font-size:var(--text-sm);color:var(--color-text-muted)}
+.nc-title{font-size:var(--text-md);font-weight:600;line-height:1.45;margin-bottom:3px}
 .nc-title a{color:inherit;text-decoration:none}
-.nc-title a:hover{color:#1e40af;text-decoration:underline}
-.nc-summary{font-size:12px;color:#666;line-height:1.6}
+.nc-title a:hover{color:var(--color-info);text-decoration:underline}
+.nc-summary{font-size:var(--text-base);color:var(--color-text-subtle);line-height:1.6}
 
 /* ── ANALYST ── */
 .consensus-bar{display:flex;height:5px;border-radius:3px;overflow:hidden;margin-bottom:7px;gap:1px}
-.cb-buy{background:#0a8a57}.cb-hold{background:#d97706}.cb-sell{background:#d63031}
+.cb-buy{background:var(--color-success)}.cb-hold{background:var(--color-warning)}.cb-sell{background:var(--color-error)}
 
 /* ── QUOTE ── */
 .q-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(125px,1fr));gap:8px;margin-bottom:.75rem}
-.q-card{background:#fff;border:1px solid #e8e8e8;border-radius:10px;padding:10px 12px}
-.q-sym{font-size:11px;color:#888;font-weight:600;margin-bottom:2px}
-.q-price{font-size:17px;font-weight:700;font-family:monospace}
-.q-chg{font-size:11px;margin-top:1px}
+.q-card{background:var(--color-bg-surface);border:1px solid var(--color-border-default);border-radius:10px;padding:10px 12px}
+.q-sym{font-size:var(--text-sm);color:var(--color-text-tertiary);font-weight:600;margin-bottom:2px}
+.q-price{font-size:var(--text-3xl);font-weight:700;font-family:monospace}
+.q-chg{font-size:var(--text-sm);margin-top:1px}
 
 /* ── SITE CARDS ── */
 .site-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(195px,1fr));gap:8px}
-.site-card{background:#fff;border:1px solid #e8e8e8;border-radius:12px;padding:12px 14px;text-decoration:none;display:block;transition:border-color .15s}
-.site-card:hover{border-color:#999}
+.site-card{background:var(--color-bg-surface);border:1px solid var(--color-border-default);border-radius:12px;padding:12px 14px;text-decoration:none;display:block;transition:border-color .15s}
+.site-card:hover{border-color:var(--color-border-strong)}
 .sc-top{display:flex;justify-content:space-between;align-items:flex-start;gap:6px;margin-bottom:5px}
-.sc-name{font-size:13px;font-weight:600;color:#1a1a1a}
-.sc-desc{font-size:12px;color:#666;line-height:1.5}
+.sc-name{font-size:var(--text-md);font-weight:600;color:var(--color-text-primary)}
+.sc-desc{font-size:var(--text-base);color:var(--color-text-subtle);line-height:1.5}
 
 /* ── API KEY ── */
-.apikey-box{background:#fff;border:1px solid #e8e8e8;border-radius:12px;padding:1.25rem;margin-bottom:1.25rem}
+.apikey-box{background:var(--color-bg-surface);border:1px solid var(--color-border-default);border-radius:12px;padding:1.25rem;margin-bottom:1.25rem}
 .key-row{display:flex;gap:7px}
-.key-row input{flex:1;font-size:13px;padding:7px 10px;border:1px solid #ddd;border-radius:8px;background:#fff;color:#1a1a1a;font-family:monospace}
-.key-status{font-size:11px;margin-top:6px;display:flex;align-items:center;gap:5px}
-.dot-live{width:6px;height:6px;border-radius:50%;background:#0a8a57;animation:pulse 2s infinite;flex-shrink:0}
-.dot-err{width:6px;height:6px;border-radius:50%;background:#d63031;flex-shrink:0}
-.dot-wait{width:6px;height:6px;border-radius:50%;background:#d97706;flex-shrink:0}
+.key-row input{flex:1;font-size:var(--text-md);padding:7px 10px;border:1px solid var(--color-border-input);border-radius:8px;background:var(--color-bg-surface);color:var(--color-text-primary);font-family:monospace}
+.key-status{font-size:var(--text-sm);margin-top:6px;display:flex;align-items:center;gap:5px}
+.dot-live{width:6px;height:6px;border-radius:50%;background:var(--color-success);animation:pulse 2s infinite;flex-shrink:0}
+.dot-err{width:6px;height:6px;border-radius:50%;background:var(--color-error);flex-shrink:0}
+.dot-wait{width:6px;height:6px;border-radius:50%;background:var(--color-warning);flex-shrink:0}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
 
 /* ── REG ── */
-.reg-card{background:#fff;border:1px solid #e8e8e8;border-radius:12px;padding:11px 13px;margin-bottom:7px}
+.reg-card{background:var(--color-bg-surface);border:1px solid var(--color-border-default);border-radius:12px;padding:11px 13px;margin-bottom:7px}
 .reg-head{display:flex;justify-content:space-between;gap:8px;margin-bottom:5px}
-.reg-title{font-size:13px;font-weight:600;line-height:1.4}
-.reg-status{font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;white-space:nowrap;flex-shrink:0}
-.reg-body{font-size:12px;color:#666;line-height:1.6;margin-bottom:5px}
-.reg-foot{display:flex;gap:10px;font-size:11px;color:#bbb;flex-wrap:wrap}
+.reg-title{font-size:var(--text-md);font-weight:600;line-height:1.4}
+.reg-status{font-size:var(--text-xs);font-weight:700;padding:2px 8px;border-radius:20px;white-space:nowrap;flex-shrink:0}
+.reg-body{font-size:var(--text-base);color:var(--color-text-subtle);line-height:1.6;margin-bottom:5px}
+.reg-foot{display:flex;gap:10px;font-size:var(--text-sm);color:var(--color-text-muted);flex-wrap:wrap}
 
 /* ── STEP BOX ── */
-.step-box{background:#fff;border:1px solid #e8e8e8;border-radius:12px;padding:1.25rem;margin-bottom:1rem}
+.step-box{background:var(--color-bg-surface);border:1px solid var(--color-border-default);border-radius:12px;padding:1.25rem;margin-bottom:1rem}
 .step-item{display:flex;gap:10px;align-items:flex-start;margin-bottom:10px}
 .step-item:last-child{margin-bottom:0}
-.step-num{width:22px;height:22px;border-radius:50%;background:#1a1a1a;color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px}
-.step-content{font-size:13px;line-height:1.6;color:#333}
-.step-content strong{color:#1a1a1a}
-.step-content code{font-family:monospace;background:#f0efec;padding:1px 5px;border-radius:4px;font-size:12px}
-.highlight-box{background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:10px 14px;font-size:13px;color:#166534;margin-top:.75rem;line-height:1.6}
-.warn-box{background:#fffbeb;border:1px solid #fde68a;border-radius:10px;padding:10px 14px;font-size:13px;color:#92400e;margin-top:.75rem;line-height:1.6}
+.step-num{width:22px;height:22px;border-radius:50%;background:var(--color-text-primary);color:var(--color-bg-surface);font-size:var(--text-sm);font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px}
+.step-content{font-size:var(--text-md);line-height:1.6;color:var(--color-text-strong)}
+.step-content strong{color:var(--color-text-primary)}
+.step-content code{font-family:monospace;background:var(--color-bg-overlay);padding:1px 5px;border-radius:4px;font-size:var(--text-base)}
+.highlight-box{background:var(--color-success-bg-light);border:1px solid var(--color-success-border);border-radius:10px;padding:10px 14px;font-size:var(--text-md);color:var(--color-success-text);margin-top:.75rem;line-height:1.6}
+.warn-box{background:var(--color-warning-subtle);border:1px solid var(--color-warning-border);border-radius:10px;padding:10px 14px;font-size:var(--text-md);color:var(--color-warning-text);margin-top:.75rem;line-height:1.6}
+
+/* ── ACCESSIBILITY ── */
+/* 터치 타겟 최소 44px (WCAG 2.5.5) */
+.btn{min-height:44px}
+.fbtn,.tbtn,.memo-vtab,.nav-tab,.itab{min-height:44px}
+/* 키보드 포커스 링 */
+:focus-visible{outline:2px solid var(--color-info);outline-offset:2px;border-radius:4px}
+button:focus:not(:focus-visible),input:focus:not(:focus-visible),textarea:focus:not(:focus-visible){outline:none}
+/* 입력창 포커스 */
+input:focus-visible,textarea:focus-visible{outline:2px solid var(--color-info);outline-offset:0}
+
+/* ── DARK MODE SURFACE TOKENS (준비 — 향후 활성화) ── */
+@media (prefers-color-scheme:dark){
+  :root{
+    /* Surface 오버라이드 */
+    --color-bg-base:    #0f0f0f;
+    --color-bg-surface: #1a1a1a;
+    --color-bg-subtle:  #222;
+    --color-bg-muted:   #2a2a2a;
+    --color-bg-overlay: #2f2f2f;
+    /* Border 오버라이드 */
+    --color-border-default: #333;
+    --color-border-input:   #444;
+    --color-border-muted:   #2a2a2a;
+    --color-border-faint:   #222;
+    /* Text — 유지 (이미 어두운 배경에 맞게 반전 필요) */
+    --color-text-primary:   #f0f0f0;
+    --color-text-secondary: #ccc;
+    --color-text-subtle:    #aaa;
+    --color-text-tertiary:  #888;
+    --color-text-muted:     #555;
+    --color-text-disabled:  #444;
+  }
+}
 </style>
 </head>
 <body>
@@ -167,7 +332,7 @@ tr:hover td{background:#fafafa}
     <button class="nav-tab"     onclick="goPage('memo',this)">투자 일지</button>
   </div>
   <div class="nav-right">
-        <span style="font-size:10px;color:#888;align-self:center">—</span>
+        <span style="font-size:var(--text-xs);color:var(--color-text-tertiary);align-self:center">—</span>
   </div>
 </nav>
 
@@ -183,28 +348,28 @@ tr:hover td{background:#fafafa}
     <div class="metric">
       <div class="metric-label" id="cash-krw-label">현금 (원화)</div>
       <div id="cash-krw-view" style="display:flex;align-items:center;gap:12px;margin-top:3px">
-        <span id="cash-krw-txt" class="metric-value" style="font-size:16px">—</span>
-        <button onclick="editCash('krw')" style="font-size:11px;padding:3px 7px;border:1px solid #ddd;border-radius:6px;background:#fff;cursor:pointer;color:#555">편집</button>
+        <span id="cash-krw-txt" class="metric-value" style="font-size:var(--text-2xl)">—</span>
+        <button onclick="editCash('krw')" style="font-size:var(--text-sm);padding:3px 7px;border:1px solid var(--color-border-input);border-radius:6px;background:var(--color-bg-surface);cursor:pointer;color:var(--color-text-secondary)">편집</button>
       </div>
       <div id="cash-krw-form" style="display:none;margin-top:4px">
-        <input id="cash-krw" type="number" min="0" placeholder="0" style="width:100%;font-size:14px;font-weight:700;font-family:monospace;padding:4px 7px;border:1px solid #d97706;border-radius:6px;background:#fff;color:#1a1a1a"/>
+        <input id="cash-krw" type="number" min="0" placeholder="0" style="width:100%;font-size:var(--text-lg);font-weight:700;font-family:monospace;padding:4px 7px;border:1px solid var(--color-warning);border-radius:6px;background:var(--color-bg-surface);color:var(--color-text-primary)"/>
         <div style="display:flex;gap:4px;margin-top:5px">
-          <button onclick="saveCashEdit('krw')" style="font-size:11px;padding:3px 9px;border:none;border-radius:6px;background:#0a8a57;color:#fff;cursor:pointer">저장</button>
-          <button onclick="cancelCashEdit('krw')" style="font-size:11px;padding:3px 8px;border:1px solid #ddd;border-radius:6px;background:#fff;cursor:pointer;color:#666">취소</button>
+          <button onclick="saveCashEdit('krw')" style="font-size:var(--text-sm);padding:3px 9px;border:none;border-radius:6px;background:var(--color-success);color:var(--color-bg-surface);cursor:pointer">저장</button>
+          <button onclick="cancelCashEdit('krw')" style="font-size:var(--text-sm);padding:3px 8px;border:1px solid var(--color-border-input);border-radius:6px;background:var(--color-bg-surface);cursor:pointer;color:var(--color-text-subtle)">취소</button>
         </div>
       </div>
     </div>
     <div class="metric">
       <div class="metric-label">현금 (달러)</div>
       <div id="cash-usd-view" style="display:flex;align-items:center;gap:12px;margin-top:3px">
-        <span id="cash-usd-txt" class="metric-value" style="font-size:16px">—</span>
-        <button onclick="editCash('usd')" style="font-size:11px;padding:3px 7px;border:1px solid #ddd;border-radius:6px;background:#fff;cursor:pointer;color:#555">편집</button>
+        <span id="cash-usd-txt" class="metric-value" style="font-size:var(--text-2xl)">—</span>
+        <button onclick="editCash('usd')" style="font-size:var(--text-sm);padding:3px 7px;border:1px solid var(--color-border-input);border-radius:6px;background:var(--color-bg-surface);cursor:pointer;color:var(--color-text-secondary)">편집</button>
       </div>
       <div id="cash-usd-form" style="display:none;margin-top:4px">
-        <input id="cash-usd" type="number" min="0" placeholder="0" style="width:100%;font-size:14px;font-weight:700;font-family:monospace;padding:4px 7px;border:1px solid #d97706;border-radius:6px;background:#fff;color:#1a1a1a"/>
+        <input id="cash-usd" type="number" min="0" placeholder="0" style="width:100%;font-size:var(--text-lg);font-weight:700;font-family:monospace;padding:4px 7px;border:1px solid var(--color-warning);border-radius:6px;background:var(--color-bg-surface);color:var(--color-text-primary)"/>
         <div style="display:flex;gap:4px;margin-top:5px">
-          <button onclick="saveCashEdit('usd')" style="font-size:11px;padding:3px 9px;border:none;border-radius:6px;background:#0a8a57;color:#fff;cursor:pointer">저장</button>
-          <button onclick="cancelCashEdit('usd')" style="font-size:11px;padding:3px 8px;border:1px solid #ddd;border-radius:6px;background:#fff;cursor:pointer;color:#666">취소</button>
+          <button onclick="saveCashEdit('usd')" style="font-size:var(--text-sm);padding:3px 9px;border:none;border-radius:6px;background:var(--color-success);color:var(--color-bg-surface);cursor:pointer">저장</button>
+          <button onclick="cancelCashEdit('usd')" style="font-size:var(--text-sm);padding:3px 8px;border:1px solid var(--color-border-input);border-radius:6px;background:var(--color-bg-surface);cursor:pointer;color:var(--color-text-subtle)">취소</button>
         </div>
       </div>
     </div>
@@ -218,11 +383,11 @@ tr:hover td{background:#fafafa}
       <button class="fbtn"    data-g="status" onclick="setStkFilter('buy',this)">매수</button>
       <button class="fbtn"    data-g="status" onclick="setStkFilter('watch',this)">관심</button>
       <button class="fbtn"    data-g="status" onclick="setStkFilter('hidden',this)">숨김</button>
-      <span style="width:1px;background:#e8e8e8;margin:0 3px;align-self:stretch;display:inline-block"></span>
+      <span style="width:1px;background:var(--color-border-default);margin:0 3px;align-self:stretch;display:inline-block"></span>
       <button class="fbtn on" data-g="market" onclick="setStkMarket('all',this)">전체</button>
       <button class="fbtn"    data-g="market" onclick="setStkMarket('us',this)">미장</button>
       <button class="fbtn"    data-g="market" onclick="setStkMarket('kr',this)">국장</button>
-      <span style="width:1px;background:#e8e8e8;margin:0 3px;align-self:stretch;display:inline-block"></span>
+      <span style="width:1px;background:var(--color-border-default);margin:0 3px;align-self:stretch;display:inline-block"></span>
       <button class="fbtn on" data-g="style" onclick="setStkStyle('all',this)">전체</button>
       <button class="fbtn"    data-g="style" onclick="setStkStyle('short',this)">단타</button>
       <button class="fbtn"    data-g="style" onclick="setStkStyle('long',this)">장타</button>
@@ -233,17 +398,17 @@ tr:hover td{background:#fafafa}
         <tbody id="stk-body"></tbody>
       </table>
     </div>
-    <div id="sample-notice" style="display:none;font-size:12px;color:#aaa;font-style:italic;margin-top:6px;padding:5px 8px;background:#fafafa;border-radius:6px;border:1px solid #f0efec">위 데이터는 예시 데이터 입니다.</div>
+    <div id="sample-notice" style="display:none;font-size:var(--text-base);color:var(--color-text-disabled);font-style:italic;margin-top:6px;padding:5px 8px;background:var(--color-bg-subtle);border-radius:6px;border:1px solid var(--color-bg-overlay)">위 데이터는 예시 데이터 입니다.</div>
     <div style="display:flex;gap:5px;margin-top:.75rem;flex-wrap:wrap">
-      <input id="fn" placeholder="종목명" style="flex:1;min-width:80px;font-size:12px;padding:6px 8px;border:1px solid #ddd;border-radius:8px;background:#fff;color:#1a1a1a;font-family:inherit"/>
-      <input id="ft" placeholder="티커 (예:NVDA, 005930.KS)" style="flex:1.5;min-width:120px;font-size:12px;padding:6px 8px;border:1px solid #ddd;border-radius:8px;background:#fff;color:#1a1a1a;font-family:inherit" oninput="autoDetectMarket(this.value)"/>
-      <input id="fb" type="number" placeholder="매수가" style="width:85px;font-size:12px;padding:6px 8px;border:1px solid #ddd;border-radius:8px;background:#fff;color:#1a1a1a;font-family:inherit"/>
-      <input id="fc" type="number" placeholder="현재가" style="width:85px;font-size:12px;padding:6px 8px;border:1px solid #ddd;border-radius:8px;background:#fff;color:#1a1a1a;font-family:inherit"/>
-      <input id="fq" type="number" placeholder="수량" style="width:65px;font-size:12px;padding:6px 8px;border:1px solid #ddd;border-radius:8px;background:#fff;color:#1a1a1a;font-family:inherit"/>
-      <select id="fm" style="width:65px;font-size:12px;padding:6px 8px;border:1px solid #ddd;border-radius:8px;background:#fff;color:#1a1a1a;font-family:inherit"><option value="us">미장</option><option value="kr">국장</option></select>
-      <select id="fs" style="width:65px;font-size:12px;padding:6px 8px;border:1px solid #ddd;border-radius:8px;background:#fff;color:#1a1a1a;font-family:inherit"><option value="hold">보유</option><option value="buy">매수</option><option value="watch">관심</option></select>
-      <select id="fst" style="width:75px;font-size:12px;padding:6px 8px;border:1px solid #ddd;border-radius:8px;background:#fff;color:#1a1a1a;font-family:inherit"><option value="">미설정</option><option value="short">단타</option><option value="long">장타</option></select>
-      <select id="fa" style="width:100px;font-size:12px;padding:6px 8px;border:1px solid #ddd;border-radius:8px;background:#fff;color:#1a1a1a;font-family:inherit">
+      <input id="fn" placeholder="종목명" style="flex:1;min-width:80px;font-size:var(--text-base);padding:6px 8px;border:1px solid var(--color-border-input);border-radius:8px;background:var(--color-bg-surface);color:var(--color-text-primary);font-family:inherit"/>
+      <input id="ft" placeholder="티커 (예:NVDA, 005930.KS)" style="flex:1.5;min-width:120px;font-size:var(--text-base);padding:6px 8px;border:1px solid var(--color-border-input);border-radius:8px;background:var(--color-bg-surface);color:var(--color-text-primary);font-family:inherit" oninput="autoDetectMarket(this.value)"/>
+      <input id="fb" type="number" placeholder="매수가" style="width:85px;font-size:var(--text-base);padding:6px 8px;border:1px solid var(--color-border-input);border-radius:8px;background:var(--color-bg-surface);color:var(--color-text-primary);font-family:inherit"/>
+      <input id="fc" type="number" placeholder="현재가" style="width:85px;font-size:var(--text-base);padding:6px 8px;border:1px solid var(--color-border-input);border-radius:8px;background:var(--color-bg-surface);color:var(--color-text-primary);font-family:inherit"/>
+      <input id="fq" type="number" placeholder="수량" style="width:65px;font-size:var(--text-base);padding:6px 8px;border:1px solid var(--color-border-input);border-radius:8px;background:var(--color-bg-surface);color:var(--color-text-primary);font-family:inherit"/>
+      <select id="fm" style="width:65px;font-size:var(--text-base);padding:6px 8px;border:1px solid var(--color-border-input);border-radius:8px;background:var(--color-bg-surface);color:var(--color-text-primary);font-family:inherit"><option value="us">미장</option><option value="kr">국장</option></select>
+      <select id="fs" style="width:65px;font-size:var(--text-base);padding:6px 8px;border:1px solid var(--color-border-input);border-radius:8px;background:var(--color-bg-surface);color:var(--color-text-primary);font-family:inherit"><option value="hold">보유</option><option value="buy">매수</option><option value="watch">관심</option></select>
+      <select id="fst" style="width:75px;font-size:var(--text-base);padding:6px 8px;border:1px solid var(--color-border-input);border-radius:8px;background:var(--color-bg-surface);color:var(--color-text-primary);font-family:inherit"><option value="">미설정</option><option value="short">단타</option><option value="long">장타</option></select>
+      <select id="fa" style="width:100px;font-size:var(--text-base);padding:6px 8px;border:1px solid var(--color-border-input);border-radius:8px;background:var(--color-bg-surface);color:var(--color-text-primary);font-family:inherit">
         <option value="토스증권">토스증권</option>
         <option value="카카오페이증권">카카오페이증권</option>
         <option value="키움증권">키움증권</option>
@@ -260,30 +425,30 @@ tr:hover td{background:#fafafa}
       </select>
       <button class="btn" onclick="addStock()">+ 추가</button>
     </div>
-    <div id="fx-date-row" style="font-size:11px;color:#aaa;margin-top:5px"></div>
+    <div id="fx-date-row" style="font-size:var(--text-sm);color:var(--color-text-disabled);margin-top:5px"></div>
     <div id="price-err" class="err-box" style="display:none"></div>
   </div>
 
   <!-- 보유 종목 최신 소식 -->
   <div id="portfolio-news-section" style="margin-top:1.25rem">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-      <div class="section-lbl" style="margin-bottom:0">보유 종목 최신 소식 <span style="font-size:10px;font-weight:400;text-transform:none;letter-spacing:0;color:#bbb">(미국 Finnhub · 국내 Naver)</span></div>
+      <div class="section-lbl" style="margin-bottom:0">보유 종목 최신 소식 <span style="font-size:var(--text-xs);font-weight:400;text-transform:none;letter-spacing:0;color:var(--color-text-muted)">(미국 Finnhub · 국내 Naver)</span></div>
       <div style="display:flex;gap:5px;align-items:center">
-        <span id="pn-ai-dot" style="display:none;width:6px;height:6px;border-radius:50%;background:#0a8a57;flex-shrink:0;animation:pulse 2s infinite"></span>
-        <button class="btn" style="font-size:11px" onclick="handleAiSummaryBtn()" id="pn-ai-btn">AI 요약</button>
-        <button class="btn" onclick="loadPortfolioNews()">↻</button>
+        <span id="pn-ai-dot" style="display:none;width:6px;height:6px;border-radius:50%;background:var(--color-success);flex-shrink:0;animation:pulse 2s infinite"></span>
+        <button class="btn" style="font-size:var(--text-sm)" onclick="handleAiSummaryBtn()" id="pn-ai-btn">AI 요약</button>
+        <button class="btn" onclick="loadPortfolioNews()" aria-label="보유 종목 뉴스 새로고침">↻</button>
       </div>
     </div>
     <div id="pn-key-row" style="display:none;gap:6px;margin-bottom:10px;align-items:center;flex-wrap:wrap">
       <input id="pn-claude-key" type="password" placeholder="Google AI API Key 입력..." autocomplete="off"
-        style="flex:1;min-width:200px;font-size:12px;padding:5px 9px;border:1px solid #ddd;border-radius:7px;font-family:monospace;background:#fff;color:#1a1a1a"/>
-      <button class="btn" onclick="savePnKey()" style="font-weight:600;border-color:#0a8a57;color:#0a8a57">저장</button>
-      <button class="btn" onclick="clearPnKey()" style="color:#d63031;border-color:#fecaca">삭제</button>
-      <span style="font-size:11px;color:#888;width:100%;margin-top:-2px">1회 입력 후 자동 저장 · <a href="https://aistudio.google.com/app/apikey" target="_blank" style="color:#1e40af">aistudio.google.com</a> 무료 발급</span>
-      <span id="pn-key-hint" style="font-size:11px;width:100%;margin-top:-4px"></span>
+        style="flex:1;min-width:200px;font-size:var(--text-base);padding:5px 9px;border:1px solid var(--color-border-input);border-radius:7px;font-family:monospace;background:var(--color-bg-surface);color:var(--color-text-primary)"/>
+      <button class="btn" onclick="savePnKey()" style="font-weight:600;border-color:var(--color-success);color:var(--color-success)">저장</button>
+      <button class="btn" onclick="clearPnKey()" style="color:var(--color-error);border-color:var(--color-error-border)">삭제</button>
+      <span style="font-size:var(--text-sm);color:var(--color-text-tertiary);width:100%;margin-top:-2px">1회 입력 후 자동 저장 · <a href="https://aistudio.google.com/app/apikey" target="_blank" style="color:var(--color-info)">aistudio.google.com</a> 무료 발급</span>
+      <span id="pn-key-hint" style="font-size:var(--text-sm);width:100%;margin-top:-4px"></span>
     </div>
     <div id="pn-ai-summary" style="display:none;margin-bottom:10px"></div>
-    <div id="portfolio-news-feed"><div style="font-size:12px;color:#aaa;padding:6px 0">🔑 뉴스 페이지에서 Finnhub API 키를 연결하면 최신 소식이 표시됩니다</div></div>
+    <div id="portfolio-news-feed"><div style="font-size:var(--text-base);color:var(--color-text-disabled);padding:6px 0">🔑 뉴스 페이지에서 Finnhub API 키를 연결하면 최신 소식이 표시됩니다</div></div>
   </div>
 
 </div>
@@ -293,7 +458,7 @@ tr:hover td{background:#fafafa}
 ═══════════════════════════════════════════ -->
 <div id="page-indices" class="page">
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.875rem">
-    <div style="font-size:12px;color:#888" id="idx-upd">—</div>
+    <div style="font-size:var(--text-base);color:var(--color-text-tertiary)" id="idx-upd">—</div>
     <div style="display:flex;gap:6px">
       <button class="btn" onclick="toggleIdxSettings()">⚙ 설정</button>
       <button class="btn" onclick="loadAllIndices()">↻ 갱신</button>
@@ -301,51 +466,51 @@ tr:hover td{background:#fafafa}
   </div>
 
   <!-- 설정 패널 -->
-  <div id="idx-settings-panel" style="display:none;background:#fff;border:1px solid #e8e8e8;border-radius:10px;padding:12px 16px;margin-bottom:1rem">
+  <div id="idx-settings-panel" style="display:none;background:var(--color-bg-surface);border:1px solid var(--color-border-default);border-radius:10px;padding:12px 16px;margin-bottom:1rem">
     <div class="section-lbl" style="margin-bottom:8px">표시 항목 설정</div>
     <div style="display:flex;flex-wrap:wrap;gap:6px" id="idx-chips"></div>
   </div>
 
   <!-- 국내 지수 -->
   <div id="idx-sec-kr">
-    <div class="section-lbl">국내 지수 <span style="font-size:10px;font-weight:400;text-transform:none;letter-spacing:0">(Yahoo Finance · 15분 딜레이)</span></div>
-    <div class="idx-grid" id="idx-kr"><div style="font-size:12px;color:#888">—</div></div>
+    <div class="section-lbl">국내 지수 <span style="font-size:var(--text-xs);font-weight:400;text-transform:none;letter-spacing:0">(Yahoo Finance · 15분 딜레이)</span></div>
+    <div class="idx-grid" id="idx-kr"><div style="font-size:var(--text-base);color:var(--color-text-tertiary)">—</div></div>
   </div>
 
   <!-- 미국 지수 -->
   <div id="idx-sec-us" style="margin-top:.875rem">
-    <div class="section-lbl">미국 지수 <span style="font-size:10px;font-weight:400;text-transform:none;letter-spacing:0">(Yahoo Finance · 15분 딜레이)</span></div>
-    <div class="idx-grid" id="idx-us"><div style="font-size:12px;color:#888">—</div></div>
+    <div class="section-lbl">미국 지수 <span style="font-size:var(--text-xs);font-weight:400;text-transform:none;letter-spacing:0">(Yahoo Finance · 15분 딜레이)</span></div>
+    <div class="idx-grid" id="idx-us"><div style="font-size:var(--text-base);color:var(--color-text-tertiary)">—</div></div>
   </div>
 
   <!-- 공포지수 -->
   <div id="idx-sec-vix" style="margin-top:.875rem">
-    <div class="section-lbl">공포지수 VIX <span style="font-size:10px;font-weight:400;text-transform:none;letter-spacing:0">(Yahoo Finance · 실시간)</span></div>
-    <div class="idx-grid" id="idx-vix"><div style="font-size:12px;color:#888">—</div></div>
+    <div class="section-lbl">공포지수 VIX <span style="font-size:var(--text-xs);font-weight:400;text-transform:none;letter-spacing:0">(Yahoo Finance · 실시간)</span></div>
+    <div class="idx-grid" id="idx-vix"><div style="font-size:var(--text-base);color:var(--color-text-tertiary)">—</div></div>
   </div>
 
   <!-- 선물 -->
   <div id="idx-sec-futures" style="margin-top:.875rem">
-    <div class="section-lbl">선물 <span style="font-size:10px;font-weight:400;text-transform:none;letter-spacing:0">(Yahoo Finance · 실시간)</span></div>
-    <div class="idx-grid" id="idx-futures"><div style="font-size:12px;color:#888">—</div></div>
+    <div class="section-lbl">선물 <span style="font-size:var(--text-xs);font-weight:400;text-transform:none;letter-spacing:0">(Yahoo Finance · 실시간)</span></div>
+    <div class="idx-grid" id="idx-futures"><div style="font-size:var(--text-base);color:var(--color-text-tertiary)">—</div></div>
   </div>
 
   <!-- 가상화폐 -->
   <div id="idx-sec-crypto" style="margin-top:.875rem">
-    <div class="section-lbl">가상화폐 <span style="font-size:10px;font-weight:400;text-transform:none;letter-spacing:0">(CoinGecko · 실시간)</span></div>
-    <div class="idx-grid" id="idx-crypto"><div style="font-size:12px;color:#888">—</div></div>
+    <div class="section-lbl">가상화폐 <span style="font-size:var(--text-xs);font-weight:400;text-transform:none;letter-spacing:0">(CoinGecko · 실시간)</span></div>
+    <div class="idx-grid" id="idx-crypto"><div style="font-size:var(--text-base);color:var(--color-text-tertiary)">—</div></div>
   </div>
 
   <!-- 환율 -->
   <div id="idx-sec-fx" style="margin-top:.875rem">
-    <div class="section-lbl">환율 <span style="font-size:10px;font-weight:400;text-transform:none;letter-spacing:0">(exchangerate-api · 실시간)</span></div>
-    <div class="idx-grid" id="idx-fx"><div style="font-size:12px;color:#888">—</div></div>
+    <div class="section-lbl">환율 <span style="font-size:var(--text-xs);font-weight:400;text-transform:none;letter-spacing:0">(exchangerate-api · 실시간)</span></div>
+    <div class="idx-grid" id="idx-fx"><div style="font-size:var(--text-base);color:var(--color-text-tertiary)">—</div></div>
   </div>
 
   <!-- 원자재 -->
   <div id="idx-sec-commodities" style="margin-top:.875rem">
-    <div class="section-lbl">원자재 <span style="font-size:10px;font-weight:400;text-transform:none;letter-spacing:0">(Yahoo Finance · 실시간)</span></div>
-    <div class="idx-grid" id="idx-commodities"><div style="font-size:12px;color:#888">—</div></div>
+    <div class="section-lbl">원자재 <span style="font-size:var(--text-xs);font-weight:400;text-transform:none;letter-spacing:0">(Yahoo Finance · 실시간)</span></div>
+    <div class="idx-grid" id="idx-commodities"><div style="font-size:var(--text-base);color:var(--color-text-tertiary)">—</div></div>
   </div>
 </div>
 
@@ -355,13 +520,13 @@ tr:hover td{background:#fafafa}
 <div id="page-news" class="page">
   <!-- API KEY -->
   <div class="apikey-box">
-    <div style="font-size:14px;font-weight:700;margin-bottom:8px">🔑 Finnhub API 키 <span style="font-size:11px;color:#888;font-weight:400">(1회 입력 후 자동 저장 · <a href="https://finnhub.io" target="_blank" style="color:#1e40af">finnhub.io</a> 무료 발급)</span></div>
+    <div style="font-size:var(--text-lg);font-weight:700;margin-bottom:8px">🔑 Finnhub API 키 <span style="font-size:var(--text-sm);color:var(--color-text-tertiary);font-weight:400">(1회 입력 후 자동 저장 · <a href="https://finnhub.io" target="_blank" style="color:var(--color-info)">finnhub.io</a> 무료 발급)</span></div>
     <div class="key-row">
       <input id="api-key-input" type="password" placeholder="Finnhub API Key 입력..." autocomplete="off"/>
       <button class="btn" id="connect-btn" onclick="connectAPI()" style="font-weight:700">연결</button>
-      <button class="btn" id="clear-btn" onclick="clearKey()" style="display:none">✕</button>
+      <button class="btn" id="clear-btn" onclick="clearKey()" style="display:none" aria-label="API 키 삭제">✕</button>
     </div>
-    <div class="key-status" id="key-status"><span class="dot-wait"></span><span style="color:#888">API 키를 입력해주세요</span></div>
+    <div class="key-status" id="key-status"><span class="dot-wait"></span><span style="color:var(--color-text-tertiary)">API 키를 입력해주세요</span></div>
   </div>
 
   <div class="inner-tab-bar">
@@ -388,7 +553,7 @@ tr:hover td{background:#fafafa}
   <!-- 종목별 뉴스 -->
   <div id="ip-news-cnews" class="ipanel">
     <div style="display:flex;gap:7px;margin-bottom:.75rem;flex-wrap:wrap">
-      <input id="company-sym" placeholder="티커 입력 (예: NVDA, AAPL)" style="flex:1;min-width:150px;font-size:13px;padding:7px 10px;border:1px solid #ddd;border-radius:8px;font-family:inherit"/>
+      <input id="company-sym" placeholder="티커 입력 (예: NVDA, AAPL)" style="flex:1;min-width:150px;font-size:var(--text-md);padding:7px 10px;border:1px solid var(--color-border-input);border-radius:8px;font-family:inherit"/>
       <button class="btn" onclick="loadCompanyNews()" style="font-weight:600">검색</button>
     </div>
     <div class="filter-row" id="portfolio-symbols"></div>
@@ -399,7 +564,7 @@ tr:hover td{background:#fafafa}
   <div id="ip-news-analyst" class="ipanel">
     <div class="info-box">ℹ️ Finnhub 무료: 수십 개 IB의 Buy/Hold/Sell 집계 + 평균 목표가. 레포트 원문은 유료입니다.</div>
     <div style="display:flex;gap:7px;margin-bottom:.75rem;flex-wrap:wrap">
-      <input id="analyst-sym" placeholder="미국 주식 티커 (예: NVDA, AAPL)" style="flex:1;min-width:150px;font-size:13px;padding:7px 10px;border:1px solid #ddd;border-radius:8px;font-family:inherit"/>
+      <input id="analyst-sym" placeholder="미국 주식 티커 (예: NVDA, AAPL)" style="flex:1;min-width:150px;font-size:var(--text-md);padding:7px 10px;border:1px solid var(--color-border-input);border-radius:8px;font-family:inherit"/>
       <button class="btn" onclick="loadAnalystRating()" style="font-weight:600">조회</button>
     </div>
     <div class="filter-row" id="analyst-symbols"></div>
@@ -409,12 +574,12 @@ tr:hover td{background:#fafafa}
   <!-- 실시간 시세 -->
   <div id="ip-news-quotes" class="ipanel">
     <div style="display:flex;gap:7px;margin-bottom:.75rem;flex-wrap:wrap">
-      <input id="quote-sym" placeholder="티커 추가 (예: NVDA)" style="flex:1;min-width:120px;font-size:13px;padding:7px 10px;border:1px solid #ddd;border-radius:8px;font-family:inherit"/>
+      <input id="quote-sym" placeholder="티커 추가 (예: NVDA)" style="flex:1;min-width:120px;font-size:var(--text-md);padding:7px 10px;border:1px solid var(--color-border-input);border-radius:8px;font-family:inherit"/>
       <button class="btn" onclick="addQuote()">+ 추가</button>
       <button class="btn" onclick="refreshQuotes()">↻ 갱신</button>
     </div>
     <div class="q-grid" id="quote-grid"><div class="empty">API 키 연결 후 표시</div></div>
-    <div style="font-size:11px;color:#bbb;margin-top:.25rem">* 미국 주식 실시간 · 국내(KS) 15분 딜레이</div>
+    <div style="font-size:var(--text-sm);color:var(--color-text-muted);margin-top:.25rem">* 미국 주식 실시간 · 국내(KS) 15분 딜레이</div>
   </div>
 </div>
 
@@ -451,8 +616,8 @@ tr:hover td{background:#fafafa}
         <button class="fbtn" onclick="regFilter('fed',this)">연준</button>
       </div>
       <div style="display:flex;align-items:center;gap:6px">
-        <span class="dot-live" id="reg-live-dot" style="width:6px;height:6px;border-radius:50%;background:#bbb;display:inline-block"></span>
-        <span id="reg-upd-txt" style="font-size:11px;color:#888">로딩 대기</span>
+        <span class="dot-live" id="reg-live-dot" style="width:6px;height:6px;border-radius:50%;background:var(--color-text-muted);display:inline-block"></span>
+        <span id="reg-upd-txt" style="font-size:var(--text-sm);color:var(--color-text-tertiary)">로딩 대기</span>
         <button class="btn" onclick="loadRegRSS()">↻ 갱신</button>
       </div>
     </div>
@@ -469,12 +634,12 @@ tr:hover td{background:#fafafa}
       <button class="memo-vtab active" id="vtab-active" onclick="switchMemoView('active')">활성 일지</button>
       <button class="memo-vtab" id="vtab-archive" onclick="switchMemoView('archive')">아카이브</button>
     </div>
-    <button id="notify-master-btn" type="button" onclick="toggleMasterNotify()" style="font-size:12px;padding:5px 12px;border:1px solid #ddd;border-radius:8px;background:#fff;cursor:pointer;color:#888;font-family:inherit">전체 알림 OFF</button>
+    <button id="notify-master-btn" type="button" onclick="toggleMasterNotify()" style="font-size:var(--text-base);padding:5px 12px;border:1px solid var(--color-border-input);border-radius:8px;background:var(--color-bg-surface);cursor:pointer;color:var(--color-text-tertiary);font-family:inherit">전체 알림 OFF</button>
   </div>
   <div id="memo-list" style="max-height:420px;overflow-y:auto;margin-bottom:.875rem"></div>
-  <div id="memo-compose-area" style="border-top:1px solid #e8e8e8;padding-top:.875rem">
+  <div id="memo-compose-area" style="border-top:1px solid var(--color-border-default);padding-top:.875rem">
     <div class="tag-btns" id="tag-btns">
-      <button class="tbtn sel" onclick="selTag('general',this)" style="background:#dbeafe;color:#1e40af;border-color:#1e40af">일반</button>
+      <button class="tbtn sel" onclick="selTag('general',this)" style="background:var(--color-info-bg);color:var(--color-info);border-color:var(--color-info)">일반</button>
       <button class="tbtn" onclick="selTag('buy',this)">매수</button>
       <button class="tbtn" onclick="selTag('sell',this)">매도</button>
       <button class="tbtn" onclick="selTag('macro',this)">매크로</button>
@@ -483,21 +648,21 @@ tr:hover td{background:#fafafa}
     </div>
     <!-- 매수 폼 -->
     <div id="memo-buy-form" style="display:none;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:8px">
-      <input id="memo-buy-name" type="text" placeholder="종목명" style="font-size:12px;padding:5px 8px;border:1px solid #ddd;border-radius:7px;font-family:inherit;color:#1a1a1a;width:120px"/>
-      <input id="memo-buy-price" type="number" placeholder="매수가" style="font-size:12px;padding:5px 8px;border:1px solid #ddd;border-radius:7px;font-family:inherit;color:#1a1a1a;width:100px"/>
-      <button type="button" onclick="insertBuyText()" style="font-size:12px;padding:5px 12px;border:none;border-radius:7px;background:#15803d;color:#fff;cursor:pointer;font-family:inherit">매수</button>
+      <input id="memo-buy-name" type="text" placeholder="종목명" style="font-size:var(--text-base);padding:5px 8px;border:1px solid var(--color-border-input);border-radius:7px;font-family:inherit;color:var(--color-text-primary);width:120px"/>
+      <input id="memo-buy-price" type="number" placeholder="매수가" style="font-size:var(--text-base);padding:5px 8px;border:1px solid var(--color-border-input);border-radius:7px;font-family:inherit;color:var(--color-text-primary);width:100px"/>
+      <button type="button" onclick="insertBuyText()" style="font-size:var(--text-base);padding:5px 12px;border:none;border-radius:7px;background:var(--color-success-dark);color:var(--color-bg-surface);cursor:pointer;font-family:inherit">매수</button>
     </div>
     <!-- 매도 폼 -->
     <div id="memo-sell-form" style="display:none;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:8px">
-      <select id="memo-sell-name" style="font-size:12px;padding:5px 8px;border:1px solid #ddd;border-radius:7px;font-family:inherit;color:#1a1a1a;max-width:160px"><option value="">종목 선택</option></select>
-      <input id="memo-sell-price" type="number" placeholder="매도가" style="font-size:12px;padding:5px 8px;border:1px solid #ddd;border-radius:7px;font-family:inherit;color:#1a1a1a;width:100px"/>
-      <button type="button" onclick="insertSellText()" style="font-size:12px;padding:5px 12px;border:none;border-radius:7px;background:#d63031;color:#fff;cursor:pointer;font-family:inherit">매도</button>
+      <select id="memo-sell-name" style="font-size:var(--text-base);padding:5px 8px;border:1px solid var(--color-border-input);border-radius:7px;font-family:inherit;color:var(--color-text-primary);max-width:160px"><option value="">종목 선택</option></select>
+      <input id="memo-sell-price" type="number" placeholder="매도가" style="font-size:var(--text-base);padding:5px 8px;border:1px solid var(--color-border-input);border-radius:7px;font-family:inherit;color:var(--color-text-primary);width:100px"/>
+      <button type="button" onclick="insertSellText()" style="font-size:var(--text-base);padding:5px 12px;border:none;border-radius:7px;background:var(--color-error);color:var(--color-bg-surface);cursor:pointer;font-family:inherit">매도</button>
     </div>
     <div class="memo-compose">
       <div style="display:flex;flex-direction:column;flex:1;gap:6px">
         <div style="display:flex;gap:6px;flex-wrap:wrap">
-          <input type="date" id="memo-date" style="font-size:12px;padding:4px 7px;border:1px solid #ddd;border-radius:7px;font-family:inherit;color:#1a1a1a"/>
-          <input type="time" id="memo-time" style="font-size:12px;padding:4px 7px;border:1px solid #ddd;border-radius:7px;font-family:inherit;color:#1a1a1a"/>
+          <input type="date" id="memo-date" style="font-size:var(--text-base);padding:4px 7px;border:1px solid var(--color-border-input);border-radius:7px;font-family:inherit;color:var(--color-text-primary)"/>
+          <input type="time" id="memo-time" style="font-size:var(--text-base);padding:4px 7px;border:1px solid var(--color-border-input);border-radius:7px;font-family:inherit;color:var(--color-text-primary)"/>
         </div>
         <textarea id="memo-txt" placeholder="오늘의 투자 메모를 남겨보세요..."></textarea>
       </div>
@@ -572,12 +737,12 @@ let cashUSD=parseFloat(localStorage.getItem('cash_usd'))||0;
 
 // ─ 메모 태그 설정 객체
 const TAG={
-  general:{bg:'#dbeafe',c:'#1e40af',l:'일반'},
-  buy:{bg:'#dcfce7',c:'#166534',l:'매수'},
-  sell:{bg:'#fee2e2',c:'#991b1b',l:'매도'},
-  macro:{bg:'#fef3c7',c:'#92400e',l:'매크로'},
-  review:{bg:'#ede9fe',c:'#5b21b6',l:'복기'},
-  idea:{bg:'#f5f5f3',c:'#44403c',l:'아이디어'}
+  general:{bg:'var(--color-info-bg)',c:'var(--color-info)',l:'일반'},
+  buy:{bg:'var(--color-success-bg)',c:'var(--color-success-text)',l:'매수'},
+  sell:{bg:'var(--color-error-bg)',c:'var(--color-error-text)',l:'매도'},
+  macro:{bg:'var(--color-warning-bg)',c:'var(--color-warning-text)',l:'매크로'},
+  review:{bg:'var(--color-accent-bg-soft)',c:'var(--color-accent-dark)',l:'복기'},
+  idea:{bg:'var(--color-bg-muted)',c:'var(--color-text-warm)',l:'아이디어'}
 };
 
 // ─ 로컬스토리지에서 데이터 로드
@@ -757,33 +922,33 @@ function renderStocks(){
     const v=s.cur*s.qty;
     const vUSD=isKR?v/fx:v;
     const r=(s.cur-s.buy)/s.buy*100,w=tv?vUSD/tv*100:0;
-    const bc=s.status==='buy'?'background:#15803d;color:#fff':s.status==='hold'?'background:#b45309;color:#fff':'background:#6b21a8;color:#fff';
-    const stateTag=s.marketState?`<span style="font-size:9px;color:#aaa;margin-left:3px">${s.marketState}</span>`:'';
-    const mktBadge=isKR?`<span style="font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px;background:#fef3c7;color:#92400e;margin-right:4px">국</span>`:`<span style="font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px;background:#dbeafe;color:#1e40af;margin-right:4px">미</span>`;
+    const bc=s.status==='buy'?'background:var(--color-success-dark);color:var(--color-bg-surface)':s.status==='hold'?'background:var(--color-warning-dark);color:var(--color-bg-surface)':'background:var(--color-accent);color:var(--color-bg-surface)';
+    const stateTag=s.marketState?`<span style="font-size:var(--text-2xs);color:var(--color-text-disabled);margin-left:3px">${s.marketState}</span>`:'';
+    const mktBadge=isKR?`<span style="font-size:var(--text-2xs);font-weight:700;padding:1px 5px;border-radius:4px;background:var(--color-warning-bg);color:var(--color-warning-text);margin-right:4px">국</span>`:`<span style="font-size:var(--text-2xs);font-weight:700;padding:1px 5px;border-radius:4px;background:var(--color-info-bg);color:var(--color-info);margin-right:4px">미</span>`;
     const pFmt=n=>isKR?'₩'+Math.round(n).toLocaleString():'$'+n.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});
     const evalFmt=isKR?'₩'+Math.round(v).toLocaleString():fmtUSD(v);
     const acctCh=(s.account||'기타').slice(0,2);
     const ac=acctColor(s.account);
-    const styleBadge=s.style==='short'?`<span style="font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px;background:#fff7ed;color:#c2410c">단</span>`:s.style==='long'?`<span style="font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px;background:#eff6ff;color:#1d4ed8">장</span>`:`<span style="font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px;background:#f3f4f6;color:#9ca3af">미</span>`;
-    return`<tr id="sr-${i}"><td style="font-weight:600">${mktBadge}${s.name}</td><td style="font-size:11px;color:#888;font-family:monospace">${s.ticker}</td><td>${pFmt(s.buy)}</td><td style="font-weight:600">${pFmt(s.cur)}${stateTag}</td><td>${s.qty}</td><td>${evalFmt}</td><td class="${r>=0?'up':'down'}" style="font-weight:600">${(r>=0?'+':'')+r.toFixed(2)}%</td><td>${s.status==='hold'?w.toFixed(1)+'%':'—'}</td><td><span style="font-size:11px;font-weight:700;padding:2px 7px;border-radius:20px;${bc}">${s.status==='buy'?'매수':s.status==='hold'?'보유':'관심'}</span></td><td>${styleBadge}</td><td style="text-align:center"><span style="font-size:11px;font-weight:700;padding:2px 6px;border-radius:4px;background:${ac.bg};color:${ac.c}">${acctCh}</span></td><td style="white-space:nowrap"><button type="button" onclick="editStock(${i})" style="font-size:11px;padding:3px 7px;border:1px solid #ddd;border-radius:6px;background:#fff;cursor:pointer;color:#555;margin-right:4px">편집</button><button type="button" onclick="removeStock(${i})" style="font-size:11px;padding:3px 7px;border:1px solid #fecaca;border-radius:6px;background:#fff;cursor:pointer;color:#d63031;margin-right:4px">삭제</button><button type="button" onclick="${s.hidden?'unhideStock':'hideStock'}(${i})" style="font-size:11px;padding:3px 7px;border:1px solid ${s.hidden?'#c4b5fd':'#e5e7eb'};border-radius:6px;background:${s.hidden?'#f3e8ff':'#fff'};cursor:pointer;color:${s.hidden?'#6b21a8':'#9ca3af'}">${s.hidden?'복원':'숨김'}</button></td></tr>`;
+    const styleBadge=s.style==='short'?`<span style="font-size:var(--text-sm);font-weight:700;padding:2px 8px;border-radius:20px;background:var(--color-trade-short-bg);color:var(--color-trade-short-text)">단</span>`:s.style==='long'?`<span style="font-size:var(--text-sm);font-weight:700;padding:2px 8px;border-radius:20px;background:var(--color-trade-long-bg);color:var(--color-trade-long-text)">장</span>`:`<span style="font-size:var(--text-sm);font-weight:700;padding:2px 8px;border-radius:20px;background:var(--color-bg-badge);color:var(--color-text-placeholder)">미</span>`;
+    return`<tr id="sr-${i}"><td style="font-weight:600">${mktBadge}${s.name}</td><td style="font-size:var(--text-sm);color:var(--color-text-tertiary);font-family:monospace">${s.ticker}</td><td>${pFmt(s.buy)}</td><td style="font-weight:600">${pFmt(s.cur)}${stateTag}</td><td>${s.qty}</td><td>${evalFmt}</td><td class="${r>=0?'up':'down'}" style="font-weight:600">${(r>=0?'+':'')+r.toFixed(2)}%</td><td>${s.status==='hold'?w.toFixed(1)+'%':'—'}</td><td><span style="font-size:var(--text-sm);font-weight:700;padding:2px 7px;border-radius:20px;${bc}">${s.status==='buy'?'매수':s.status==='hold'?'보유':'관심'}</span></td><td>${styleBadge}</td><td style="text-align:center"><span style="font-size:var(--text-sm);font-weight:700;padding:2px 6px;border-radius:4px;background:${ac.bg};color:${ac.c}">${acctCh}</span></td><td style="white-space:nowrap"><button type="button" onclick="editStock(${i})" style="font-size:var(--text-sm);padding:3px 7px;border:1px solid var(--color-border-input);border-radius:6px;background:var(--color-bg-surface);cursor:pointer;color:var(--color-text-secondary);margin-right:4px">편집</button><button type="button" onclick="removeStock(${i})" style="font-size:var(--text-sm);padding:3px 7px;border:1px solid var(--color-error-border);border-radius:6px;background:var(--color-bg-surface);cursor:pointer;color:var(--color-error);margin-right:4px">삭제</button><button type="button" onclick="${s.hidden?'unhideStock':'hideStock'}(${i})" style="font-size:var(--text-sm);padding:3px 7px;border:1px solid ${s.hidden?'var(--color-accent-border)':'var(--color-border-subtle)'};border-radius:6px;background:${s.hidden?'var(--color-accent-bg)':'var(--color-bg-surface)'};cursor:pointer;color:${s.hidden?'var(--color-accent)':'var(--color-text-placeholder)'}">${s.hidden?'복원':'숨김'}</button></td></tr>`;
   }).join('');
   localStorage.setItem('pf_s',JSON.stringify(stocks));
 }
 
 const ACCT_COLOR={
-  '토스증권':    {bg:'#dbeafe',c:'#1e40af'},
-  '카카오페이증권': {bg:'#fef9c3',c:'#854d0e'},
-  '키움증권':    {bg:'#fee2e2',c:'#991b1b'},
-  '미래에셋증권':  {bg:'#e0e7ff',c:'#3730a3'},
-  '삼성증권':    {bg:'#bfdbfe',c:'#1e3a8a'},
-  'NH투자증권':   {bg:'#dcfce7',c:'#166534'},
-  'KB증권':     {bg:'#fef3c7',c:'#92400e'},
-  '신한투자증권':  {bg:'#e0f2fe',c:'#075985'},
-  '한화투자증권':  {bg:'#ffedd5',c:'#9a3412'},
-  '대신증권':    {bg:'#ccfbf1',c:'#134e4a'},
-  '하나증권':    {bg:'#d1fae5',c:'#065f46'},
-  '유안타증권':   {bg:'#f3e8ff',c:'#6b21a8'},
-  '기타':       {bg:'#f3f4f6',c:'#374151'},
+  '토스증권':    {bg:'var(--color-info-bg)',c:'var(--color-info)'},
+  '카카오페이증권': {bg:'var(--color-broker-kakao-bg)',c:'var(--color-broker-kakao-text)'},
+  '키움증권':    {bg:'var(--color-error-bg)',c:'var(--color-error-text)'},
+  '미래에셋증권':  {bg:'var(--color-broker-mirae-bg)',c:'var(--color-broker-mirae-text)'},
+  '삼성증권':    {bg:'var(--color-info-border)',c:'var(--color-info-text)'},
+  'NH투자증권':   {bg:'var(--color-success-bg)',c:'var(--color-success-text)'},
+  'KB증권':     {bg:'var(--color-warning-bg)',c:'var(--color-warning-text)'},
+  '신한투자증권':  {bg:'var(--color-broker-shinhan-bg)',c:'var(--color-info-deep)'},
+  '한화투자증권':  {bg:'var(--color-broker-hanhwa-bg)',c:'var(--color-broker-hanhwa-text)'},
+  '대신증권':    {bg:'var(--color-broker-daesin-bg)',c:'var(--color-broker-daesin-text)'},
+  '하나증권':    {bg:'var(--color-success-bg-soft)',c:'var(--color-success-deep)'},
+  '유안타증권':   {bg:'var(--color-accent-bg)',c:'var(--color-accent)'},
+  '기타':       {bg:'var(--color-bg-badge)',c:'var(--color-text-secondary-alt)'},
 };
 function acctColor(acct){return ACCT_COLOR[acct]||ACCT_COLOR['기타'];}
 
@@ -827,9 +992,9 @@ function toggleEditHidden(i){
   const next=btn.dataset.hidden!=='true';
   btn.dataset.hidden=next;
   btn.textContent=next?'숨김 ON':'숨김 OFF';
-  btn.style.borderColor=next?'#c4b5fd':'#e5e7eb';
-  btn.style.background=next?'#f3e8ff':'#fff';
-  btn.style.color=next?'#6b21a8':'#9ca3af';
+  btn.style.borderColor=next?'var(--color-accent-border)':'var(--color-border-subtle)';
+  btn.style.background=next?'var(--color-accent-bg)':'var(--color-bg-surface)';
+  btn.style.color=next?'var(--color-accent)':'var(--color-text-placeholder)';
 }
 
 function editStock(i){
@@ -840,11 +1005,11 @@ function editStock(i){
   const styleOpts=[['','미설정'],['short','단타'],['long','장타']].map(([v,l])=>`<option value="${v}"${(s.style||'')===v?' selected':''}>${l}</option>`).join('');
   const acctList=['토스증권','카카오페이증권','키움증권','미래에셋증권','삼성증권','NH투자증권','KB증권','신한투자증권','한화투자증권','대신증권','하나증권','유안타증권','기타'];
   const acctOpts=acctList.map(a=>`<option value="${a}"${(s.account||'기타')===a?' selected':''}>${a}</option>`).join('');
-  const ist=`font-size:12px;padding:3px 6px;border:1px solid #d97706;border-radius:6px;font-family:inherit;`;
-  const ism=`font-size:11px;padding:3px 5px;border:1px solid #ddd;border-radius:6px;font-family:inherit;`;
-  row.outerHTML=`<tr id="sr-${i}" style="background:#fffef0">
+  const ist=`font-size:var(--text-base);padding:3px 6px;border:1px solid var(--color-warning);border-radius:6px;font-family:inherit;`;
+  const ism=`font-size:var(--text-sm);padding:3px 5px;border:1px solid var(--color-border-input);border-radius:6px;font-family:inherit;`;
+  row.outerHTML=`<tr id="sr-${i}" style="background:var(--color-edit-highlight)">
     <td style="font-weight:600">${s.name}</td>
-    <td style="font-size:11px;color:#888;font-family:monospace">${s.ticker}</td>
+    <td style="font-size:var(--text-sm);color:var(--color-text-tertiary);font-family:monospace">${s.ticker}</td>
     <td><input id="eb-${i}" type="number" value="${s.buy}" style="${ist}width:80px"/></td>
     <td style="font-weight:600">${Number(s.cur).toLocaleString()}</td>
     <td><input id="eq-${i}" type="number" value="${s.qty}" style="${ist}width:60px"/></td>
@@ -853,9 +1018,9 @@ function editStock(i){
     <td><select id="esty-${i}" style="${ism}width:72px">${styleOpts}</select></td>
     <td><select id="ea2-${i}" style="${ism}width:90px">${acctOpts}</select></td>
     <td style="white-space:nowrap">
-      <button type="button" id="ehid-${i}" data-hidden="${!!s.hidden}" onclick="toggleEditHidden(${i})" style="font-size:11px;padding:3px 7px;border:1px solid ${s.hidden?'#c4b5fd':'#e5e7eb'};border-radius:6px;background:${s.hidden?'#f3e8ff':'#fff'};cursor:pointer;color:${s.hidden?'#6b21a8':'#9ca3af'};margin-right:4px">${s.hidden?'숨김 ON':'숨김 OFF'}</button>
-      <button type="button" onclick="saveStock(${i})" style="background:#0a8a57;color:#fff;border:none;border-radius:6px;padding:4px 9px;font-size:12px;cursor:pointer;margin-right:3px">✓</button>
-      <button type="button" onclick="renderStocks()" style="background:none;border:1px solid #ddd;border-radius:6px;padding:4px 9px;font-size:12px;cursor:pointer;color:#666">✕</button>
+      <button type="button" id="ehid-${i}" data-hidden="${!!s.hidden}" onclick="toggleEditHidden(${i})" style="font-size:var(--text-sm);padding:3px 7px;border:1px solid ${s.hidden?'var(--color-accent-border)':'var(--color-border-subtle)'};border-radius:6px;background:${s.hidden?'var(--color-accent-bg)':'var(--color-bg-surface)'};cursor:pointer;color:${s.hidden?'var(--color-accent)':'var(--color-text-placeholder)'};margin-right:4px">${s.hidden?'숨김 ON':'숨김 OFF'}</button>
+      <button type="button" onclick="saveStock(${i})" aria-label="저장" style="background:var(--color-success);color:var(--color-bg-surface);border:none;border-radius:6px;padding:4px 9px;font-size:var(--text-base);cursor:pointer;margin-right:3px">✓</button>
+      <button type="button" onclick="renderStocks()" aria-label="취소" style="background:none;border:1px solid var(--color-border-input);border-radius:6px;padding:4px 9px;font-size:var(--text-base);cursor:pointer;color:var(--color-text-subtle)">✕</button>
     </td>
   </tr>`;
 }
@@ -1015,10 +1180,10 @@ function clearKey(){
 }
 function fhKeyErr(feedId){
   setKeyStatus('err','API 키 오류 · 재입력 필요');
-  document.getElementById(feedId).innerHTML=`<div class="err-box">Finnhub API 키가 유효하지 않거나 만료됐습니다. <button onclick="clearKey()" style="margin-left:6px;font-size:11px;padding:2px 8px;border:1px solid #d63031;border-radius:5px;background:#fff;cursor:pointer;color:#d63031">키 재입력</button></div>`;
+  document.getElementById(feedId).innerHTML=`<div class="err-box">Finnhub API 키가 유효하지 않거나 만료됐습니다. <button onclick="clearKey()" style="margin-left:6px;font-size:var(--text-sm);padding:2px 8px;border:1px solid var(--color-error);border-radius:5px;background:var(--color-bg-surface);cursor:pointer;color:var(--color-error)">키 재입력</button></div>`;
 }
 
-function setKeyStatus(state,msg){const el=document.getElementById('key-status');const dc=state==='live'?'dot-live':state==='err'?'dot-err':'dot-wait';const tc=state==='live'?'#0a8a57':state==='err'?'#991b1b':'#888';el.innerHTML=`<span class="${dc}"></span><span style="color:${tc}">${msg}</span>`;}
+function setKeyStatus(state,msg){const el=document.getElementById('key-status');const dc=state==='live'?'dot-live':state==='err'?'dot-err':'dot-wait';const tc=state==='live'?'var(--color-success)':state==='err'?'var(--color-error-text)':'var(--color-text-tertiary)';el.innerHTML=`<span class="${dc}"></span><span style="color:${tc}">${msg}</span>`;}
 
 async function loadMarketNews(){
   if(!FKEY){document.getElementById('news-feed').innerHTML='<div class="empty">🔑 API 키 연결 필요</div>';return;}
@@ -1028,13 +1193,13 @@ async function loadMarketNews(){
     displayNews(data);
   }catch(e){
     if(e.message==='fh_auth'){fhKeyErr('news-feed');return;}
-    document.getElementById('news-feed').innerHTML=`<div class="err-box">${e.message} <button onclick="loadMarketNews()" style="margin-left:4px;font-size:11px;padding:2px 8px;border:1px solid #888;border-radius:5px;background:#fff;cursor:pointer;color:#555">다시 시도</button></div>`;
+    document.getElementById('news-feed').innerHTML=`<div class="err-box">${e.message} <button onclick="loadMarketNews()" style="margin-left:4px;font-size:var(--text-sm);padding:2px 8px;border:1px solid var(--color-text-tertiary);border-radius:5px;background:var(--color-bg-surface);cursor:pointer;color:var(--color-text-secondary)">다시 시도</button></div>`;
   }
 }
 
 function displayNews(data){
   const feed=document.getElementById('news-feed');if(!data?.length){feed.innerHTML='<div class="empty">뉴스 없음</div>';return;}
-  feed.innerHTML=data.slice(0,20).map(n=>{const t=n.datetime?new Date(n.datetime*1000).toLocaleString('ko-KR',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'}):'';const rel=n.related?n.related.split(',').slice(0,4).map(s=>`<span style="background:#f0efec;padding:1px 5px;border-radius:4px;font-size:10px;font-family:monospace">${s.trim()}</span>`).join(' '):'';return`<div class="news-card"><div class="nc-meta"><span class="nc-src">${n.source||'—'}</span><span class="nc-time">${t}</span></div><div class="nc-title"><a href="${n.url||'#'}" target="_blank">${n.headline}</a></div>${rel?`<div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:3px">${rel}</div>`:''}<div class="nc-summary">${(n.summary||'').slice(0,150)}…</div></div>`}).join('');
+  feed.innerHTML=data.slice(0,20).map(n=>{const t=n.datetime?new Date(n.datetime*1000).toLocaleString('ko-KR',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'}):'';const rel=n.related?n.related.split(',').slice(0,4).map(s=>`<span style="background:var(--color-bg-overlay);padding:1px 5px;border-radius:4px;font-size:var(--text-xs);font-family:monospace">${s.trim()}</span>`).join(' '):'';return`<div class="news-card"><div class="nc-meta"><span class="nc-src">${n.source||'—'}</span><span class="nc-time">${t}</span></div><div class="nc-title"><a href="${n.url||'#'}" target="_blank">${n.headline}</a></div>${rel?`<div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:3px">${rel}</div>`:''}<div class="nc-summary">${(n.summary||'').slice(0,150)}…</div></div>`}).join('');
 }
 
 function setNewsCat(cat,btn){newsCat=cat;document.querySelectorAll('#news-cat-filter .fbtn').forEach(b=>b.classList.remove('on'));btn.classList.add('on');loadMarketNews();}
@@ -1048,7 +1213,7 @@ async function loadCompanyNews(){
     const data=await proxyApiCall('finnhub','company-news',{symbol:sym,from,to:today});
     const feed=document.getElementById('company-feed');
     if(!data?.length){feed.innerHTML=`<div class="empty">${sym} 최근 7일 뉴스 없음</div>`;return;}
-    feed.innerHTML=data.slice(0,15).map(n=>{const t=new Date(n.datetime*1000).toLocaleString('ko-KR',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'});return`<div class="news-card"><div class="nc-meta"><span class="nc-src">${n.source||'—'}</span><span class="nc-time">${t}</span><span style="font-size:10px;font-weight:700;padding:2px 7px;border-radius:20px;background:#dcfce7;color:#166534">${sym}</span></div><div class="nc-title"><a href="${n.url||'#'}" target="_blank">${n.headline}</a></div><div class="nc-summary">${(n.summary||'').slice(0,130)}…</div></div>`}).join('');
+    feed.innerHTML=data.slice(0,15).map(n=>{const t=new Date(n.datetime*1000).toLocaleString('ko-KR',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'});return`<div class="news-card"><div class="nc-meta"><span class="nc-src">${n.source||'—'}</span><span class="nc-time">${t}</span><span style="font-size:var(--text-xs);font-weight:700;padding:2px 7px;border-radius:20px;background:var(--color-success-bg);color:var(--color-success-text)">${sym}</span></div><div class="nc-title"><a href="${n.url||'#'}" target="_blank">${n.headline}</a></div><div class="nc-summary">${(n.summary||'').slice(0,130)}…</div></div>`}).join('');
   }catch(e){
     if(e.message==='fh_auth'){fhKeyErr('company-feed');return;}
     document.getElementById('company-feed').innerHTML=`<div class="err-box">${e.message}</div>`;
@@ -1059,7 +1224,7 @@ async function loadAnalystRating(sym){
   const input=sym||document.getElementById('analyst-sym').value.trim().toUpperCase();if(!input)return;
   if(!FKEY){document.getElementById('analyst-feed').innerHTML='<div class="empty">🔑 API 키 연결 필요</div>';return;}
   document.getElementById('analyst-feed').innerHTML='<div class="empty"><span class="spin">⟳</span> 조회 중...</div>';
-  try{const [recR,ptR]=await Promise.allSettled([proxyApiCall('finnhub','stock/recommendation',{symbol:input}),proxyApiCall('finnhub','stock/price-target',{symbol:input})]);if(recR.status==='rejected'&&recR.reason?.message==='fh_auth'){fhKeyErr('analyst-feed');return;}const rec=recR.status==='fulfilled'?recR.value:[];const pt=ptR.status==='fulfilled'?ptR.value:null;const feed=document.getElementById('analyst-feed');if(!rec?.length){feed.innerHTML=`<div class="empty">${input} 데이터 없음 (미국 상장 종목만)</div>`;return;}const l=rec[0];const tot=(l.buy||0)+(l.hold||0)+(l.sell||0)+(l.strongBuy||0)+(l.strongSell||0);const bt=(l.buy||0)+(l.strongBuy||0);const ht=l.hold||0;const st=(l.sell||0)+(l.strongSell||0);const bp=tot?Math.round(bt/tot*100):0;const hp=tot?Math.round(ht/tot*100):0;const sp=tot?Math.round(st/tot*100):0;const con=bp>=60?{l:'Strong Buy',bg:'#dcfce7',c:'#166534'}:bp>=40?{l:'Buy',bg:'#d1fae5',c:'#065f46'}:hp>=50?{l:'Hold',bg:'#fef3c7',c:'#92400e'}:{l:'Sell',bg:'#fee2e2',c:'#991b1b'};let html=`<div style="background:#fff;border:1px solid #e8e8e8;border-radius:12px;padding:14px 16px;margin-bottom:8px"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><div><div style="font-size:16px;font-weight:700">${input}</div><div style="font-size:11px;color:#888">${l.period||''} · 총 ${tot}개 기관</div></div><span style="background:${con.bg};color:${con.c};font-size:12px;font-weight:700;padding:4px 12px;border-radius:20px">${con.l}</span></div><div class="consensus-bar"><div class="cb-buy" style="width:${bp}%"></div><div class="cb-hold" style="width:${hp}%"></div><div class="cb-sell" style="width:${sp}%"></div></div><div style="display:flex;gap:12px;font-size:11px;color:#666;margin-bottom:6px"><span style="color:#0a8a57">매수 ${bp}% (${bt})</span><span style="color:#d97706">보유 ${hp}% (${ht})</span><span style="color:#d63031">매도 ${sp}% (${st})</span></div>`;if(pt?.targetMean){html+=`<div style="font-size:12px;color:#666;border-top:1px solid #f5f5f3;padding-top:8px;display:flex;gap:16px;flex-wrap:wrap"><span>평균 목표가 <strong style="color:#1a1a1a">$${pt.targetMean.toFixed(2)}</strong></span><span>최고 <strong style="color:#0a8a57">$${pt.targetHigh?.toFixed(2)}</strong></span><span>최저 <strong style="color:#d63031">$${pt.targetLow?.toFixed(2)}</strong></span></div>`;}html+='</div>';if(rec.length>1){html+=rec.slice(0,3).map(r=>{const t2=(r.buy||0)+(r.strongBuy||0);const t3=(r.sell||0)+(r.strongSell||0);const t4=r.hold||0;const tot=t2+t3+t4;const bp=tot?Math.round(t2/tot*100):0;const hp=tot?Math.round(t4/tot*100):0;return`<div style="background:#fff;border:1px solid #e8e8e8;border-radius:12px;padding:11px 14px;margin-bottom:6px"><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:6px"><span style="font-weight:600">${r.period}</span><span style="color:#888">총 ${tot}개</span></div><div class="consensus-bar"><div class="cb-buy" style="width:${bp}%"></div><div class="cb-hold" style="width:${hp}%"></div><div class="cb-sell" style="width:${tot?Math.round(t3/tot*100):0}%"></div></div><div style="font-size:11px;margin-top:4px;display:flex;gap:10px"><span style="color:#0a8a57">매수 ${t2}</span><span style="color:#d97706">보유 ${t4}</span><span style="color:#d63031">매도 ${t3}</span></div></div>`}).join('');}feed.innerHTML=html;}catch(e){document.getElementById('analyst-feed').innerHTML=`<div class="err-box">${e.message}</div>`;}
+  try{const [recR,ptR]=await Promise.allSettled([proxyApiCall('finnhub','stock/recommendation',{symbol:input}),proxyApiCall('finnhub','stock/price-target',{symbol:input})]);if(recR.status==='rejected'&&recR.reason?.message==='fh_auth'){fhKeyErr('analyst-feed');return;}const rec=recR.status==='fulfilled'?recR.value:[];const pt=ptR.status==='fulfilled'?ptR.value:null;const feed=document.getElementById('analyst-feed');if(!rec?.length){feed.innerHTML=`<div class="empty">${input} 데이터 없음 (미국 상장 종목만)</div>`;return;}const l=rec[0];const tot=(l.buy||0)+(l.hold||0)+(l.sell||0)+(l.strongBuy||0)+(l.strongSell||0);const bt=(l.buy||0)+(l.strongBuy||0);const ht=l.hold||0;const st=(l.sell||0)+(l.strongSell||0);const bp=tot?Math.round(bt/tot*100):0;const hp=tot?Math.round(ht/tot*100):0;const sp=tot?Math.round(st/tot*100):0;const con=bp>=60?{l:'Strong Buy',bg:'var(--color-success-bg)',c:'var(--color-success-text)'}:bp>=40?{l:'Buy',bg:'var(--color-success-bg-soft)',c:'var(--color-success-deep)'}:hp>=50?{l:'Hold',bg:'var(--color-warning-bg)',c:'var(--color-warning-text)'}:{l:'Sell',bg:'var(--color-error-bg)',c:'var(--color-error-text)'};let html=`<div style="background:var(--color-bg-surface);border:1px solid var(--color-border-default);border-radius:12px;padding:14px 16px;margin-bottom:8px"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><div><div style="font-size:var(--text-2xl);font-weight:700">${input}</div><div style="font-size:var(--text-sm);color:var(--color-text-tertiary)">${l.period||''} · 총 ${tot}개 기관</div></div><span style="background:${con.bg};color:${con.c};font-size:var(--text-base);font-weight:700;padding:4px 12px;border-radius:20px">${con.l}</span></div><div class="consensus-bar"><div class="cb-buy" style="width:${bp}%"></div><div class="cb-hold" style="width:${hp}%"></div><div class="cb-sell" style="width:${sp}%"></div></div><div style="display:flex;gap:12px;font-size:var(--text-sm);color:var(--color-text-subtle);margin-bottom:6px"><span style="color:var(--color-success)">매수 ${bp}% (${bt})</span><span style="color:var(--color-warning)">보유 ${hp}% (${ht})</span><span style="color:var(--color-error)">매도 ${sp}% (${st})</span></div>`;if(pt?.targetMean){html+=`<div style="font-size:var(--text-base);color:var(--color-text-subtle);border-top:1px solid var(--color-bg-muted);padding-top:8px;display:flex;gap:16px;flex-wrap:wrap"><span>평균 목표가 <strong style="color:var(--color-text-primary)">$${pt.targetMean.toFixed(2)}</strong></span><span>최고 <strong style="color:var(--color-success)">$${pt.targetHigh?.toFixed(2)}</strong></span><span>최저 <strong style="color:var(--color-error)">$${pt.targetLow?.toFixed(2)}</strong></span></div>`;}html+='</div>';if(rec.length>1){html+=rec.slice(0,3).map(r=>{const t2=(r.buy||0)+(r.strongBuy||0);const t3=(r.sell||0)+(r.strongSell||0);const t4=r.hold||0;const tot=t2+t3+t4;const bp=tot?Math.round(t2/tot*100):0;const hp=tot?Math.round(t4/tot*100):0;return`<div style="background:var(--color-bg-surface);border:1px solid var(--color-border-default);border-radius:12px;padding:11px 14px;margin-bottom:6px"><div style="display:flex;justify-content:space-between;font-size:var(--text-base);margin-bottom:6px"><span style="font-weight:600">${r.period}</span><span style="color:var(--color-text-tertiary)">총 ${tot}개</span></div><div class="consensus-bar"><div class="cb-buy" style="width:${bp}%"></div><div class="cb-hold" style="width:${hp}%"></div><div class="cb-sell" style="width:${tot?Math.round(t3/tot*100):0}%"></div></div><div style="font-size:var(--text-sm);margin-top:4px;display:flex;gap:10px"><span style="color:var(--color-success)">매수 ${t2}</span><span style="color:var(--color-warning)">보유 ${t4}</span><span style="color:var(--color-error)">매도 ${t3}</span></div></div>`}).join('');}feed.innerHTML=html;}catch(e){document.getElementById('analyst-feed').innerHTML=`<div class="err-box">${e.message}</div>`;}
 }
 
 async function refreshQuotes(){
@@ -1076,8 +1241,8 @@ function renderPortfolioChips(){
   const tickers=(JSON.parse(localStorage.getItem('pf_s')||'[]')).map(s=>s.ticker).filter(t=>t&&!/^\d/.test(t)&&t.length<10);
   if(!tickers.length)return;
   const chip=(t,fn)=>`<button class="fbtn" onclick="${fn}('${t}')">${t}</button>`;
-  document.getElementById('portfolio-symbols').innerHTML=`<span style="font-size:11px;color:#bbb;align-self:center">내 종목:</span>`+tickers.map(t=>chip(t,`document.getElementById('company-sym').value='${t}';loadCompanyNews`)).join('');
-  document.getElementById('analyst-symbols').innerHTML=`<span style="font-size:11px;color:#bbb;align-self:center">내 종목:</span>`+tickers.map(t=>`<button class="fbtn" onclick="document.getElementById('analyst-sym').value='${t}';loadAnalystRating('${t}')">${t}</button>`).join('');
+  document.getElementById('portfolio-symbols').innerHTML=`<span style="font-size:var(--text-sm);color:var(--color-text-muted);align-self:center">내 종목:</span>`+tickers.map(t=>chip(t,`document.getElementById('company-sym').value='${t}';loadCompanyNews`)).join('');
+  document.getElementById('analyst-symbols').innerHTML=`<span style="font-size:var(--text-sm);color:var(--color-text-muted);align-self:center">내 종목:</span>`+tickers.map(t=>`<button class="fbtn" onclick="document.getElementById('analyst-sym').value='${t}';loadAnalystRating('${t}')">${t}</button>`).join('');
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -1161,21 +1326,21 @@ function renderMemos(){
   const el=document.getElementById('memo-list');
   if(memoView==='archive'){renderArchive(el);return;}
   if(!memos.length){
-    el.innerHTML='<div style="color:#888;font-size:13px;padding:.5rem 0">첫 투자 일지를 남겨보세요.</div>';
+    el.innerHTML='<div style="color:var(--color-text-tertiary);font-size:var(--text-md);padding:.5rem 0">첫 투자 일지를 남겨보세요.</div>';
     return;
   }
   const importants=memos.filter(m=>m.important);
   const previewHtml=importants.length?`
     <div class="important-preview">
-      <div style="font-size:12px;font-weight:700;color:#b45309;margin-bottom:6px">⭐ 중요 메모 (${importants.length}개)</div>
+      <div style="font-size:var(--text-base);font-weight:700;color:var(--color-warning-dark);margin-bottom:6px">⭐ 중요 메모 (${importants.length}개)</div>
       ${importants.map(m=>{
         const c=TAG[m.tag]||TAG.general;
         const preview=m.text.split('\n')[0].slice(0,60)+(m.text.length>60?'…':'');
         const dateStr=new Date(m.time).toLocaleDateString('ko-KR',{month:'numeric',day:'numeric'});
         return`<div class="important-preview-item" onclick="scrollToMemo(${m.id})">
-          <span style="font-size:10px;font-weight:700;padding:2px 7px;border-radius:20px;background:${c.bg};color:${c.c};white-space:nowrap;flex-shrink:0">${c.l}</span>
-          <span style="font-size:12px;color:#1a1a1a;flex:1;line-height:1.5">${preview}</span>
-          <span style="font-size:11px;color:#b45309;white-space:nowrap;flex-shrink:0">${dateStr}</span>
+          <span style="font-size:var(--text-xs);font-weight:700;padding:2px 7px;border-radius:20px;background:${c.bg};color:${c.c};white-space:nowrap;flex-shrink:0">${c.l}</span>
+          <span style="font-size:var(--text-base);color:var(--color-text-primary);flex:1;line-height:1.5">${preview}</span>
+          <span style="font-size:var(--text-sm);color:var(--color-warning-dark);white-space:nowrap;flex-shrink:0">${dateStr}</span>
         </div>`;
       }).join('')}
     </div>`:''
@@ -1186,20 +1351,20 @@ function renderMemos(){
     grp[k].push(m);
   });
   const listHtml=Object.entries(grp).map(([d,items])=>`
-    <div style="font-size:11px;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:.05em;padding:10px 0 6px;border-top:1px solid #e8e8e8;margin-top:4px">${d}</div>
+    <div style="font-size:var(--text-sm);font-weight:600;color:var(--color-text-tertiary);text-transform:uppercase;letter-spacing:.05em;padding:10px 0 6px;border-top:1px solid var(--color-border-default);margin-top:4px">${d}</div>
     ${items.map(m=>{
       const c=TAG[m.tag]||TAG.general;
       const imp=!!m.important;
       return`<div class="memo-card${imp?' important':''}" id="memo-card-${m.id}">
         <div class="memo-meta">
-          <span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;background:${c.bg};color:${c.c}">${c.l}</span>
+          <span style="font-size:var(--text-xs);font-weight:700;padding:2px 8px;border-radius:20px;background:${c.bg};color:${c.c}">${c.l}</span>
           <div style="display:flex;align-items:center;gap:6px">
             <span class="memo-time">${new Date(m.time).toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'})}</span>
-            <button type="button" onclick="toggleMemoImportant(${m.id})" style="font-size:11px;padding:2px 7px;border:1px solid ${imp?'#f59e0b':'#ddd'};border-radius:5px;background:${imp?'#fffbeb':'#fff'};cursor:pointer;color:${imp?'#b45309':'#888'}">${imp?'⭐ 중요':'☆ 중요'}</button>
-            <button type="button" onclick="toggleMemoNotify(${m.id})" style="font-size:11px;padding:2px 7px;border:1px solid ${m.notify?'#0a8a57':'#ddd'};border-radius:5px;background:${m.notify?'#f0fdf4':'#fff'};cursor:pointer;color:${m.notify?'#0a8a57':'#888'}">${m.notify?'알림 ON':'알림 OFF'}</button>
-            <button type="button" onclick="editMemo(${m.id})" style="font-size:11px;padding:2px 7px;border:1px solid #ddd;border-radius:5px;background:#fff;cursor:pointer;color:#555">편집</button>
-            <button type="button" onclick="completeMemo(${m.id})" style="font-size:11px;padding:2px 7px;border:1px solid #c7d2fe;border-radius:5px;background:#eef2ff;cursor:pointer;color:#4f46e5">완료</button>
-            <button type="button" onclick="deleteMemo(${m.id})" style="font-size:11px;padding:2px 7px;border:1px solid #fecaca;border-radius:5px;background:#fff;cursor:pointer;color:#d63031">삭제</button>
+            <button type="button" onclick="toggleMemoImportant(${m.id})" style="font-size:var(--text-sm);padding:2px 7px;border:1px solid ${imp?'var(--color-warning-bright)':'var(--color-border-input)'};border-radius:5px;background:${imp?'var(--color-warning-subtle)':'var(--color-bg-surface)'};cursor:pointer;color:${imp?'var(--color-warning-dark)':'var(--color-text-tertiary)'}">${imp?'⭐ 중요':'☆ 중요'}</button>
+            <button type="button" onclick="toggleMemoNotify(${m.id})" style="font-size:var(--text-sm);padding:2px 7px;border:1px solid ${m.notify?'var(--color-success)':'var(--color-border-input)'};border-radius:5px;background:${m.notify?'var(--color-success-bg-light)':'var(--color-bg-surface)'};cursor:pointer;color:${m.notify?'var(--color-success)':'var(--color-text-tertiary)'}">${m.notify?'알림 ON':'알림 OFF'}</button>
+            <button type="button" onclick="editMemo(${m.id})" style="font-size:var(--text-sm);padding:2px 7px;border:1px solid var(--color-border-input);border-radius:5px;background:var(--color-bg-surface);cursor:pointer;color:var(--color-text-secondary)">편집</button>
+            <button type="button" onclick="completeMemo(${m.id})" style="font-size:var(--text-sm);padding:2px 7px;border:1px solid var(--color-accent-border-soft);border-radius:5px;background:var(--color-accent-subtle);cursor:pointer;color:var(--color-accent-indigo)">완료</button>
+            <button type="button" onclick="deleteMemo(${m.id})" style="font-size:var(--text-sm);padding:2px 7px;border:1px solid var(--color-error-border);border-radius:5px;background:var(--color-bg-surface);cursor:pointer;color:var(--color-error)">삭제</button>
           </div>
         </div>
         <div class="memo-text">${m.text}</div>
@@ -1211,7 +1376,7 @@ function renderMemos(){
 
 function renderArchive(el){
   if(!memoArchive.length){
-    el.innerHTML='<div style="color:#888;font-size:13px;padding:.5rem 0">완료 처리된 일지가 없습니다.</div>';
+    el.innerHTML='<div style="color:var(--color-text-tertiary);font-size:var(--text-md);padding:.5rem 0">완료 처리된 일지가 없습니다.</div>';
     return;
   }
   const grp={};
@@ -1221,21 +1386,21 @@ function renderArchive(el){
     grp[k].push(m);
   });
   el.innerHTML=Object.entries(grp).map(([d,items])=>`
-    <div style="font-size:11px;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:.05em;padding:10px 0 6px;border-top:1px solid #e8e8e8;margin-top:4px">${d}</div>
+    <div style="font-size:var(--text-sm);font-weight:600;color:var(--color-text-tertiary);text-transform:uppercase;letter-spacing:.05em;padding:10px 0 6px;border-top:1px solid var(--color-border-default);margin-top:4px">${d}</div>
     ${items.map(m=>{
       const c=TAG[m.tag]||TAG.general;
       const imp=!!m.important;
       return`<div class="archive-card${imp?' important':''}">
         <div class="memo-meta">
           <div style="display:flex;align-items:center;gap:6px">
-            <span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;background:${c.bg};color:${c.c}">${c.l}</span>
-            ${imp?'<span style="font-size:11px;color:#b45309">⭐</span>':''}
+            <span style="font-size:var(--text-xs);font-weight:700;padding:2px 8px;border-radius:20px;background:${c.bg};color:${c.c}">${c.l}</span>
+            ${imp?'<span style="font-size:var(--text-sm);color:var(--color-warning-dark)">⭐</span>':''}
             <span class="archive-completed-at">완료 ${new Date(m.completedAt).toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'})}</span>
             <span class="memo-time">작성 ${new Date(m.time).toLocaleDateString('ko-KR',{month:'numeric',day:'numeric'})} ${new Date(m.time).toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'})}</span>
           </div>
-          <button type="button" onclick="deleteArchive(${m.id})" style="font-size:11px;padding:2px 7px;border:1px solid #fecaca;border-radius:5px;background:#fff;cursor:pointer;color:#d63031">삭제</button>
+          <button type="button" onclick="deleteArchive(${m.id})" style="font-size:var(--text-sm);padding:2px 7px;border:1px solid var(--color-error-border);border-radius:5px;background:var(--color-bg-surface);cursor:pointer;color:var(--color-error)">삭제</button>
         </div>
-        <div class="memo-text" style="color:#555">${m.text}</div>
+        <div class="memo-text" style="color:var(--color-text-secondary)">${m.text}</div>
       </div>`;
     }).join('')}
   `).join('');
@@ -1257,18 +1422,18 @@ function editMemo(id){
   card.innerHTML=`
     <div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:8px">${tagBtns}</div>
     <div style="display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap">
-      <input type="date" id="medit-date-${id}" value="${dateVal}" style="font-size:12px;padding:4px 7px;border:1px solid #ddd;border-radius:7px;font-family:inherit;color:#1a1a1a"/>
-      <input type="time" id="medit-time-${id}" value="${timeVal}" style="font-size:12px;padding:4px 7px;border:1px solid #ddd;border-radius:7px;font-family:inherit;color:#1a1a1a"/>
+      <input type="date" id="medit-date-${id}" value="${dateVal}" style="font-size:var(--text-base);padding:4px 7px;border:1px solid var(--color-border-input);border-radius:7px;font-family:inherit;color:var(--color-text-primary)"/>
+      <input type="time" id="medit-time-${id}" value="${timeVal}" style="font-size:var(--text-base);padding:4px 7px;border:1px solid var(--color-border-input);border-radius:7px;font-family:inherit;color:var(--color-text-primary)"/>
     </div>
     <div style="display:flex;gap:6px;align-items:center;margin-bottom:8px;flex-wrap:wrap">
-      <button type="button" id="medit-important-${id}" data-important="${!!m.important}" onclick="toggleEditImportant(${id})" style="font-size:12px;padding:4px 10px;border:1px solid ${m.important?'#f59e0b':'#ddd'};border-radius:7px;background:${m.important?'#fffbeb':'#fff'};cursor:pointer;color:${m.important?'#b45309':'#888'};font-family:inherit">${m.important?'⭐ 중요':'☆ 중요'}</button>
-      <button type="button" id="medit-notify-${id}" data-notify="${!!m.notify}" onclick="toggleEditNotify(${id})" style="font-size:12px;padding:4px 10px;border:1px solid ${m.notify?'#0a8a57':'#ddd'};border-radius:7px;background:${m.notify?'#f0fdf4':'#fff'};cursor:pointer;color:${m.notify?'#0a8a57':'#888'};font-family:inherit">${m.notify?'알림 ON':'알림 OFF'}</button>
-      <input type="time" id="medit-notifyat-${id}" value="${notifyAtVal}" style="font-size:12px;padding:4px 7px;border:1px solid #ddd;border-radius:7px;font-family:inherit;color:#1a1a1a;display:${m.notify?'inline-block':'none'}"/>
+      <button type="button" id="medit-important-${id}" data-important="${!!m.important}" onclick="toggleEditImportant(${id})" style="font-size:var(--text-base);padding:4px 10px;border:1px solid ${m.important?'var(--color-warning-bright)':'var(--color-border-input)'};border-radius:7px;background:${m.important?'var(--color-warning-subtle)':'var(--color-bg-surface)'};cursor:pointer;color:${m.important?'var(--color-warning-dark)':'var(--color-text-tertiary)'};font-family:inherit">${m.important?'⭐ 중요':'☆ 중요'}</button>
+      <button type="button" id="medit-notify-${id}" data-notify="${!!m.notify}" onclick="toggleEditNotify(${id})" style="font-size:var(--text-base);padding:4px 10px;border:1px solid ${m.notify?'var(--color-success)':'var(--color-border-input)'};border-radius:7px;background:${m.notify?'var(--color-success-bg-light)':'var(--color-bg-surface)'};cursor:pointer;color:${m.notify?'var(--color-success)':'var(--color-text-tertiary)'};font-family:inherit">${m.notify?'알림 ON':'알림 OFF'}</button>
+      <input type="time" id="medit-notifyat-${id}" value="${notifyAtVal}" style="font-size:var(--text-base);padding:4px 7px;border:1px solid var(--color-border-input);border-radius:7px;font-family:inherit;color:var(--color-text-primary);display:${m.notify?'inline-block':'none'}"/>
     </div>
-    <textarea id="medit-txt-${id}" style="width:100%;font-size:13px;padding:8px 10px;border:1px solid #d97706;border-radius:8px;background:#fff;color:#1a1a1a;resize:none;min-height:72px;font-family:inherit;line-height:1.5">${m.text}</textarea>
+    <textarea id="medit-txt-${id}" style="width:100%;font-size:var(--text-md);padding:8px 10px;border:1px solid var(--color-warning);border-radius:8px;background:var(--color-bg-surface);color:var(--color-text-primary);resize:none;min-height:72px;font-family:inherit;line-height:1.5">${m.text}</textarea>
     <div style="display:flex;gap:6px;margin-top:7px;justify-content:flex-end">
-      <button type="button" onclick="saveMemoEdit(${id})" style="font-size:12px;padding:4px 12px;border:none;border-radius:7px;background:#0a8a57;color:#fff;cursor:pointer">저장</button>
-      <button type="button" onclick="renderMemos()" style="font-size:12px;padding:4px 10px;border:1px solid #ddd;border-radius:7px;background:#fff;cursor:pointer;color:#666">취소</button>
+      <button type="button" onclick="saveMemoEdit(${id})" style="font-size:var(--text-base);padding:4px 12px;border:none;border-radius:7px;background:var(--color-success);color:var(--color-bg-surface);cursor:pointer">저장</button>
+      <button type="button" onclick="renderMemos()" style="font-size:var(--text-base);padding:4px 10px;border:1px solid var(--color-border-input);border-radius:7px;background:var(--color-bg-surface);cursor:pointer;color:var(--color-text-subtle)">취소</button>
     </div>`;
 }
 
@@ -1331,9 +1496,9 @@ function updateMasterNotifyBtn(){
   const btn=document.getElementById('notify-master-btn');
   if(!btn)return;
   btn.textContent=notifyMaster?'전체 알림 ON':'전체 알림 OFF';
-  btn.style.borderColor=notifyMaster?'#0a8a57':'#ddd';
-  btn.style.color=notifyMaster?'#0a8a57':'#888';
-  btn.style.background=notifyMaster?'#f0fdf4':'#fff';
+  btn.style.borderColor=notifyMaster?'var(--color-success)':'var(--color-border-input)';
+  btn.style.color=notifyMaster?'var(--color-success)':'var(--color-text-tertiary)';
+  btn.style.background=notifyMaster?'var(--color-success-bg-light)':'var(--color-bg-surface)';
 }
 function toggleMemoImportant(id){
   const idx=memos.findIndex(m=>m.id===id);
@@ -1347,9 +1512,9 @@ function toggleEditImportant(id){
   const next=btn.dataset.important!=='true';
   btn.dataset.important=next;
   btn.textContent=next?'⭐ 중요':'☆ 중요';
-  btn.style.borderColor=next?'#f59e0b':'#ddd';
-  btn.style.color=next?'#b45309':'#888';
-  btn.style.background=next?'#fffbeb':'#fff';
+  btn.style.borderColor=next?'var(--color-warning-bright)':'var(--color-border-input)';
+  btn.style.color=next?'var(--color-warning-dark)':'var(--color-text-tertiary)';
+  btn.style.background=next?'var(--color-warning-subtle)':'var(--color-bg-surface)';
 }
 function scrollToMemo(id){
   const card=document.getElementById('memo-card-'+id);
@@ -1367,9 +1532,9 @@ function toggleEditNotify(id){
   const next=btn.dataset.notify!=='true';
   btn.dataset.notify=next;
   btn.textContent=next?'알림 ON':'알림 OFF';
-  btn.style.borderColor=next?'#0a8a57':'#ddd';
-  btn.style.color=next?'#0a8a57':'#888';
-  btn.style.background=next?'#f0fdf4':'#fff';
+  btn.style.borderColor=next?'var(--color-success)':'var(--color-border-input)';
+  btn.style.color=next?'var(--color-success)':'var(--color-text-tertiary)';
+  btn.style.background=next?'var(--color-success-bg-light)':'var(--color-bg-surface)';
   const natEl=document.getElementById('medit-notifyat-'+id);
   if(natEl)natEl.style.display=next?'inline-block':'none';
 }
@@ -1483,7 +1648,7 @@ async function updateFxRate(){
 async function loadFX(){
   const el=document.getElementById('idx-fx');
   if(!el)return;
-  el.innerHTML='<div style="font-size:12px;color:#888">로딩...</div>';
+  el.innerHTML='<div style="font-size:var(--text-base);color:var(--color-text-tertiary)">로딩...</div>';
   try{
     const r=await fetch('https://api.exchangerate-api.com/v4/latest/USD',{signal:AbortSignal.timeout(6000)});
     const d=await r.json();
@@ -1492,14 +1657,14 @@ async function loadFX(){
       const url=IDX_LINK_MAP[c]||'';const wrap=url?`class="idx-card idx-card-link" onclick="window.open('${url}','_blank')"`:`class="idx-card"`;const icon=url?`<span class="idx-link-icon">↗</span>`:'';
       return`<div ${wrap}>${icon}<div class="idx-sec">환율</div><div class="idx-name">${n}</div><div class="idx-val neu">${c==='KRW'?Math.round(v).toLocaleString():v.toFixed(4)}</div></div>`;
     }).join('');
-  }catch(e){el.innerHTML='<div style="font-size:12px;color:#d63031;padding:8px">환율 API 오류</div>';}
+  }catch(e){el.innerHTML='<div style="font-size:var(--text-base);color:var(--color-error);padding:8px">환율 API 오류</div>';}
 }
 
 // ── 가상화폐
 async function loadCrypto(){
   const el=document.getElementById('idx-crypto');
   if(!el)return;
-  el.innerHTML='<div style="font-size:12px;color:#888">로딩...</div>';
+  el.innerHTML='<div style="font-size:var(--text-base);color:var(--color-text-tertiary)">로딩...</div>';
   try{
     const r=await fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum,solana,binancecoin&vs_currencies=usd&include_24hr_change=true',{signal:AbortSignal.timeout(6000)});
     const d=await r.json();
@@ -1508,7 +1673,7 @@ async function loadCrypto(){
       const url=IDX_LINK_MAP[id]||'';const wrap=url?`class="idx-card idx-card-link" onclick="window.open('${url}','_blank')"`:`class="idx-card"`;const icon=url?`<span class="idx-link-icon">↗</span>`:'';
       return`<div ${wrap}>${icon}<div class="idx-sec">코인</div><div class="idx-name">${sym}</div><div class="idx-val ${cls}">$${p?p.toLocaleString(undefined,{maximumFractionDigits:0}):'—'}</div>${chg!=null?`<div class="idx-chg ${cls}">${chg>=0?'▲':'▼'} ${Math.abs(chg).toFixed(2)}%</div>`:''}</div>`;
     }).join('');
-  }catch(e){el.innerHTML='<div style="font-size:12px;color:#d63031;padding:8px">CoinGecko 오류</div>';}
+  }catch(e){el.innerHTML='<div style="font-size:var(--text-base);color:var(--color-error);padding:8px">CoinGecko 오류</div>';}
 }
 
 // ── Naver Finance 국내 지수 조회 (KOSPI/KOSDAQ)
@@ -1556,7 +1721,7 @@ function renderIdxCard(item,d,sec){
   if(!d)return`<div ${wrap}>${icon}<div class="idx-sec">${sec}</div><div class="idx-name">${item.n}</div><div class="idx-val neu">—</div></div>`;
   const cls=d.chg==null?'neu':d.chg>=0?'up':'down';
   const fmt=d.val>=1000?d.val.toLocaleString(undefined,{maximumFractionDigits:2}):d.val.toFixed(2);
-  return`<div ${wrap}>${icon}<div class="idx-sec">${sec}<span style="font-size:9px;color:#aaa;margin-left:4px">${d.stateLabel||''}</span></div><div class="idx-name">${item.n}</div><div class="idx-val ${cls}">${fmt}</div>${d.chg!=null?`<div class="idx-chg ${cls}">${d.chg>=0?'▲':'▼'} ${Math.abs(d.chg).toFixed(2)}%</div>`:''}</div>`;
+  return`<div ${wrap}>${icon}<div class="idx-sec">${sec}<span style="font-size:var(--text-2xs);color:var(--color-text-disabled);margin-left:4px">${d.stateLabel||''}</span></div><div class="idx-name">${item.n}</div><div class="idx-val ${cls}">${fmt}</div>${d.chg!=null?`<div class="idx-chg ${cls}">${d.chg>=0?'▲':'▼'} ${Math.abs(d.chg).toFixed(2)}%</div>`:''}</div>`;
 }
 
 // ── Yahoo Finance 배치 조회 (심볼 여러 개를 프록시 1회 호출로 처리, 5초 타임아웃)
@@ -1633,15 +1798,15 @@ async function loadAllIndices(){
 }
 
 // ─ 리서치 사이트
-const SITES=[{name:'JPMorgan Research',url:'https://www.jpmorgan.com/insights/research',desc:'글로벌 주식·채권·매크로',badge:'IB',bc:'#dbeafe',bcc:'#1e40af',cat:'ib'},{name:'Goldman Sachs',url:'https://www.goldmansachs.com/insights/',desc:'Equity Research 공개 레포트',badge:'IB',bc:'#dcfce7',bcc:'#15803d',cat:'ib'},{name:'Morgan Stanley',url:'https://www.morganstanley.com/ideas',desc:'투자 인사이트 & 리서치',badge:'IB',bc:'#ede9fe',bcc:'#6d28d9',cat:'ib'},{name:'BlackRock BII',url:'https://www.blackrock.com/us/individual/insights/blackrock-investment-institute',desc:'주간 매크로 아웃룩',badge:'IB',bc:'#fee2e2',bcc:'#991b1b',cat:'ib'},{name:'BofA Research',url:'https://business.bofa.com/en-us/content/global-research.html',desc:'테마·매크로 리포트',badge:'IB',bc:'#fef3c7',bcc:'#92400e',cat:'ib'},{name:'Bloomberg',url:'https://www.bloomberg.com/markets',desc:'실시간 시세·뉴스',badge:'뉴스',bc:'#f5f5f3',bcc:'#44403c',cat:'news'},{name:'WSJ Markets',url:'https://www.wsj.com/finance',desc:'애널리스트 의견 & 실적',badge:'뉴스',bc:'#f5f5f3',bcc:'#44403c',cat:'news'},{name:'Reuters',url:'https://www.reuters.com/finance/',desc:'실시간 금융·M&A 속보',badge:'뉴스',bc:'#f5f5f3',bcc:'#44403c',cat:'news'},{name:'CNBC Markets',url:'https://www.cnbc.com/markets/',desc:'어닝스 콜·애널리스트 콜',badge:'뉴스',bc:'#dbeafe',bcc:'#1e40af',cat:'news'},{name:'FT Markets',url:'https://www.ft.com/markets',desc:'글로벌·유럽 커버리지',badge:'뉴스',bc:'#fef3c7',bcc:'#78350f',cat:'news'},{name:'Seeking Alpha',url:'https://seekingalpha.com/market-news/all',desc:'종목별 Bull/Bear 분석',badge:'뉴스',bc:'#dcfce7',bcc:'#166534',cat:'news'},{name:'SEC EDGAR',url:'https://efts.sec.gov/LATEST/search-index?q=&forms=8-K',desc:'기업 8-K·10-K 실시간 공시',badge:'규제',bc:'#dbeafe',bcc:'#1e40af',cat:'reg'},{name:'SEC 보도자료',url:'https://www.sec.gov/newsroom/press-releases',desc:'SEC 공식 제재·승인 발표',badge:'규제',bc:'#dbeafe',bcc:'#1e40af',cat:'reg'},{name:'DOJ Antitrust',url:'https://www.justice.gov/atr/news',desc:'반독점·빅테크 소송 현황',badge:'규제',bc:'#fee2e2',bcc:'#991b1b',cat:'reg'},{name:'FTC News',url:'https://www.ftc.gov/news-events/news',desc:'AI·데이터·플랫폼 규제',badge:'규제',bc:'#fee2e2',bcc:'#991b1b',cat:'reg'},{name:'Federal Reserve',url:'https://www.federalreserve.gov/newsevents.htm',desc:'FOMC 의사록·파월 연설',badge:'규제',bc:'#dbeafe',bcc:'#1e3a8a',cat:'reg'},{name:'한국 금융위',url:'https://www.fsc.go.kr/no010101',desc:'가상자산·증권 규제 발표',badge:'규제KR',bc:'#dcfce7',bcc:'#064e3b',cat:'reg'},{name:'공정거래위원회',url:'https://www.ftc.go.kr/www/selectReportUserList.do?key=10',desc:'플랫폼·대기업 규제',badge:'규제KR',bc:'#dcfce7',bcc:'#064e3b',cat:'reg'},{name:'Finviz',url:'https://finviz.com',desc:'섹터 히트맵·종목 스크리너',badge:'데이터',bc:'#ede9fe',bcc:'#5b21b6',cat:'data'},{name:'Unusual Whales',url:'https://unusualwhales.com',desc:'옵션플로우·다크풀 실시간',badge:'데이터',bc:'#fef3c7',bcc:'#92400e',cat:'data'},{name:'Fintel.io',url:'https://fintel.io',desc:'기관 13F 수급·Short Interest',badge:'데이터',bc:'#fef3c7',bcc:'#92400e',cat:'data'},{name:'GuruFocus',url:'https://www.gurufocus.com/news/index',desc:'내부자 거래·DCF 밸류에이션',badge:'데이터',bc:'#ede9fe',bcc:'#4c1d95',cat:'data'},{name:'Macrotrends',url:'https://www.macrotrends.net',desc:'장기 차트·PER·EPS 히스토리',badge:'데이터',bc:'#ede9fe',bcc:'#5b21b6',cat:'data'},{name:'StockTitan',url:'https://www.stocktitan.net',desc:'실시간 8-K·어닝스 트랜스크립트',badge:'데이터',bc:'#ede9fe',bcc:'#5b21b6',cat:'data'},{name:'KIND 전자공시',url:'https://kind.krx.co.kr',desc:'KRX 국내 전 종목 실시간 공시',badge:'한국',bc:'#dcfce7',bcc:'#064e3b',cat:'kr'},{name:'네이버 증권',url:'https://finance.naver.com/news/news_list.naver?mode=LSS3D&section_id=101&section_id2=258&section_id3=401',desc:'국내 기업 공시·IR 뉴스',badge:'한국',bc:'#dcfce7',bcc:'#064e3b',cat:'kr'},{name:'한국경제',url:'https://www.hankyung.com/finance',desc:'국내 증시·증권사 리포트 요약',badge:'한국',bc:'#dcfce7',bcc:'#166534',cat:'kr'},{name:'fnguide 리서치',url:'https://www.fnguide.com/home/Research',desc:'국내 증권사 목표가·투자의견',badge:'한국',bc:'#dcfce7',bcc:'#166534',cat:'kr'}];
+const SITES=[{name:'JPMorgan Research',url:'https://www.jpmorgan.com/insights/research',desc:'글로벌 주식·채권·매크로',badge:'IB',bc:'var(--color-info-bg)',bcc:'var(--color-info)',cat:'ib'},{name:'Goldman Sachs',url:'https://www.goldmansachs.com/insights/',desc:'Equity Research 공개 레포트',badge:'IB',bc:'var(--color-success-bg)',bcc:'var(--color-success-dark)',cat:'ib'},{name:'Morgan Stanley',url:'https://www.morganstanley.com/ideas',desc:'투자 인사이트 & 리서치',badge:'IB',bc:'var(--color-accent-bg-soft)',bcc:'var(--color-accent-mid)',cat:'ib'},{name:'BlackRock BII',url:'https://www.blackrock.com/us/individual/insights/blackrock-investment-institute',desc:'주간 매크로 아웃룩',badge:'IB',bc:'var(--color-error-bg)',bcc:'var(--color-error-text)',cat:'ib'},{name:'BofA Research',url:'https://business.bofa.com/en-us/content/global-research.html',desc:'테마·매크로 리포트',badge:'IB',bc:'var(--color-warning-bg)',bcc:'var(--color-warning-text)',cat:'ib'},{name:'Bloomberg',url:'https://www.bloomberg.com/markets',desc:'실시간 시세·뉴스',badge:'뉴스',bc:'var(--color-bg-muted)',bcc:'var(--color-text-warm)',cat:'news'},{name:'WSJ Markets',url:'https://www.wsj.com/finance',desc:'애널리스트 의견 & 실적',badge:'뉴스',bc:'var(--color-bg-muted)',bcc:'var(--color-text-warm)',cat:'news'},{name:'Reuters',url:'https://www.reuters.com/finance/',desc:'실시간 금융·M&A 속보',badge:'뉴스',bc:'var(--color-bg-muted)',bcc:'var(--color-text-warm)',cat:'news'},{name:'CNBC Markets',url:'https://www.cnbc.com/markets/',desc:'어닝스 콜·애널리스트 콜',badge:'뉴스',bc:'var(--color-info-bg)',bcc:'var(--color-info)',cat:'news'},{name:'FT Markets',url:'https://www.ft.com/markets',desc:'글로벌·유럽 커버리지',badge:'뉴스',bc:'var(--color-warning-bg)',bcc:'var(--color-warning-deeper)',cat:'news'},{name:'Seeking Alpha',url:'https://seekingalpha.com/market-news/all',desc:'종목별 Bull/Bear 분석',badge:'뉴스',bc:'var(--color-success-bg)',bcc:'var(--color-success-text)',cat:'news'},{name:'SEC EDGAR',url:'https://efts.sec.gov/LATEST/search-index?q=&forms=8-K',desc:'기업 8-K·10-K 실시간 공시',badge:'규제',bc:'var(--color-info-bg)',bcc:'var(--color-info)',cat:'reg'},{name:'SEC 보도자료',url:'https://www.sec.gov/newsroom/press-releases',desc:'SEC 공식 제재·승인 발표',badge:'규제',bc:'var(--color-info-bg)',bcc:'var(--color-info)',cat:'reg'},{name:'DOJ Antitrust',url:'https://www.justice.gov/atr/news',desc:'반독점·빅테크 소송 현황',badge:'규제',bc:'var(--color-error-bg)',bcc:'var(--color-error-text)',cat:'reg'},{name:'FTC News',url:'https://www.ftc.gov/news-events/news',desc:'AI·데이터·플랫폼 규제',badge:'규제',bc:'var(--color-error-bg)',bcc:'var(--color-error-text)',cat:'reg'},{name:'Federal Reserve',url:'https://www.federalreserve.gov/newsevents.htm',desc:'FOMC 의사록·파월 연설',badge:'규제',bc:'var(--color-info-bg)',bcc:'var(--color-info-text)',cat:'reg'},{name:'한국 금융위',url:'https://www.fsc.go.kr/no010101',desc:'가상자산·증권 규제 발표',badge:'규제KR',bc:'var(--color-success-bg)',bcc:'var(--color-success-deeper)',cat:'reg'},{name:'공정거래위원회',url:'https://www.ftc.go.kr/www/selectReportUserList.do?key=10',desc:'플랫폼·대기업 규제',badge:'규제KR',bc:'var(--color-success-bg)',bcc:'var(--color-success-deeper)',cat:'reg'},{name:'Finviz',url:'https://finviz.com',desc:'섹터 히트맵·종목 스크리너',badge:'데이터',bc:'var(--color-accent-bg-soft)',bcc:'var(--color-accent-dark)',cat:'data'},{name:'Unusual Whales',url:'https://unusualwhales.com',desc:'옵션플로우·다크풀 실시간',badge:'데이터',bc:'var(--color-warning-bg)',bcc:'var(--color-warning-text)',cat:'data'},{name:'Fintel.io',url:'https://fintel.io',desc:'기관 13F 수급·Short Interest',badge:'데이터',bc:'var(--color-warning-bg)',bcc:'var(--color-warning-text)',cat:'data'},{name:'GuruFocus',url:'https://www.gurufocus.com/news/index',desc:'내부자 거래·DCF 밸류에이션',badge:'데이터',bc:'var(--color-accent-bg-soft)',bcc:'var(--color-accent-deeper)',cat:'data'},{name:'Macrotrends',url:'https://www.macrotrends.net',desc:'장기 차트·PER·EPS 히스토리',badge:'데이터',bc:'var(--color-accent-bg-soft)',bcc:'var(--color-accent-dark)',cat:'data'},{name:'StockTitan',url:'https://www.stocktitan.net',desc:'실시간 8-K·어닝스 트랜스크립트',badge:'데이터',bc:'var(--color-accent-bg-soft)',bcc:'var(--color-accent-dark)',cat:'data'},{name:'KIND 전자공시',url:'https://kind.krx.co.kr',desc:'KRX 국내 전 종목 실시간 공시',badge:'한국',bc:'var(--color-success-bg)',bcc:'var(--color-success-deeper)',cat:'kr'},{name:'네이버 증권',url:'https://finance.naver.com/news/news_list.naver?mode=LSS3D&section_id=101&section_id2=258&section_id3=401',desc:'국내 기업 공시·IR 뉴스',badge:'한국',bc:'var(--color-success-bg)',bcc:'var(--color-success-deeper)',cat:'kr'},{name:'한국경제',url:'https://www.hankyung.com/finance',desc:'국내 증시·증권사 리포트 요약',badge:'한국',bc:'var(--color-success-bg)',bcc:'var(--color-success-text)',cat:'kr'},{name:'fnguide 리서치',url:'https://www.fnguide.com/home/Research',desc:'국내 증권사 목표가·투자의견',badge:'한국',bc:'var(--color-success-bg)',bcc:'var(--color-success-text)',cat:'kr'}];
 let siteCurFilter='all';
 function siteFilter(cat,btn){siteCurFilter=cat;document.querySelectorAll('#site-filter .fbtn').forEach(b=>b.classList.remove('on'));btn.classList.add('on');renderSites();}
 function renderSites(){const data=siteCurFilter==='all'?SITES:SITES.filter(s=>s.cat===siteCurFilter);document.getElementById('site-grid').innerHTML=data.map(s=>`<a href="${s.url}" target="_blank" rel="noopener" class="site-card"><div class="sc-top"><div class="sc-name">${s.name}</div><span class="pill" style="background:${s.bc};color:${s.bcc}">${s.badge}</span></div><div class="sc-desc">${s.desc}</div></a>`).join('');}
 
 // ─ 규제 RSS
-const REG_FEEDS=[{key:'sec',name:'SEC',label:'미국',url:'https://www.sec.gov/cgi-bin/browse-edgar?action=getcurrent&type=&dateb=&owner=include&count=15&search_text=&output=atom',color:'#1e40af',bg:'#dbeafe'},{key:'ftc',name:'FTC',label:'미국',url:'https://www.ftc.gov/feeds/press-release.xml',color:'#991b1b',bg:'#fee2e2'},{key:'doj',name:'DOJ',label:'미국',url:'https://www.justice.gov/feed/atom/news',color:'#166534',bg:'#dcfce7'},{key:'fed',name:'연준',label:'미국',url:'https://www.federalreserve.gov/feeds/press_all.xml',color:'#5b21b6',bg:'#ede9fe'}];
+const REG_FEEDS=[{key:'sec',name:'SEC',label:'미국',url:'https://www.sec.gov/cgi-bin/browse-edgar?action=getcurrent&type=&dateb=&owner=include&count=15&search_text=&output=atom',color:'var(--color-info)',bg:'var(--color-info-bg)'},{key:'ftc',name:'FTC',label:'미국',url:'https://www.ftc.gov/feeds/press-release.xml',color:'var(--color-error-text)',bg:'var(--color-error-bg)'},{key:'doj',name:'DOJ',label:'미국',url:'https://www.justice.gov/feed/atom/news',color:'var(--color-success-text)',bg:'var(--color-success-bg)'},{key:'fed',name:'연준',label:'미국',url:'https://www.federalreserve.gov/feeds/press_all.xml',color:'var(--color-accent-dark)',bg:'var(--color-accent-bg-soft)'}];
 let regCurFilter='all',regAllItems=[];
-async function loadRegRSS(){const feed=document.getElementById('reg-feed'),dot=document.getElementById('reg-live-dot'),txt=document.getElementById('reg-upd-txt');feed.innerHTML='<div class="empty"><span class="spin">⟳</span> 실시간 규제 뉴스 로딩 중...</div>';dot.style.background='#d97706';txt.textContent='로딩 중...';regAllItems=[];const results=await Promise.allSettled(REG_FEEDS.map(async feed=>{const r=await fetch('https://api.allorigins.win/get?url='+encodeURIComponent(feed.url)),d=await r.json(),parser=new DOMParser(),xml=parser.parseFromString(d.contents,'text/xml'),entries=Array.from(xml.querySelectorAll('entry, item')).slice(0,8);return entries.map(el=>({key:feed.key,source:feed.name,label:feed.label,color:feed.color,bg:feed.bg,title:el.querySelector('title')?.textContent?.trim()||'',summary:(el.querySelector('summary, description')?.textContent||'').replace(/<[^>]+>/g,'').trim().slice(0,180),link:el.querySelector('link')?.textContent?.trim()||el.querySelector('link')?.getAttribute('href')||'#',date:el.querySelector('updated, pubDate')?.textContent?.trim()||''}));}));results.forEach(r=>{if(r.status==='fulfilled')regAllItems.push(...r.value);});regAllItems.sort((a,b)=>new Date(b.date)-new Date(a.date));dot.style.background=regAllItems.length?'#0a8a57':'#d63031';dot.style.animation=regAllItems.length?'pulse 2s infinite':'none';txt.textContent=regAllItems.length?'업데이트: '+new Date().toLocaleTimeString('ko-KR'):'로드 실패';renderReg();}
+async function loadRegRSS(){const feed=document.getElementById('reg-feed'),dot=document.getElementById('reg-live-dot'),txt=document.getElementById('reg-upd-txt');feed.innerHTML='<div class="empty"><span class="spin">⟳</span> 실시간 규제 뉴스 로딩 중...</div>';dot.style.background='var(--color-warning)';txt.textContent='로딩 중...';regAllItems=[];const results=await Promise.allSettled(REG_FEEDS.map(async feed=>{const r=await fetch('https://api.allorigins.win/get?url='+encodeURIComponent(feed.url)),d=await r.json(),parser=new DOMParser(),xml=parser.parseFromString(d.contents,'text/xml'),entries=Array.from(xml.querySelectorAll('entry, item')).slice(0,8);return entries.map(el=>({key:feed.key,source:feed.name,label:feed.label,color:feed.color,bg:feed.bg,title:el.querySelector('title')?.textContent?.trim()||'',summary:(el.querySelector('summary, description')?.textContent||'').replace(/<[^>]+>/g,'').trim().slice(0,180),link:el.querySelector('link')?.textContent?.trim()||el.querySelector('link')?.getAttribute('href')||'#',date:el.querySelector('updated, pubDate')?.textContent?.trim()||''}));}));results.forEach(r=>{if(r.status==='fulfilled')regAllItems.push(...r.value);});regAllItems.sort((a,b)=>new Date(b.date)-new Date(a.date));dot.style.background=regAllItems.length?'var(--color-success)':'var(--color-error)';dot.style.animation=regAllItems.length?'pulse 2s infinite':'none';txt.textContent=regAllItems.length?'업데이트: '+new Date().toLocaleTimeString('ko-KR'):'로드 실패';renderReg();}
 function regFilter(cat,btn){regCurFilter=cat;document.querySelectorAll('#reg-filter .fbtn').forEach(b=>b.classList.remove('on'));btn.classList.add('on');renderReg();}
 function renderReg(){const feed=document.getElementById('reg-feed');let data=regCurFilter==='all'?regAllItems:regAllItems.filter(d=>d.key===regCurFilter);if(!data.length){feed.innerHTML='<div class="empty">↻ 갱신 버튼을 눌러 실시간 규제 뉴스를 불러오세요</div>';return;}feed.innerHTML=data.map(d=>{const t=d.date?new Date(d.date).toLocaleString('ko-KR',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'}):'';return`<div class="reg-card"><div class="reg-head"><div class="reg-title"><a href="${d.link}" target="_blank" rel="noopener" style="color:inherit;text-decoration:none;hover:underline">${d.title}</a></div><span class="reg-status" style="background:${d.bg};color:${d.color}">${d.source}</span></div><div class="reg-body">${d.summary||'내용 없음'}</div><div class="reg-foot"><span>${d.source}</span><span>${t}</span><span style="padding:1px 7px;border-radius:20px;background:${d.bg};color:${d.color}">${d.label}</span></div></div>`}).join('');}
 
@@ -1653,17 +1818,17 @@ function handleAiSummaryBtn(){
 
 function buildSummaryHtml(items,summaries){
   const rows=items.map(({ticker,isKR,news:n},i)=>{
-    const bc=isKR?'#dcfce7':'#dbeafe';
-    const cc=isKR?'#166534':'#1e40af';
-    return`<div style="display:flex;gap:8px;align-items:flex-start;padding:7px 0;${i<items.length-1?'border-bottom:1px solid #f0efec':''}">
-      <span style="font-size:10px;font-weight:700;padding:2px 7px;border-radius:20px;background:${bc};color:${cc};font-family:monospace;flex-shrink:0;margin-top:2px">${ticker}</span>
-      <span style="font-size:12px;color:#1a1a1a;line-height:1.65">${summaries[i]||n.headline||''}</span>
+    const bc=isKR?'var(--color-success-bg)':'var(--color-info-bg)';
+    const cc=isKR?'var(--color-success-text)':'var(--color-info)';
+    return`<div style="display:flex;gap:8px;align-items:flex-start;padding:7px 0;${i<items.length-1?'border-bottom:1px solid var(--color-bg-overlay)':''}">
+      <span style="font-size:var(--text-xs);font-weight:700;padding:2px 7px;border-radius:20px;background:${bc};color:${cc};font-family:monospace;flex-shrink:0;margin-top:2px">${ticker}</span>
+      <span style="font-size:var(--text-base);color:var(--color-text-primary);line-height:1.65">${summaries[i]||n.headline||''}</span>
     </div>`;
   }).join('');
   const today=getKSTNow().dateStr;
-  return`<div style="background:#f8f7f4;border:1px solid #e8e8e8;border-radius:10px;padding:10px 14px">
+  return`<div style="background:var(--color-bg-base);border:1px solid var(--color-border-default);border-radius:10px;padding:10px 14px">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
-      <span style="font-size:11px;font-weight:700;color:#0a8a57;letter-spacing:.3px">AI 요약 <span style="font-weight:400;color:#bbb;font-size:10px">${today}</span></span>
+      <span style="font-size:var(--text-sm);font-weight:700;color:var(--color-success);letter-spacing:.3px">AI 요약 <span style="font-weight:400;color:var(--color-text-muted);font-size:var(--text-xs)">${today}</span></span>
     </div>
     ${rows}
   </div>`;
@@ -1687,7 +1852,7 @@ async function runAiSummary(){
   // 뉴스 미로드 시 전체 종목 최신 1건씩 사전 fetch
   if(!_pnItems.length){
     sumDiv.style.display='block';
-    sumDiv.innerHTML='<div style="font-size:12px;color:#888;padding:8px 10px"><span class="spin">⟳</span> 뉴스 불러오는 중...</div>';
+    sumDiv.innerHTML='<div style="font-size:var(--text-base);color:var(--color-text-tertiary);padding:8px 10px"><span class="spin">⟳</span> 뉴스 불러오는 중...</div>';
     const targets=stocks.filter(s=>s.ticker&&s.ticker.trim()!=='');
     await Promise.allSettled(targets.map(async s=>{
       const isKR=/\.(KS|KQ)$/i.test(s.ticker);
@@ -1703,18 +1868,18 @@ async function runAiSummary(){
   }
   if(!_pnItems.length){
     sumDiv.style.display='block';
-    sumDiv.innerHTML='<div style="font-size:12px;color:#aaa;padding:8px 10px">요약할 뉴스가 없습니다.</div>';
+    sumDiv.innerHTML='<div style="font-size:var(--text-base);color:var(--color-text-disabled);padding:8px 10px">요약할 뉴스가 없습니다.</div>';
     return;
   }
 
   sumDiv.style.display='block';
-  sumDiv.innerHTML='<div style="font-size:12px;color:#888;padding:8px 10px"><span class="spin">⟳</span> AI 요약 중...</div>';
+  sumDiv.innerHTML='<div style="font-size:var(--text-base);color:var(--color-text-tertiary);padding:8px 10px"><span class="spin">⟳</span> AI 요약 중...</div>';
   if(btn)btn.disabled=true;
   const result=await translateNewsItems(_pnItems);
   if(btn)btn.disabled=false;
 
   if(!result.ok){
-    const reRegBtn=`<button onclick="resetGoogleAiKey()" style="font-size:11px;padding:3px 9px;border:1px solid #d63031;border-radius:6px;background:#fff;cursor:pointer;color:#d63031;white-space:nowrap">키 재등록</button>`;
+    const reRegBtn=`<button onclick="resetGoogleAiKey()" style="font-size:var(--text-sm);padding:3px 9px;border:1px solid var(--color-error);border-radius:6px;background:var(--color-bg-surface);cursor:pointer;color:var(--color-error);white-space:nowrap">키 재등록</button>`;
     const msgMap={
       invalid_key:'API 키가 유효하지 않습니다',
       api_error:'API 오류가 발생했습니다',
@@ -1725,8 +1890,8 @@ async function runAiSummary(){
       rate_limit:'요청 한도 초과 · 잠시 후 다시 시도해주세요'
     };
     const msg=msgMap[result.reason]||'요약 실패';
-    const retryBtn=`<button onclick="runAiSummary()" style="font-size:11px;padding:3px 9px;border:1px solid #888;border-radius:6px;background:#fff;cursor:pointer;color:#555;white-space:nowrap">다시 시도</button>`;
-    sumDiv.innerHTML=`<div style="font-size:12px;color:#d63031;padding:8px 10px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+    const retryBtn=`<button onclick="runAiSummary()" style="font-size:var(--text-sm);padding:3px 9px;border:1px solid var(--color-text-tertiary);border-radius:6px;background:var(--color-bg-surface);cursor:pointer;color:var(--color-text-secondary);white-space:nowrap">다시 시도</button>`;
+    sumDiv.innerHTML=`<div style="font-size:var(--text-base);color:var(--color-error);padding:8px 10px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
       <span>${msg}</span>${reRegBtn}${(result.reason==='network'||result.reason==='rate_limit')?retryBtn:''}
     </div>`;
     return;
@@ -1748,7 +1913,7 @@ async function savePnKey(){
   const v=document.getElementById('pn-claude-key').value.trim();
   if(!v||v.startsWith('•'))return;
   const hint=document.getElementById('pn-key-hint');
-  if(hint){hint.textContent='저장 중...';hint.style.color='#888';}
+  if(hint){hint.textContent='저장 중...';hint.style.color='var(--color-text-tertiary)';}
   try{
     const res=await storeApiKey('googleai',v);
     if(!res.ok)throw new Error();
@@ -1760,7 +1925,7 @@ async function savePnKey(){
     document.getElementById('pn-key-row').style.display='none';
     if(hint){hint.textContent='';hint.style.color='';}
   }catch(e){
-    if(hint){hint.textContent='저장 실패 · 다시 시도해주세요';hint.style.color='#d63031';}
+    if(hint){hint.textContent='저장 실패 · 다시 시도해주세요';hint.style.color='var(--color-error)';}
   }
 }
 function clearPnKey(){
@@ -1799,11 +1964,11 @@ async function translateNewsItems(items){
 }
 async function loadPortfolioNews(){
   const feed=document.getElementById('portfolio-news-feed');
-  if(!stocks.length){feed.innerHTML='<div style="font-size:12px;color:#aaa;padding:6px 0">보유 종목이 없습니다</div>';return;}
+  if(!stocks.length){feed.innerHTML='<div style="font-size:var(--text-base);color:var(--color-text-disabled);padding:6px 0">보유 종목이 없습니다</div>';return;}
   const targets=stocks.filter(s=>s.ticker&&s.ticker.trim()!=='');
-  if(!targets.length){feed.innerHTML='<div style="font-size:12px;color:#aaa;padding:6px 0">티커 정보가 없습니다</div>';return;}
+  if(!targets.length){feed.innerHTML='<div style="font-size:var(--text-base);color:var(--color-text-disabled);padding:6px 0">티커 정보가 없습니다</div>';return;}
   _newsCache={};_pnItems=[];
-  feed.innerHTML='<div style="font-size:12px;color:#888;padding:6px 0"><span class="spin">⟳</span> 최신 소식 불러오는 중...</div>';
+  feed.innerHTML='<div style="font-size:var(--text-base);color:var(--color-text-tertiary);padding:6px 0"><span class="spin">⟳</span> 최신 소식 불러오는 중...</div>';
   await Promise.allSettled(targets.map(async s=>{
     const isKR=/\.(KS|KQ)$/i.test(s.ticker);
     if(!isKR&&!FKEY){_newsCache[s.ticker]=[];return;}
@@ -1816,25 +1981,25 @@ async function loadPortfolioNews(){
     const noKey=targets.filter(s=>!/\.(KS|KQ)$/i.test(s.ticker)&&!FKEY).map(s=>s.ticker);
     let msg='최근 7일간 표시할 뉴스가 없습니다';
     if(noKey.length)msg+=` · 미국 종목(${noKey.join(', ')})은 🔑 Finnhub 키 필요`;
-    feed.innerHTML=`<div style="font-size:12px;color:#aaa;padding:6px 0">${msg}</div>`;return;
+    feed.innerHTML=`<div style="font-size:var(--text-base);color:var(--color-text-disabled);padding:6px 0">${msg}</div>`;return;
   }
   feed.innerHTML=targets.map((s,idx)=>{
     const isKR=/\.(KS|KQ)$/i.test(s.ticker);
     const noKey=!isKR&&!FKEY;
     const arr=_newsCache[s.ticker]||[];
-    const bc=isKR?'#dcfce7':'#dbeafe';const cc=isKR?'#166534':'#1e40af';
-    const badge=`<span style="font-size:10px;font-weight:700;padding:2px 7px;border-radius:20px;background:${bc};color:${cc};font-family:monospace;flex-shrink:0">${s.ticker}</span>`;
-    const sep=idx>0?'border-top:1px solid #f0efec;padding-top:11px;margin-top:7px':'';
-    if(noKey)return`<div style="${sep}"><div style="display:flex;align-items:center;gap:7px;padding:3px 0">${badge}<span style="font-size:12px;font-weight:600;color:#333">${s.name}</span><span style="font-size:11px;color:#bbb">🔑 Finnhub 키 필요</span></div></div>`;
-    if(!arr.length)return`<div style="${sep}"><div style="display:flex;align-items:center;gap:7px;padding:3px 0">${badge}<span style="font-size:12px;color:#aaa">최근 7일 뉴스 없음</span></div></div>`;
+    const bc=isKR?'var(--color-success-bg)':'var(--color-info-bg)';const cc=isKR?'var(--color-success-text)':'var(--color-info)';
+    const badge=`<span style="font-size:var(--text-xs);font-weight:700;padding:2px 7px;border-radius:20px;background:${bc};color:${cc};font-family:monospace;flex-shrink:0">${s.ticker}</span>`;
+    const sep=idx>0?'border-top:1px solid var(--color-bg-overlay);padding-top:11px;margin-top:7px':'';
+    if(noKey)return`<div style="${sep}"><div style="display:flex;align-items:center;gap:7px;padding:3px 0">${badge}<span style="font-size:var(--text-base);font-weight:600;color:var(--color-text-strong)">${s.name}</span><span style="font-size:var(--text-sm);color:var(--color-text-muted)">🔑 Finnhub 키 필요</span></div></div>`;
+    if(!arr.length)return`<div style="${sep}"><div style="display:flex;align-items:center;gap:7px;padding:3px 0">${badge}<span style="font-size:var(--text-base);color:var(--color-text-disabled)">최근 7일 뉴스 없음</span></div></div>`;
     const n=arr[0];
     const t=n.datetime?new Date(n.datetime*1000).toLocaleString('ko-KR',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'}):'';
     const moreItems=arr.slice(1);
     const moreHtml=moreItems.map(m=>{
       const t2=m.datetime?new Date(m.datetime*1000).toLocaleString('ko-KR',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'}):'';
-      return`<div style="padding:8px 0;border-top:1px solid #f5f5f3"><div class="nc-meta"><span class="nc-src">${m.source||'—'}</span><span class="nc-time">${t2}</span></div><div class="nc-title"><a href="${m.url||'#'}" target="_blank" rel="noopener">${m.headline}</a></div>${m.summary?`<div class="nc-summary" style="margin-top:2px">${m.summary}${m.summary.length>=130?'…':''}</div>`:''}</div>`;
+      return`<div style="padding:8px 0;border-top:1px solid var(--color-bg-muted)"><div class="nc-meta"><span class="nc-src">${m.source||'—'}</span><span class="nc-time">${t2}</span></div><div class="nc-title"><a href="${m.url||'#'}" target="_blank" rel="noopener">${m.headline}</a></div>${m.summary?`<div class="nc-summary" style="margin-top:2px">${m.summary}${m.summary.length>=130?'…':''}</div>`:''}</div>`;
     }).join('');
-    const moreBtn=moreItems.length?`<button onclick="toggleMoreNews('${s.ticker.replace(/\./g,'_')}',this,${moreItems.length})" style="font-size:11px;color:#1e40af;background:none;border:none;cursor:pointer;padding:5px 0 2px;font-family:inherit;display:block">+ ${moreItems.length}건 더보기</button>`:'';
+    const moreBtn=moreItems.length?`<button onclick="toggleMoreNews('${s.ticker.replace(/\./g,'_')}',this,${moreItems.length})" style="font-size:var(--text-sm);color:var(--color-info);background:none;border:none;cursor:pointer;padding:5px 0 2px;font-family:inherit;display:block">+ ${moreItems.length}건 더보기</button>`:'';
     return`<div style="${sep}"><div class="nc-meta" style="margin-bottom:5px">${badge}<span class="nc-src">${n.source||'—'}</span><span class="nc-time">${t}</span></div><div class="nc-title"><a href="${n.url||'#'}" target="_blank" rel="noopener">${n.headline}</a></div>${n.summary?`<div class="nc-summary" style="margin-top:3px">${n.summary}${n.summary.length>=130?'…':''}</div>`:''}<div id="pnsm-${s.ticker.replace(/\./g,'_')}" style="display:none">${moreHtml}</div>${moreBtn}</div>`;
   }).join('');
 }
@@ -1878,7 +2043,7 @@ function toggleMoreNews(tickerKey,btn,total){
   const open=div.style.display!=='none';
   div.style.display=open?'none':'block';
   btn.textContent=open?`+ ${total}건 더보기`:'접기';
-  btn.style.color=open?'#1e40af':'#888';
+  btn.style.color=open?'var(--color-info)':'var(--color-text-tertiary)';
 }
 
 function updateSampleNotice(){
