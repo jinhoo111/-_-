@@ -747,6 +747,12 @@ const TAG={
 
 // ─ 로컬스토리지에서 데이터 로드
 try{stocks=JSON.parse(localStorage.getItem('pf_s')||'[]')}catch(e){}
+// 기존 저장 데이터 market 필드 자동 보정 (티커 패턴 기준)
+stocks=stocks.map(s=>{
+  if(!s.ticker)return s;
+  const correct=_isKRticker(s.ticker)?'kr':'us';
+  return correct!==s.market?{...s,market:correct}:s;
+});
 try{memos=JSON.parse(localStorage.getItem('pf_m')||'[]')}catch(e){}
 try{memoArchive=JSON.parse(localStorage.getItem('pf_ma')||'[]')}catch(e){}
 try{FKEY=localStorage.getItem('fhkey_stored')?'***':''}catch(e){}
@@ -896,11 +902,12 @@ function setStkStyle(v,btn){
   renderStocks();
 }
 
+function _isKRticker(ticker){return/\.(KS|KQ)$/i.test(ticker||'');}
 function renderStocks(){
   const tb=document.getElementById('stk-body');
   const fx=fxRate||1400;
-  const toUSD=x=>(x.market||'us')==='kr'?x.cur*x.qty/fx:x.cur*x.qty;
-  const toBuyUSD=x=>(x.market||'us')==='kr'?x.buy*x.qty/fx:x.buy*x.qty;
+  const toUSD=x=>_isKRticker(x.ticker)?x.cur*x.qty/fx:x.cur*x.qty;
+  const toBuyUSD=x=>_isKRticker(x.ticker)?x.buy*x.qty/fx:x.buy*x.qty;
   const held=stocks.filter(x=>x.status==='hold'&&!x.hidden);
   const tv=held.reduce((s,x)=>s+toUSD(x),0);
   const tb2=held.reduce((s,x)=>s+toBuyUSD(x),0);
@@ -913,11 +920,12 @@ function renderStocks(){
   const re=document.getElementById('m-rate');re.textContent=tv?(tr>=0?'+':'')+tr.toFixed(2)+'%':'—';re.className='metric-value '+(tr>=0?'up':'down');
   document.getElementById('m-cnt').textContent=held.length?held.length+'개':'—';
   const filtered=stocks.map((s,i)=>({s,i})).filter(({s})=>{
-    if(stkFilter==='hidden')return!!s.hidden&&(stkMarket==='all'||(s.market||'us')===stkMarket)&&(stkStyle==='all'||(s.style||'')===stkStyle);
-    return!s.hidden&&(stkFilter==='all'||s.status===stkFilter)&&(stkMarket==='all'||(s.market||'us')===stkMarket)&&(stkStyle==='all'||(s.style||'')===stkStyle);
+    const _sm=_isKRticker(s.ticker)?'kr':'us';
+    if(stkFilter==='hidden')return!!s.hidden&&(stkMarket==='all'||_sm===stkMarket)&&(stkStyle==='all'||(s.style||'')===stkStyle);
+    return!s.hidden&&(stkFilter==='all'||s.status===stkFilter)&&(stkMarket==='all'||_sm===stkMarket)&&(stkStyle==='all'||(s.style||'')===stkStyle);
   });
   tb.innerHTML=filtered.map(({s,i})=>{
-    const mkt=s.market||'us';
+    const mkt=_isKRticker(s.ticker)?'kr':(s.market||'us');
     const isKR=mkt==='kr';
     const v=s.cur*s.qty;
     const vUSD=isKR?v/fx:v;
@@ -955,7 +963,10 @@ function acctColor(acct){return ACCT_COLOR[acct]||ACCT_COLOR['기타'];}
 function autoDetectMarket(ticker){
   const fm=document.getElementById('fm');
   if(!fm)return;
-  fm.value=/\.(KS|KQ)$/i.test(ticker.trim())?'kr':'us';
+  const t=ticker.trim();
+  if(/\.(KS|KQ)$/i.test(t)){fm.value='kr';return;}
+  if(/^\d{6}$/.test(t)){fm.value='kr';return;}  // 6자리 숫자 → 국장 자동 선택
+  if(/^[A-Za-z]{1,5}(-[A-Za-z])?$/.test(t)){fm.value='us';return;}
 }
 
 async function addStock(){
@@ -964,13 +975,16 @@ async function addStock(){
   const b=parseFloat(document.getElementById('fb').value);
   const q=parseInt(document.getElementById('fq').value)||1;
   const s=document.getElementById('fs').value;
-  const m=/\.(KS|KQ)$/i.test(t)?'kr':'us';
   const acct=document.getElementById('fa').value||'기타';
   const sty=document.getElementById('fst').value||'';
   if(!n||isNaN(b))return;
   let cur = parseFloat(document.getElementById('fc').value);
   if(isNaN(cur)) cur = 0;
   let ticker = t || resolveTickerFromName(n) || n.toUpperCase();
+  // 6자리 숫자 입력 시 국장 선택(fm=kr) 또는 패턴상 한국 코드이면 .KS 자동 추가
+  const fmVal=document.getElementById('fm')?.value||'us';
+  if(/^\d{6}$/.test(ticker)&&(fmVal==='kr'))ticker+='.KS';
+  const m=_isKRticker(ticker)?'kr':'us';
   stocks.push({name:n, ticker:ticker, buy:b, cur:cur, qty:q, status:s, market:m, account:acct, style:sty});
   localStorage.removeItem('pf_is_sample');
   updateSampleNotice();
@@ -2054,7 +2068,7 @@ function updateSampleNotice(){
 // ─ 시장별 자동 종가 갱신
 async function fetchPricesForMarket(market){
   if(!stocks.length)return;
-  const indices=stocks.map((s,i)=>i).filter(i=>(stocks[i].market||'us')===market);
+  const indices=stocks.map((s,i)=>i).filter(i=>(_isKRticker(stocks[i].ticker)?'kr':'us')===market);
   if(!indices.length)return;
   await Promise.allSettled(indices.map(async i=>{
     let ticker=stocks[i].ticker;
