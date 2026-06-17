@@ -399,7 +399,14 @@ input:focus-visible,textarea:focus-visible{outline:2px solid var(--color-info);o
       </table>
     </div>
     <div id="sample-notice" style="display:none;font-size:var(--text-base);color:var(--color-text-disabled);font-style:italic;margin-top:6px;padding:5px 8px;background:var(--color-bg-subtle);border-radius:6px;border:1px solid var(--color-bg-overlay)">위 데이터는 예시 데이터 입니다.</div>
-    <div style="display:flex;gap:5px;margin-top:.75rem;flex-wrap:wrap">
+    <!-- 티커 검색 -->
+    <div style="position:relative;margin-top:.75rem;margin-bottom:4px">
+      <input id="ticker-search" placeholder="🔍 종목 검색 (삼성전자, NVDA, 엔비디아…)" autocomplete="off"
+        style="font-size:var(--text-sm);padding:5px 10px;border:1px solid var(--color-border-input);border-radius:8px;background:var(--color-bg-surface);color:var(--color-text-primary);font-family:inherit;width:260px"
+        oninput="tickerSearchInput(this.value)"/>
+      <div id="ticker-dropdown" style="display:none;position:absolute;top:calc(100% + 2px);left:0;z-index:200;background:var(--color-bg-surface);border:1px solid var(--color-border-default);border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,.10);min-width:300px;max-height:220px;overflow-y:auto"></div>
+    </div>
+    <div style="display:flex;gap:5px;margin-top:0;flex-wrap:wrap">
       <input id="fn" placeholder="종목명" style="flex:1;min-width:80px;font-size:var(--text-base);padding:6px 8px;border:1px solid var(--color-border-input);border-radius:8px;background:var(--color-bg-surface);color:var(--color-text-primary);font-family:inherit"/>
       <input id="ft" placeholder="티커 (예:NVDA, 005930.KS)" style="flex:1.5;min-width:120px;font-size:var(--text-base);padding:6px 8px;border:1px solid var(--color-border-input);border-radius:8px;background:var(--color-bg-surface);color:var(--color-text-primary);font-family:inherit" oninput="autoDetectMarket(this.value)"/>
       <input id="fb" type="number" placeholder="매수가" style="width:85px;font-size:var(--text-base);padding:6px 8px;border:1px solid var(--color-border-input);border-radius:8px;background:var(--color-bg-surface);color:var(--color-text-primary);font-family:inherit"/>
@@ -969,6 +976,91 @@ function autoDetectMarket(ticker){
   if(/^[A-Za-z]{1,5}(-[A-Za-z])?$/.test(t)){fm.value='us';return;}
 }
 
+// ── 티커 검색 (종목관리 페이지 인라인 서치)
+let _tsTimer=null;
+
+function tickerSearchInput(val){
+  const q=val.trim();
+  const dd=document.getElementById('ticker-dropdown');
+  if(q.length<1){dd.style.display='none';return;}
+  // 즉시: 로컬 딕셔너리
+  const localRes=_tsLocal(q);
+  renderTickerDropdown(localRes);
+  // 350ms 디바운스: Yahoo Finance 검색
+  clearTimeout(_tsTimer);
+  _tsTimer=setTimeout(()=>_tsYahoo(q),350);
+}
+
+function _tsLocal(q){
+  const lower=q.toLowerCase();
+  const results=[];
+  const seen=new Set();
+  for(const[k,v]of Object.entries(KR_TICKER_MAP)){
+    if(k.toLowerCase().includes(lower)&&!seen.has(v)){seen.add(v);results.push({sym:v,name:k,mkt:'kr'});}
+  }
+  for(const[k,v]of Object.entries(US_TICKER_MAP)){
+    if(k.toLowerCase().includes(lower)&&!seen.has(v)){seen.add(v);results.push({sym:v,name:k,mkt:'us'});}
+  }
+  // 티커 prefix 매칭 (US 대문자)
+  const upQ=q.toUpperCase();
+  for(const v of Object.values(US_TICKER_MAP)){
+    if(v.startsWith(upQ)&&!seen.has(v)){seen.add(v);results.push({sym:v,name:v,mkt:'us'});}
+  }
+  return results.slice(0,6);
+}
+
+async function _tsYahoo(q){
+  try{
+    const url=`https://query2.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(q)}&lang=ko-KR&region=KR&quotesCount=6&newsCount=0&listsCount=0`;
+    const r=await proxyFetch(url,4000);
+    const data=await r.json();
+    const quotes=(data?.quotes||[]).filter(x=>x.quoteType==='EQUITY'||x.quoteType==='ETF').slice(0,6);
+    if(!quotes.length)return;
+    renderTickerDropdown(quotes.map(x=>({sym:x.symbol,name:x.shortname||x.longname||x.symbol,mkt:_isKRticker(x.symbol)?'kr':'us'})));
+  }catch(e){}
+}
+
+function renderTickerDropdown(results){
+  const dd=document.getElementById('ticker-dropdown');
+  if(!dd)return;
+  if(!results.length){dd.style.display='none';return;}
+  dd.style.display='block';
+  dd.innerHTML=results.map(r=>{
+    const sym=r.sym.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+    const nm=(r.name||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+    const badge=r.mkt==='kr'
+      ?`<span style="font-size:var(--text-2xs);font-weight:700;padding:1px 5px;border-radius:4px;background:var(--color-warning-bg);color:var(--color-warning-text);flex-shrink:0">국</span>`
+      :`<span style="font-size:var(--text-2xs);font-weight:700;padding:1px 5px;border-radius:4px;background:var(--color-info-bg);color:var(--color-info);flex-shrink:0">미</span>`;
+    return`<div onclick="pickTicker('${sym}','${nm}')" onmouseover="this.style.background='var(--color-bg-subtle)'" onmouseout="this.style.background=''"
+      style="display:flex;align-items:center;gap:8px;padding:7px 11px;cursor:pointer;border-bottom:1px solid var(--color-border-faint)">
+      ${badge}
+      <span style="font-size:var(--text-sm);font-weight:700;font-family:monospace;color:var(--color-text-primary);flex-shrink:0">${r.sym}</span>
+      <span style="font-size:var(--text-sm);color:var(--color-text-secondary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.name}</span>
+    </div>`;
+  }).join('');
+}
+
+function pickTicker(sym,name){
+  const ft=document.getElementById('ft');
+  const fn=document.getElementById('fn');
+  if(ft)ft.value=sym;
+  if(fn&&!fn.value.trim())fn.value=name;
+  autoDetectMarket(sym);
+  const dd=document.getElementById('ticker-dropdown');
+  if(dd)dd.style.display='none';
+  const ts=document.getElementById('ticker-search');
+  if(ts)ts.value='';
+  if(ft)ft.focus();
+}
+
+// 외부 클릭 시 드롭다운 닫기
+document.addEventListener('click',e=>{
+  if(!e.target.closest('#ticker-search')&&!e.target.closest('#ticker-dropdown')){
+    const dd=document.getElementById('ticker-dropdown');
+    if(dd)dd.style.display='none';
+  }
+});
+
 async function addStock(){
   const n=document.getElementById('fn').value.trim();
   const t=document.getElementById('ft').value.trim().toUpperCase();
@@ -981,9 +1073,8 @@ async function addStock(){
   let cur = parseFloat(document.getElementById('fc').value);
   if(isNaN(cur)) cur = 0;
   let ticker = t || resolveTickerFromName(n) || n.toUpperCase();
-  // 6자리 숫자 입력 시 국장 선택(fm=kr) 또는 패턴상 한국 코드이면 .KS 자동 추가
-  const fmVal=document.getElementById('fm')?.value||'us';
-  if(/^\d{6}$/.test(ticker)&&(fmVal==='kr'))ticker+='.KS';
+  // 6자리 숫자는 무조건 국장(.KS 자동 추가)
+  if(/^\d{6}$/.test(ticker))ticker+='.KS';
   const m=_isKRticker(ticker)?'kr':'us';
   stocks.push({name:n, ticker:ticker, buy:b, cur:cur, qty:q, status:s, market:m, account:acct, style:sty});
   localStorage.removeItem('pf_is_sample');
