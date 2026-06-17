@@ -2027,8 +2027,9 @@ async function fetchStockNews(ticker,isKR){
     try{
       const res=await proxyFetch(`https://m.stock.naver.com/api/news/stock/${code}?pageSize=5`,8000);
       const data=await res.json();
-      // 응답 형식: [{items:[기사1]},{items:[기사2]},...] — 요소마다 1건씩 감싸는 구조
-      if(Array.isArray(data))rawItems=data.flatMap(d=>d.items||[]);
+      // 실제 응답: {value:[{total,items:[기사]},…],Count:N}
+      if(Array.isArray(data?.value))rawItems=data.value.flatMap(d=>d.items||[]);
+      else if(Array.isArray(data))rawItems=data.flatMap(d=>d.items||[]);
       else if(data?.items)rawItems=data.items;
     }catch(e){}
     if(!rawItems?.length)return[];
@@ -2039,7 +2040,7 @@ async function fetchStockNews(ticker,isKR){
         const[yr,mo,dy,hr,mi]=[dt.slice(0,4),dt.slice(4,6),dt.slice(6,8),dt.slice(8,10),dt.slice(10,12)];
         ts=Math.floor(new Date(`${yr}-${mo}-${dy}T${hr}:${mi}:00+09:00`).getTime()/1000);
       }
-      const link=n.officeId&&n.articleId?`https://n.news.naver.com/article/${n.officeId}/${n.articleId}`:'#';
+      const link=n.mobileNewsUrl||(n.officeId&&n.articleId?`https://n.news.naver.com/article/${n.officeId}/${n.articleId}`:'#');
       return{headline:n.title||'',url:link,source:n.officeName||'네이버',datetime:ts,summary:(n.body||'').slice(0,130)};
     });
   }else{
