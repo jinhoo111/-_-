@@ -1018,13 +1018,23 @@ async function _tsNaver(q){
       body:JSON.stringify({action:'naver-search',query:q})
     });
     const data=await res.json();
-    // 응답: {query:"…", items:[{code,name,typeCode:"KOSPI"|"KOSDAQ",…},…]}
+    // 응답: {query:"…", items:[{code,name,typeCode,nationCode,…},…]}
     const items=Array.isArray(data?.items)?data.items:[];
     if(!items.length)return;
-    const results=items.slice(0,8).map(it=>{
-      const suffix=(it.typeCode||'').toUpperCase()==='KOSDAQ'?'.KQ':'.KS';
-      return{sym:it.code+suffix,name:it.name||it.code,mkt:'kr'};
-    });
+    const results=[];
+    for(const it of items){
+      const nation=(it.nationCode||'').toUpperCase();
+      const type=(it.typeCode||'').toUpperCase();
+      if(nation==='KOR'){
+        const suffix=type==='KOSDAQ'?'.KQ':'.KS';
+        results.push({sym:it.code+suffix,name:it.name||it.code,mkt:'kr'});
+      }else if(nation==='USA'){
+        results.push({sym:it.code,name:it.name||it.code,mkt:'us'});
+      }
+      // 일본·홍콩 등 그 외 거래소는 제외
+      if(results.length>=8)break;
+    }
+    if(!results.length)return;
     renderTickerDropdown(results);
   }catch(e){}
 }
