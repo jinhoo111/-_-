@@ -614,11 +614,35 @@ input:focus-visible,textarea:focus-visible{outline:2px solid var(--color-info);o
 
   <!-- 규제 RSS 실시간 -->
   <div id="ip-research-reg" class="ipanel">
-    <!-- 헤더 -->
-    <div style="display:flex;justify-content:flex-end;align-items:center;gap:6px;margin-bottom:.875rem">
-      <span id="reg-live-dot" style="width:6px;height:6px;border-radius:50%;background:var(--color-text-muted);display:inline-block"></span>
-      <span id="reg-upd-txt" style="font-size:var(--text-sm);color:var(--color-text-tertiary)">로딩 대기</span>
-      <button class="btn" onclick="loadRegRSS()">↻ 갱신</button>
+    <!-- 헤더 : 바로가기(좌) + 상태·갱신(우) -->
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:.875rem;flex-wrap:wrap">
+      <!-- 규제기관 바로가기 -->
+      <div style="display:flex;flex-direction:column;gap:5px">
+        <div style="display:flex;flex-wrap:wrap;gap:5px;align-items:center">
+          <span style="font-size:var(--text-xs);color:var(--color-text-muted);margin-right:2px">🇺🇸</span>
+          <a href="https://www.sec.gov" target="_blank" rel="noopener" style="font-size:var(--text-xs);padding:3px 9px;border-radius:20px;background:var(--color-info-bg);color:var(--color-info);text-decoration:none;font-weight:600">SEC</a>
+          <a href="https://www.finra.org" target="_blank" rel="noopener" style="font-size:var(--text-xs);padding:3px 9px;border-radius:20px;background:var(--color-info-bg);color:var(--color-info);text-decoration:none;font-weight:600">FINRA</a>
+          <a href="https://www.ftc.gov" target="_blank" rel="noopener" style="font-size:var(--text-xs);padding:3px 9px;border-radius:20px;background:var(--color-info-bg);color:var(--color-info);text-decoration:none;font-weight:600">FTC</a>
+          <a href="https://www.justice.gov" target="_blank" rel="noopener" style="font-size:var(--text-xs);padding:3px 9px;border-radius:20px;background:var(--color-info-bg);color:var(--color-info);text-decoration:none;font-weight:600">DOJ</a>
+          <a href="https://www.federalreserve.gov" target="_blank" rel="noopener" style="font-size:var(--text-xs);padding:3px 9px;border-radius:20px;background:var(--color-info-bg);color:var(--color-info);text-decoration:none;font-weight:600">연준(Fed)</a>
+          <a href="https://www.cftc.gov" target="_blank" rel="noopener" style="font-size:var(--text-xs);padding:3px 9px;border-radius:20px;background:var(--color-info-bg);color:var(--color-info);text-decoration:none;font-weight:600">CFTC</a>
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:5px;align-items:center">
+          <span style="font-size:var(--text-xs);color:var(--color-text-muted);margin-right:2px">🇰🇷</span>
+          <a href="https://www.fsc.go.kr" target="_blank" rel="noopener" style="font-size:var(--text-xs);padding:3px 9px;border-radius:20px;background:var(--color-warning-bg);color:var(--color-warning-text);text-decoration:none;font-weight:600">금융위원회</a>
+          <a href="https://www.fss.or.kr" target="_blank" rel="noopener" style="font-size:var(--text-xs);padding:3px 9px;border-radius:20px;background:var(--color-warning-bg);color:var(--color-warning-text);text-decoration:none;font-weight:600">금융감독원</a>
+          <a href="https://www.krx.co.kr" target="_blank" rel="noopener" style="font-size:var(--text-xs);padding:3px 9px;border-radius:20px;background:var(--color-warning-bg);color:var(--color-warning-text);text-decoration:none;font-weight:600">한국거래소</a>
+          <a href="https://www.ftc.go.kr" target="_blank" rel="noopener" style="font-size:var(--text-xs);padding:3px 9px;border-radius:20px;background:var(--color-warning-bg);color:var(--color-warning-text);text-decoration:none;font-weight:600">공정위</a>
+          <a href="https://www.bok.or.kr" target="_blank" rel="noopener" style="font-size:var(--text-xs);padding:3px 9px;border-radius:20px;background:var(--color-warning-bg);color:var(--color-warning-text);text-decoration:none;font-weight:600">한국은행</a>
+          <a href="https://dart.fss.or.kr" target="_blank" rel="noopener" style="font-size:var(--text-xs);padding:3px 9px;border-radius:20px;background:var(--color-warning-bg);color:var(--color-warning-text);text-decoration:none;font-weight:600">DART</a>
+        </div>
+      </div>
+      <!-- 상태 · 갱신 -->
+      <div style="display:flex;align-items:center;gap:6px;flex-shrink:0">
+        <span id="reg-live-dot" style="width:6px;height:6px;border-radius:50%;background:var(--color-text-muted);display:inline-block"></span>
+        <span id="reg-upd-txt" style="font-size:var(--text-sm);color:var(--color-text-tertiary)">로딩 대기</span>
+        <button class="btn" onclick="loadRegRSS()">↻ 갱신</button>
+      </div>
     </div>
 
     <!-- 미국 / 한국 2컬럼 -->
@@ -630,29 +654,6 @@ input:focus-visible,textarea:focus-visible{outline:2px solid var(--color-info);o
       <div>
         <div style="font-size:var(--text-sm);font-weight:700;color:var(--color-text-secondary);margin-bottom:8px;padding-bottom:6px;border-bottom:2px solid var(--color-warning-bg)">🇰🇷 한국 규제</div>
         <div id="reg-feed-kr"><div class="empty" style="font-size:var(--text-sm)">로딩 대기</div></div>
-      </div>
-    </div>
-
-    <!-- 규제기관 바로가기 -->
-    <div style="margin-top:1.5rem;padding-top:1rem;border-top:1px solid var(--color-border-faint)">
-      <div style="font-size:var(--text-xs);font-weight:700;color:var(--color-text-muted);letter-spacing:.5px;margin-bottom:.6rem">규제기관 바로가기</div>
-      <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:.5rem">
-        <span style="font-size:var(--text-xs);color:var(--color-text-muted);padding:3px 0;margin-right:2px">🇺🇸</span>
-        <a href="https://www.sec.gov" target="_blank" rel="noopener" style="font-size:var(--text-xs);padding:3px 9px;border-radius:20px;background:var(--color-info-bg);color:var(--color-info);text-decoration:none;font-weight:600">SEC</a>
-        <a href="https://www.finra.org" target="_blank" rel="noopener" style="font-size:var(--text-xs);padding:3px 9px;border-radius:20px;background:var(--color-info-bg);color:var(--color-info);text-decoration:none;font-weight:600">FINRA</a>
-        <a href="https://www.ftc.gov" target="_blank" rel="noopener" style="font-size:var(--text-xs);padding:3px 9px;border-radius:20px;background:var(--color-info-bg);color:var(--color-info);text-decoration:none;font-weight:600">FTC</a>
-        <a href="https://www.justice.gov" target="_blank" rel="noopener" style="font-size:var(--text-xs);padding:3px 9px;border-radius:20px;background:var(--color-info-bg);color:var(--color-info);text-decoration:none;font-weight:600">DOJ</a>
-        <a href="https://www.federalreserve.gov" target="_blank" rel="noopener" style="font-size:var(--text-xs);padding:3px 9px;border-radius:20px;background:var(--color-info-bg);color:var(--color-info);text-decoration:none;font-weight:600">연준(Fed)</a>
-        <a href="https://www.cftc.gov" target="_blank" rel="noopener" style="font-size:var(--text-xs);padding:3px 9px;border-radius:20px;background:var(--color-info-bg);color:var(--color-info);text-decoration:none;font-weight:600">CFTC</a>
-      </div>
-      <div style="display:flex;flex-wrap:wrap;gap:6px">
-        <span style="font-size:var(--text-xs);color:var(--color-text-muted);padding:3px 0;margin-right:2px">🇰🇷</span>
-        <a href="https://www.fsc.go.kr" target="_blank" rel="noopener" style="font-size:var(--text-xs);padding:3px 9px;border-radius:20px;background:var(--color-warning-bg);color:var(--color-warning-text);text-decoration:none;font-weight:600">금융위원회</a>
-        <a href="https://www.fss.or.kr" target="_blank" rel="noopener" style="font-size:var(--text-xs);padding:3px 9px;border-radius:20px;background:var(--color-warning-bg);color:var(--color-warning-text);text-decoration:none;font-weight:600">금융감독원</a>
-        <a href="https://www.krx.co.kr" target="_blank" rel="noopener" style="font-size:var(--text-xs);padding:3px 9px;border-radius:20px;background:var(--color-warning-bg);color:var(--color-warning-text);text-decoration:none;font-weight:600">한국거래소</a>
-        <a href="https://www.ftc.go.kr" target="_blank" rel="noopener" style="font-size:var(--text-xs);padding:3px 9px;border-radius:20px;background:var(--color-warning-bg);color:var(--color-warning-text);text-decoration:none;font-weight:600">공정위</a>
-        <a href="https://www.bok.or.kr" target="_blank" rel="noopener" style="font-size:var(--text-xs);padding:3px 9px;border-radius:20px;background:var(--color-warning-bg);color:var(--color-warning-text);text-decoration:none;font-weight:600">한국은행</a>
-        <a href="https://dart.fss.or.kr" target="_blank" rel="noopener" style="font-size:var(--text-xs);padding:3px 9px;border-radius:20px;background:var(--color-warning-bg);color:var(--color-warning-text);text-decoration:none;font-weight:600">DART</a>
       </div>
     </div>
   </div>
