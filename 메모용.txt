@@ -7,3 +7,4 @@ secret value : xK9mP2qLwR5tNjF8aYvD6cHbE3uZs7Gi
 
 
 Edge URL : https://yijkwuiqnviapztqskak.supabase.co/functions/v1/proxy-api
+

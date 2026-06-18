@@ -75,6 +75,22 @@ serve(async (req) => {
       });
     }
 
+    // ── RSS 프록시 (한국 뉴스 등 CORS 차단 피드용)
+    if (action === "rss-proxy") {
+      const targetUrl = body.url as string;
+      if (!targetUrl) throw new Error("url required");
+      const r = await fetch(targetUrl, {
+        headers: {
+          "User-Agent": "Mozilla/5.0 (compatible; FeedBot/1.0)",
+          "Accept": "application/rss+xml, application/xml, text/xml, */*",
+        },
+      });
+      const text = await r.text();
+      return new Response(text, {
+        headers: { ...CORS, "Content-Type": "application/xml; charset=utf-8" },
+      });
+    }
+
     // ── 네이버 종목 검색 (CORS 우회 프록시)
     if (action === "naver-search") {
       const url = `https://ac.stock.naver.com/ac?q=${encodeURIComponent(query ?? "")}&target=stock`;
