@@ -1978,14 +1978,13 @@ const REG_FEEDS_KR=[
 ];
 let regAllItems=[];
 function _parseRSSItems(xml,f){return Array.from(xml.querySelectorAll('entry, item')).slice(0,8).map(el=>({key:f.key,source:f.name,label:f.label,color:f.color,bg:f.bg,title:el.querySelector('title')?.textContent?.trim()||'',summary:(el.querySelector('summary, description')?.textContent||'').replace(/<[^>]+>/g,'').trim().slice(0,180),link:el.querySelector('link')?.textContent?.trim()||el.querySelector('link')?.getAttribute('href')||'#',date:el.querySelector('updated, pubDate')?.textContent?.trim()||''}));}
-async function _fetchRSSProxy(url){const r=await fetch(SUPA_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'rss-proxy',url})});return new DOMParser().parseFromString(await r.text(),'text/xml');}
-async function _fetchRSSAllOrigins(url){const r=await fetch('https://api.allorigins.win/get?url='+encodeURIComponent(url)),d=await r.json();return new DOMParser().parseFromString(d.contents,'text/xml');}
+async function _fetchRSSProxy(url){const ctrl=new AbortController();const tid=setTimeout(()=>ctrl.abort(),12000);try{const r=await fetch(SUPA_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'rss-proxy',url}),signal:ctrl.signal});if(!r.ok)throw new Error('HTTP '+r.status);const text=await r.text();const xml=new DOMParser().parseFromString(text,'text/xml');if(xml.querySelector('parsererror'))throw new Error('parse_error');return xml;}finally{clearTimeout(tid);}}
 async function loadRegRSS(){
   const dot=document.getElementById('reg-live-dot'),txt=document.getElementById('reg-upd-txt'),usEl=document.getElementById('reg-feed-us'),krEl=document.getElementById('reg-feed-kr');
   const spin='<div class="empty" style="font-size:var(--text-sm)"><span class="spin">⟳</span> 로딩 중...</div>';
   dot.style.background='var(--color-warning)';txt.textContent='로딩 중...';usEl.innerHTML=spin;krEl.innerHTML=spin;
   const [usRes,krRes]=await Promise.all([
-    Promise.allSettled(REG_FEEDS_US.map(async f=>_parseRSSItems(await _fetchRSSAllOrigins(f.url),f))),
+    Promise.allSettled(REG_FEEDS_US.map(async f=>_parseRSSItems(await _fetchRSSProxy(f.url),f))),
     Promise.allSettled(REG_FEEDS_KR.map(async f=>_parseRSSItems(await _fetchRSSProxy(f.url),f)))
   ]);
   const usItems=[],krItems=[];

@@ -79,16 +79,28 @@ serve(async (req) => {
     if (action === "rss-proxy") {
       const targetUrl = body.url as string;
       if (!targetUrl) throw new Error("url required");
-      const r = await fetch(targetUrl, {
-        headers: {
-          "User-Agent": "Mozilla/5.0 (compatible; FeedBot/1.0)",
-          "Accept": "application/rss+xml, application/xml, text/xml, */*",
-        },
-      });
-      const text = await r.text();
-      return new Response(text, {
-        headers: { ...CORS, "Content-Type": "application/xml; charset=utf-8" },
-      });
+      const ctrl = new AbortController();
+      const tid = setTimeout(() => ctrl.abort(), 10000);
+      try {
+        const r = await fetch(targetUrl, {
+          headers: {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+            "Accept": "application/rss+xml, application/atom+xml, application/xml, text/xml, */*",
+            "Accept-Language": "ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7",
+            "Cache-Control": "no-cache",
+          },
+          signal: ctrl.signal,
+        });
+        clearTimeout(tid);
+        if (!r.ok) throw new Error(`upstream_${r.status}`);
+        const text = await r.text();
+        return new Response(text, {
+          headers: { ...CORS, "Content-Type": "application/xml; charset=utf-8" },
+        });
+      } catch (e) {
+        clearTimeout(tid);
+        throw e;
+      }
     }
 
     // ── 네이버 종목 검색 (CORS 우회 프록시)
