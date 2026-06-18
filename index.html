@@ -1966,19 +1966,19 @@ function renderSites(){const data=siteCurFilter==='all'?SITES:SITES.filter(s=>s.
 
 // ─ 규제 RSS
 const REG_FEEDS_US=[
-  {key:'sec',name:'SEC',label:'SEC',url:'https://www.sec.gov/cgi-bin/browse-edgar?action=getcurrent&type=&dateb=&owner=include&count=15&search_text=&output=atom',color:'var(--color-info)',bg:'var(--color-info-bg)'},
   {key:'ftc',name:'FTC',label:'FTC',url:'https://www.ftc.gov/feeds/press-release.xml',color:'var(--color-error-text)',bg:'var(--color-error-bg)'},
-  {key:'doj',name:'DOJ',label:'DOJ',url:'https://www.justice.gov/feed/atom/news',color:'var(--color-success-text)',bg:'var(--color-success-bg)'},
-  {key:'fed',name:'연준',label:'Fed',url:'https://www.federalreserve.gov/feeds/press_all.xml',color:'var(--color-accent-dark)',bg:'var(--color-accent-bg-soft)'}
+  {key:'fed',name:'연준',label:'Fed',url:'https://www.federalreserve.gov/feeds/press_all.xml',color:'var(--color-accent-dark)',bg:'var(--color-accent-bg-soft)'},
+  {key:'sec',name:'SEC',label:'SEC',url:'https://news.google.com/rss/search?q=SEC+enforcement+securities+regulation&hl=en-US&gl=US&ceid=US:en',color:'var(--color-info)',bg:'var(--color-info-bg)'},
+  {key:'doj',name:'DOJ',label:'DOJ',url:'https://news.google.com/rss/search?q=DOJ+antitrust+regulation+enforcement&hl=en-US&gl=US&ceid=US:en',color:'var(--color-success-text)',bg:'var(--color-success-bg)'}
 ];
 const REG_FEEDS_KR=[
-  {key:'dart',name:'DART',label:'공시',url:'https://dart.fss.or.kr/api/rss.do',color:'var(--color-warning-text)',bg:'var(--color-warning-bg)'},
-  {key:'fss',name:'금감원',label:'금감원',url:'https://www.fss.or.kr/fss/bbs/B0000188/rss.do',color:'var(--color-warning-text)',bg:'var(--color-warning-bg)'},
-  {key:'bok',name:'한국은행',label:'한은',url:'https://www.bok.or.kr/portal/bbs/P0000813/rss.do',color:'var(--color-warning-text)',bg:'var(--color-warning-bg)'}
+  {key:'fsc',name:'금융위',label:'금융위',url:'https://news.google.com/rss/search?q=%EA%B8%88%EC%9C%B5%EC%9C%84%EC%9B%90%ED%9A%8C+%EA%B7%9C%EC%A0%9C&hl=ko&gl=KR&ceid=KR:ko',color:'var(--color-warning-text)',bg:'var(--color-warning-bg)'},
+  {key:'fss',name:'금감원',label:'금감원',url:'https://news.google.com/rss/search?q=%EA%B8%88%EC%9C%B5%EA%B0%90%EB%8F%85%EC%9B%90+%EA%B7%9C%EC%A0%9C&hl=ko&gl=KR&ceid=KR:ko',color:'var(--color-warning-text)',bg:'var(--color-warning-bg)'},
+  {key:'bok',name:'한국은행',label:'한은',url:'https://news.google.com/rss/search?q=%ED%95%9C%EA%B5%AD%EC%9D%80%ED%96%89+%EA%B8%88%EC%9C%B5%EC%A0%95%EC%B1%85&hl=ko&gl=KR&ceid=KR:ko',color:'var(--color-warning-text)',bg:'var(--color-warning-bg)'}
 ];
 let regAllItems=[];
 function _parseRSSItems(xml,f){return Array.from(xml.querySelectorAll('entry, item')).slice(0,8).map(el=>({key:f.key,source:f.name,label:f.label,color:f.color,bg:f.bg,title:el.querySelector('title')?.textContent?.trim()||'',summary:(el.querySelector('summary, description')?.textContent||'').replace(/<[^>]+>/g,'').trim().slice(0,180),link:el.querySelector('link')?.textContent?.trim()||el.querySelector('link')?.getAttribute('href')||'#',date:el.querySelector('updated, pubDate')?.textContent?.trim()||''}));}
-async function _fetchRSSProxy(url){const ctrl=new AbortController();const tid=setTimeout(()=>ctrl.abort(),12000);try{const r=await fetch(SUPA_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'rss-proxy',url}),signal:ctrl.signal});if(!r.ok)throw new Error('HTTP '+r.status);const text=await r.text();const xml=new DOMParser().parseFromString(text,'text/xml');if(xml.querySelector('parsererror'))throw new Error('parse_error');return xml;}finally{clearTimeout(tid);}}
+async function _fetchRSSProxy(url){const ctrl=new AbortController();const tid=setTimeout(()=>ctrl.abort(),12000);try{const r=await fetch(SUPA_URL,{method:'POST',headers:_sh,body:JSON.stringify({action:'rss-proxy',url}),signal:ctrl.signal});if(!r.ok)throw new Error('HTTP '+r.status);const text=await r.text();const xml=new DOMParser().parseFromString(text,'text/xml');if(xml.querySelector('parsererror'))throw new Error('parse_error');return xml;}finally{clearTimeout(tid);}}
 async function loadRegRSS(){
   const dot=document.getElementById('reg-live-dot'),txt=document.getElementById('reg-upd-txt'),usEl=document.getElementById('reg-feed-us'),krEl=document.getElementById('reg-feed-kr');
   const spin='<div class="empty" style="font-size:var(--text-sm)"><span class="spin">⟳</span> 로딩 중...</div>';
