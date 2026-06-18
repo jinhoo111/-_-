@@ -2966,26 +2966,26 @@ loadPortfolioNews();
       <div class="ob-step-title">서비스 사용 목적을 알려주세요</div>
       <div class="ob-step-sub">복수 선택 가능합니다.</div>
       <div class="ob-purpose-list">
-        <label class="ob-purpose-item" onclick="togglePurpose(this,'portfolio')">
-          <input type="checkbox" value="portfolio">
+        <div class="ob-purpose-item" onclick="togglePurpose(this,'portfolio')">
+          <input type="checkbox" value="portfolio" style="pointer-events:none">
           <span class="ob-purpose-text">📈 개인 투자 포트폴리오 관리</span>
-        </label>
-        <label class="ob-purpose-item" onclick="togglePurpose(this,'news')">
-          <input type="checkbox" value="news">
+        </div>
+        <div class="ob-purpose-item" onclick="togglePurpose(this,'news')">
+          <input type="checkbox" value="news" style="pointer-events:none">
           <span class="ob-purpose-text">📰 금융 뉴스 및 시장 동향 파악</span>
-        </label>
-        <label class="ob-purpose-item" onclick="togglePurpose(this,'reg')">
-          <input type="checkbox" value="reg">
+        </div>
+        <div class="ob-purpose-item" onclick="togglePurpose(this,'reg')">
+          <input type="checkbox" value="reg" style="pointer-events:none">
           <span class="ob-purpose-text">⚖️ 규제·정책 변화 모니터링</span>
-        </label>
-        <label class="ob-purpose-item" onclick="togglePurpose(this,'research')">
-          <input type="checkbox" value="research">
+        </div>
+        <div class="ob-purpose-item" onclick="togglePurpose(this,'research')">
+          <input type="checkbox" value="research" style="pointer-events:none">
           <span class="ob-purpose-text">🔍 투자 리서치 정보 수집</span>
-        </label>
-        <label class="ob-purpose-item" onclick="togglePurpose(this,'journal')">
-          <input type="checkbox" value="journal">
+        </div>
+        <div class="ob-purpose-item" onclick="togglePurpose(this,'journal')">
+          <input type="checkbox" value="journal" style="pointer-events:none">
           <span class="ob-purpose-text">📓 투자 일지 작성·관리</span>
-        </label>
+        </div>
       </div>
       <div class="ob-err" id="ob-err-3"></div>
       <div class="ob-btns">
@@ -2999,7 +2999,7 @@ loadPortfolioNews();
       <div class="ob-step-title">마케팅 수신 동의</div>
       <div class="ob-step-sub">서비스 업데이트 및 유용한 정보를 보내드립니다.</div>
       <div class="ob-marketing-box" id="ob-marketing-box" onclick="toggleMarketing()">
-        <input type="checkbox" id="ob-marketing-chk" style="width:16px;height:16px;margin-top:2px;accent-color:var(--color-text-primary);flex-shrink:0;cursor:pointer">
+        <input type="checkbox" id="ob-marketing-chk" style="width:16px;height:16px;margin-top:2px;accent-color:var(--color-text-primary);flex-shrink:0;pointer-events:none">
         <div>
           <div class="ob-marketing-title">이메일 수신 동의 <span style="font-size:var(--text-xs);color:var(--color-text-tertiary);font-weight:400">(선택)</span></div>
           <div class="ob-marketing-desc">서비스 업데이트, 주요 기능 안내 등의 이메일을 수신합니다.</div>
