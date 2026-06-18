@@ -596,7 +596,7 @@ input:focus-visible,textarea:focus-visible{outline:2px solid var(--color-info);o
 <div id="page-research" class="page">
   <div class="inner-tab-bar">
     <button class="itab on" onclick="swInner('sites','research',this)">🏦 리서치 사이트</button>
-    <button class="itab"    onclick="swInner('reg','research',this)">⚖️ 규제 모니터링</button>
+    <button class="itab"    onclick="swInner('reg','research',this);if(!regAllItems.length)loadRegRSS()">⚖️ 규제 모니터링</button>
   </div>
 
   <!-- 사이트 링크 -->
@@ -1713,6 +1713,12 @@ function goPage(name,btn){
   localStorage.setItem('cur_page',name);
   if(name==='indices')loadAllIndices();
   if(name==='news')initNewsUI();
+  if(name==='research'){
+    const savedTab=localStorage.getItem('cur_itab_research')||'sites';
+    const tabBtn=document.querySelector(`#page-research .itab[onclick*="'${savedTab}','research'"]`);
+    if(tabBtn)swInner(savedTab,'research',tabBtn);
+    if(savedTab==='reg'&&!regAllItems.length)loadRegRSS();
+  }
 }
 
 function swInner(panel,page,btn){
@@ -1721,6 +1727,7 @@ function swInner(panel,page,btn){
   btn.closest('.inner-tab-bar').querySelectorAll('.itab').forEach(t=>t.classList.remove('on'));
   document.getElementById(prefix+panel).classList.add('on');
   btn.classList.add('on');
+  localStorage.setItem('cur_itab_'+page,panel);
 }
 // ═══════════════════════════════════════════════════════════════
 // 지수·환율 페이지
