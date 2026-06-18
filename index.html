@@ -139,6 +139,86 @@
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:var(--color-text-primary);background:var(--color-bg-base);min-height:100vh}
 
+/* ── AUTH OVERLAY ── */
+.auth-overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:2000;display:flex;align-items:center;justify-content:center;padding:16px}
+.auth-overlay.hidden{display:none}
+.auth-modal{background:var(--color-bg-surface);border-radius:var(--radius-2xl);padding:32px 28px;width:100%;max-width:420px;box-shadow:0 20px 60px rgba(0,0,0,.18)}
+.auth-logo{font-size:var(--text-2xl);font-weight:700;letter-spacing:-.3px;margin-bottom:20px;text-align:center}
+.auth-tabs{display:flex;border-bottom:1px solid var(--color-border-default);margin-bottom:20px;gap:0}
+.auth-tab{flex:1;padding:9px;font-size:var(--text-md);font-weight:500;cursor:pointer;border:none;background:transparent;color:var(--color-text-tertiary);border-bottom:2px solid transparent;font-family:inherit;transition:all .15s}
+.auth-tab.on{color:var(--color-text-primary);border-bottom-color:var(--color-text-primary);font-weight:600}
+.auth-field{margin-bottom:14px}
+.auth-field label{display:block;font-size:var(--text-sm);color:var(--color-text-secondary);margin-bottom:5px;font-weight:500}
+.auth-field input{width:100%;padding:9px 12px;border:1px solid var(--color-border-input);border-radius:var(--radius-md);font-size:var(--text-md);font-family:inherit;outline:none;transition:border .15s}
+.auth-field input:focus{border-color:var(--color-text-primary)}
+.auth-btn{width:100%;padding:10px;border:none;border-radius:var(--radius-md);font-size:var(--text-md);font-weight:600;cursor:pointer;font-family:inherit;margin-top:4px;transition:opacity .15s}
+.auth-btn-primary{background:var(--color-text-primary);color:#fff}
+.auth-btn-primary:hover{opacity:.88}
+.auth-btn-ghost{background:transparent;color:var(--color-text-tertiary);font-size:var(--text-sm);margin-top:10px;text-decoration:underline;padding:4px}
+.auth-err{color:var(--color-error);font-size:var(--text-sm);margin-top:8px;text-align:center;min-height:18px}
+.auth-ok{color:var(--color-success);font-size:var(--text-sm);margin-top:8px;text-align:center;min-height:18px}
+
+/* ── EMAIL VERIFY SCREEN ── */
+.verify-box{text-align:center;padding:8px 0}
+.verify-icon{font-size:40px;margin-bottom:12px}
+.verify-title{font-size:var(--text-2xl);font-weight:700;margin-bottom:8px}
+.verify-desc{font-size:var(--text-md);color:var(--color-text-secondary);line-height:1.6;margin-bottom:20px}
+.verify-email-badge{background:var(--color-bg-muted);border:1px solid var(--color-border-default);border-radius:var(--radius-md);padding:7px 14px;font-size:var(--text-sm);color:var(--color-text-strong);display:inline-block;margin-bottom:18px;font-weight:500}
+
+/* ── ONBOARDING WIZARD ── */
+.ob-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:2100;display:flex;align-items:center;justify-content:center;padding:16px}
+.ob-overlay.hidden{display:none}
+.ob-modal{background:var(--color-bg-surface);border-radius:var(--radius-2xl);padding:32px 28px;width:100%;max-width:480px;box-shadow:0 20px 60px rgba(0,0,0,.2)}
+.ob-progress{display:flex;gap:6px;margin-bottom:24px}
+.ob-dot{flex:1;height:4px;border-radius:2px;background:var(--color-border-default);transition:background .25s}
+.ob-dot.done{background:var(--color-text-primary)}
+.ob-step-title{font-size:var(--text-xl);font-weight:700;margin-bottom:6px}
+.ob-step-sub{font-size:var(--text-md);color:var(--color-text-secondary);margin-bottom:20px}
+.ob-step{display:none}.ob-step.on{display:block}
+.ob-type-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:8px}
+.ob-type-card{border:2px solid var(--color-border-input);border-radius:var(--radius-xl);padding:20px 16px;text-align:center;cursor:pointer;transition:all .15s}
+.ob-type-card:hover{border-color:var(--color-text-primary)}
+.ob-type-card.sel{border-color:var(--color-text-primary);background:var(--color-bg-muted)}
+.ob-type-icon{font-size:28px;margin-bottom:8px}
+.ob-type-label{font-size:var(--text-md);font-weight:600}
+.ob-age-grid{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:8px}
+.ob-age-btn{padding:8px 16px;border:1px solid var(--color-border-input);border-radius:var(--radius-pill);font-size:var(--text-md);cursor:pointer;background:var(--color-bg-surface);font-family:inherit;transition:all .15s}
+.ob-age-btn:hover{border-color:var(--color-text-primary)}
+.ob-age-btn.sel{border-color:var(--color-text-primary);background:var(--color-text-primary);color:#fff}
+.ob-select{width:100%;padding:9px 12px;border:1px solid var(--color-border-input);border-radius:var(--radius-md);font-size:var(--text-md);font-family:inherit;outline:none;background:var(--color-bg-surface);margin-bottom:8px}
+.ob-purpose-list{display:flex;flex-direction:column;gap:8px;margin-bottom:8px}
+.ob-purpose-item{display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--color-border-input);border-radius:var(--radius-md);cursor:pointer;transition:all .15s}
+.ob-purpose-item:hover{border-color:var(--color-text-secondary)}
+.ob-purpose-item.sel{border-color:var(--color-text-primary);background:var(--color-bg-muted)}
+.ob-purpose-item input[type=checkbox]{width:15px;height:15px;cursor:pointer;accent-color:var(--color-text-primary)}
+.ob-purpose-text{font-size:var(--text-md)}
+.ob-marketing-box{border:1px solid var(--color-border-input);border-radius:var(--radius-md);padding:14px;display:flex;align-items:flex-start;gap:10px;cursor:pointer;transition:all .15s}
+.ob-marketing-box.sel{border-color:var(--color-text-primary);background:var(--color-bg-muted)}
+.ob-marketing-title{font-size:var(--text-md);font-weight:600;margin-bottom:3px}
+.ob-marketing-desc{font-size:var(--text-sm);color:var(--color-text-secondary)}
+.ob-btns{display:flex;gap:8px;margin-top:22px}
+.ob-btn-prev{flex:1;padding:10px;border:1px solid var(--color-border-input);border-radius:var(--radius-md);font-size:var(--text-md);cursor:pointer;background:var(--color-bg-surface);font-family:inherit}
+.ob-btn-next{flex:2;padding:10px;border:none;border-radius:var(--radius-md);font-size:var(--text-md);font-weight:600;cursor:pointer;background:var(--color-text-primary);color:#fff;font-family:inherit;transition:opacity .15s}
+.ob-btn-next:hover{opacity:.88}
+.ob-btn-next:disabled{opacity:.4;cursor:not-allowed}
+.ob-err{color:var(--color-error);font-size:var(--text-sm);margin-top:6px;min-height:16px}
+
+/* ── PROFILE MODAL ── */
+.profile-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:2000;display:flex;align-items:center;justify-content:center;padding:16px}
+.profile-overlay.hidden{display:none}
+.profile-modal{background:var(--color-bg-surface);border-radius:var(--radius-2xl);padding:28px;width:100%;max-width:460px;box-shadow:0 20px 60px rgba(0,0,0,.18)}
+.profile-title{font-size:var(--text-xl);font-weight:700;margin-bottom:18px}
+.profile-section{margin-bottom:16px}
+.profile-label{font-size:var(--text-sm);color:var(--color-text-secondary);font-weight:500;margin-bottom:6px}
+
+/* ── NAV AUTH ── */
+.nav-login-btn{padding:6px 14px;border:1px solid var(--color-border-input);border-radius:var(--radius-pill);font-size:var(--text-sm);cursor:pointer;background:var(--color-bg-surface);font-family:inherit;color:var(--color-text-primary);font-weight:500;transition:all .15s;white-space:nowrap}
+.nav-login-btn:hover{background:var(--color-bg-muted)}
+.nav-user-info{display:flex;align-items:center;gap:6px}
+.nav-user-email{font-size:var(--text-xs);color:var(--color-text-tertiary);max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.nav-icon-btn{padding:4px 8px;border:1px solid var(--color-border-default);border-radius:var(--radius-md);font-size:var(--text-xs);cursor:pointer;background:transparent;font-family:inherit;color:var(--color-text-secondary);transition:all .15s;white-space:nowrap}
+.nav-icon-btn:hover{background:var(--color-bg-muted)}
+
 
 /* ── NAV ── */
 .nav{background:var(--color-bg-surface);border-bottom:1px solid var(--color-border-default);padding:0 1.5rem;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:99}
@@ -318,6 +398,7 @@ input:focus-visible,textarea:focus-visible{outline:2px solid var(--color-info);o
   }
 }
 </style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 </head>
 <body>
 
@@ -331,8 +412,14 @@ input:focus-visible,textarea:focus-visible{outline:2px solid var(--color-info);o
     <button class="nav-tab"     onclick="goPage('research',this)">리서치·규제</button>
     <button class="nav-tab"     onclick="goPage('memo',this)">투자 일지</button>
   </div>
-  <div class="nav-right">
-        <span style="font-size:var(--text-xs);color:var(--color-text-tertiary);align-self:center">—</span>
+  <div class="nav-right" id="nav-right">
+    <button id="nav-login-btn" class="nav-login-btn" onclick="openAuthModal()">로그인</button>
+    <div id="nav-account" class="nav-user-info" style="display:none">
+      <span id="nav-user-dot" style="width:7px;height:7px;border-radius:50%;background:var(--color-success);flex-shrink:0"></span>
+      <span id="nav-user-email" class="nav-user-email"></span>
+      <button onclick="openProfileModal()" class="nav-icon-btn" title="프로필 설정">⚙ 설정</button>
+      <button onclick="signOutUser()" class="nav-icon-btn">로그아웃</button>
+    </div>
   </div>
 </nav>
 
@@ -596,7 +683,7 @@ input:focus-visible,textarea:focus-visible{outline:2px solid var(--color-info);o
 <div id="page-research" class="page">
   <div class="inner-tab-bar">
     <button class="itab on" onclick="swInner('sites','research',this)">🏦 리서치 사이트</button>
-    <button class="itab"    onclick="swInner('reg','research',this);if(!regAllItems.length)loadRegRSS()">⚖️ 규제 모니터링</button>
+    <button class="itab"    onclick="swInner('reg','research',this);if(!regAllItems.length){if(!_loadRegCache())loadRegRSS();}">⚖️ 규제 모니터링</button>
   </div>
 
   <!-- 사이트 링크 -->
@@ -707,10 +794,385 @@ input:focus-visible,textarea:focus-visible{outline:2px solid var(--color-info);o
 
 <!-- ══════════ SCRIPT ══════════ -->
 <script>
-// ★ Supabase Edge Function URL — Supabase 설정 후 아래 값을 교체하세요
-const SUPA_URL='https://yijkwuiqnviapztqskak.supabase.co/functions/v1/proxy-api';
+// ★ Supabase 설정
+const SUPA_BASE='https://yijkwuiqnviapztqskak.supabase.co';
+const SUPA_URL=SUPA_BASE+'/functions/v1/proxy-api';
 const SUPA_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inlpamt3dWlxbnZpYXB6dHFza2FrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE1ODIwMzAsImV4cCI6MjA5NzE1ODAzMH0.n2CuPFPqQeCvZ0-pH-eNqdvuSJrWAH3nOIEt7dBFs_M';
 const _sh={'Content-Type':'application/json','apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY};
+
+// ── Supabase Auth 클라이언트
+const _sb=window.supabase.createClient(SUPA_BASE,SUPA_KEY);
+let _currentUser=null;
+let _syncTimer=null;
+let _signupEmail='';
+
+// ════════════════════════════════════════
+// AUTH UI 제어
+// ════════════════════════════════════════
+function openAuthModal(){
+  document.getElementById('auth-overlay').classList.remove('hidden');
+  switchAuthTab('login');
+}
+function closeAuthModal(){
+  document.getElementById('auth-overlay').classList.add('hidden');
+}
+function switchAuthTab(tab){
+  ['login','signup','forgot','verify'].forEach(v=>{
+    document.getElementById('auth-'+v+'-view').style.display='none';
+  });
+  document.getElementById('auth-'+tab+'-view').style.display='block';
+  // 탭 버튼 on 상태 동기화
+  document.querySelectorAll('.auth-tab').forEach(b=>{
+    const isLogin=b.textContent.includes('로그인');
+    const isSignup=b.textContent.includes('회원가입');
+    if(tab==='login')b.classList.toggle('on',isLogin);
+    else if(tab==='signup')b.classList.toggle('on',isSignup);
+    else b.classList.remove('on');
+  });
+  // 에러 초기화
+  ['login-err','signup-err','forgot-err','forgot-ok','resend-ok'].forEach(id=>{
+    const el=document.getElementById(id);if(el)el.textContent='';
+  });
+}
+
+// ── 로그인
+async function doSignIn(){
+  const email=document.getElementById('login-email').value.trim();
+  const pw=document.getElementById('login-pw').value;
+  const errEl=document.getElementById('login-err');
+  errEl.textContent='';
+  if(!email||!pw){errEl.textContent='이메일과 비밀번호를 입력해주세요.';return;}
+  errEl.textContent='로그인 중...';
+  const{error}=await _sb.auth.signInWithPassword({email,password:pw});
+  if(error){
+    errEl.textContent=error.message.includes('Invalid login')||error.message.includes('invalid_credentials')
+      ?'이메일 또는 비밀번호가 올바르지 않습니다.'
+      :error.message.includes('Email not confirmed')
+      ?'이메일 인증이 필요합니다. 받은 편지함을 확인해주세요.'
+      :error.message;
+    return;
+  }
+  closeAuthModal();
+}
+
+// ── 회원가입
+async function doSignUp(){
+  const email=document.getElementById('signup-email').value.trim();
+  const pw=document.getElementById('signup-pw').value;
+  const pw2=document.getElementById('signup-pw2').value;
+  const errEl=document.getElementById('signup-err');
+  errEl.textContent='';
+  if(!email||!pw){errEl.textContent='이메일과 비밀번호를 입력해주세요.';return;}
+  if(pw.length<8){errEl.textContent='비밀번호는 8자 이상이어야 합니다.';return;}
+  if(pw!==pw2){errEl.textContent='비밀번호가 일치하지 않습니다.';return;}
+  errEl.textContent='처리 중...';
+  const{error}=await _sb.auth.signUp({email,password:pw});
+  if(error){
+    errEl.textContent=error.message.includes('already registered')||error.message.includes('already been registered')
+      ?'이미 가입된 이메일입니다.'
+      :error.message;
+    return;
+  }
+  _signupEmail=email;
+  document.getElementById('verify-email-badge').textContent=email;
+  switchAuthTab('verify');
+}
+
+// ── 비밀번호 찾기
+async function doForgotPw(){
+  const email=document.getElementById('forgot-email').value.trim();
+  const errEl=document.getElementById('forgot-err');
+  const okEl=document.getElementById('forgot-ok');
+  errEl.textContent='';okEl.textContent='';
+  if(!email){errEl.textContent='이메일을 입력해주세요.';return;}
+  errEl.textContent='처리 중...';
+  const{error}=await _sb.auth.resetPasswordForEmail(email,{redirectTo:location.origin+location.pathname});
+  errEl.textContent='';
+  if(error){errEl.textContent=error.message;return;}
+  okEl.textContent='재설정 링크를 발송했습니다. 이메일을 확인해주세요.';
+}
+
+// ── 인증 이메일 재발송
+async function resendVerify(){
+  const okEl=document.getElementById('resend-ok');
+  okEl.textContent='';
+  if(!_signupEmail)return;
+  const{error}=await _sb.auth.resend({type:'signup',email:_signupEmail});
+  okEl.textContent=error?'재발송에 실패했습니다.':'인증 이메일을 재발송했습니다.';
+}
+
+// ── 로그아웃
+async function signOutUser(){
+  await _sb.auth.signOut();
+  _currentUser=null;
+  _updateNavAuth(null);
+  openAuthModal();
+}
+
+// ── 헤더 계정 상태 업데이트
+function _updateNavAuth(user){
+  const loginBtn=document.getElementById('nav-login-btn');
+  const accountEl=document.getElementById('nav-account');
+  if(user){
+    loginBtn.style.display='none';
+    accountEl.style.display='flex';
+    document.getElementById('nav-user-email').textContent=user.email;
+  }else{
+    loginBtn.style.display='';
+    accountEl.style.display='none';
+  }
+}
+
+// ════════════════════════════════════════
+// ONBOARDING 마법사
+// ════════════════════════════════════════
+const _ob={type:'',age:'',biz:'',purposes:[],marketing:false};
+
+function _showOnboarding(){
+  _ob.type='';_ob.age='';_ob.biz='';_ob.purposes=[];_ob.marketing=false;
+  // 초기화
+  ['ob-type-personal','ob-type-business'].forEach(id=>document.getElementById(id).classList.remove('sel'));
+  document.querySelectorAll('.ob-age-btn').forEach(b=>b.classList.remove('sel'));
+  document.getElementById('ob-business-select').value='';
+  document.querySelectorAll('.ob-purpose-item').forEach(item=>{
+    item.classList.remove('sel');
+    item.querySelector('input').checked=false;
+  });
+  document.getElementById('ob-marketing-chk').checked=false;
+  document.getElementById('ob-marketing-box').classList.remove('sel');
+  _obGoStep(1);
+  document.getElementById('ob-overlay').classList.remove('hidden');
+}
+
+function _obGoStep(n){
+  for(let i=1;i<=4;i++){
+    document.getElementById('ob-step-'+i).classList.toggle('on',i===n);
+    document.getElementById('ob-dot-'+i).classList.toggle('done',i<=n);
+  }
+  ['ob-err-1','ob-err-2','ob-err-3'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent='';});
+}
+
+function selectUserType(type){
+  _ob.type=type;
+  document.getElementById('ob-type-personal').classList.toggle('sel',type==='personal');
+  document.getElementById('ob-type-business').classList.toggle('sel',type==='business');
+}
+
+function selectAge(age){
+  _ob.age=age;
+  document.querySelectorAll('#ob-s2-personal .ob-age-btn').forEach(b=>{
+    b.classList.toggle('sel',b.textContent===({
+      '10s':'10대','20s':'20대','30s':'30대','40s':'40대','50s':'50대','60s':'60대','70s+':'70대 이상'
+    }[age]));
+  });
+}
+
+function selectBusiness(val){_ob.biz=val;}
+
+function togglePurpose(item,val){
+  const chk=item.querySelector('input');
+  chk.checked=!chk.checked;
+  item.classList.toggle('sel',chk.checked);
+  if(chk.checked&&!_ob.purposes.includes(val))_ob.purposes.push(val);
+  else _ob.purposes=_ob.purposes.filter(p=>p!==val);
+}
+
+function toggleMarketing(){
+  _ob.marketing=!_ob.marketing;
+  document.getElementById('ob-marketing-chk').checked=_ob.marketing;
+  document.getElementById('ob-marketing-box').classList.toggle('sel',_ob.marketing);
+}
+
+function obNext(step){
+  const err=document.getElementById('ob-err-'+step);
+  if(step===1){
+    if(!_ob.type){if(err)err.textContent='유형을 선택해주세요.';return;}
+    document.getElementById('ob-s2-personal').style.display=_ob.type==='personal'?'':'none';
+    document.getElementById('ob-s2-business').style.display=_ob.type==='business'?'':'none';
+    _obGoStep(2);
+  }else if(step===2){
+    if(_ob.type==='personal'&&!_ob.age){if(err)err.textContent='연령대를 선택해주세요.';return;}
+    if(_ob.type==='business'&&!_ob.biz){if(err)err.textContent='업종을 선택해주세요.';return;}
+    _obGoStep(3);
+  }else if(step===3){
+    if(!_ob.purposes.length){if(err)err.textContent='하나 이상 선택해주세요.';return;}
+    _obGoStep(4);
+  }
+}
+function obPrev(step){_obGoStep(step-1);}
+
+async function obSubmit(){
+  const btn=document.querySelector('#ob-step-4 .ob-btn-next');
+  btn.disabled=true;btn.textContent='저장 중...';
+  const{data:{user}}=await _sb.auth.getUser();
+  if(!user){btn.disabled=false;btn.textContent='시작하기 🚀';return;}
+  const{error}=await _sb.from('user_profiles').upsert({
+    user_id:user.id,
+    user_type:_ob.type,
+    age_range:_ob.type==='personal'?_ob.age:null,
+    business_type:_ob.type==='business'?_ob.biz:null,
+    purposes:_ob.purposes,
+    marketing_email:_ob.marketing,
+    onboarding_done:true,
+    updated_at:new Date().toISOString()
+  });
+  btn.disabled=false;btn.textContent='시작하기 🚀';
+  if(error){console.error('onboarding save error',error);return;}
+  document.getElementById('ob-overlay').classList.add('hidden');
+  await _loadFromCloud(user);
+}
+
+// ════════════════════════════════════════
+// 프로필 설정 모달
+// ════════════════════════════════════════
+let _profType='personal',_profAge='',_profBiz='';
+
+function openProfileModal(){
+  const el=document.getElementById('profile-overlay');
+  el.classList.remove('hidden');
+  if(_currentUser)document.getElementById('profile-email-display').textContent=_currentUser.email;
+  // 현재 프로필 로드
+  _sb.from('user_profiles').select('*').eq('user_id',_currentUser.id).single().then(({data})=>{
+    if(!data)return;
+    _profType=data.user_type||'personal';
+    _profAge=data.age_range||'';
+    _profBiz=data.business_type||'';
+    // 유형
+    ['personal','business'].forEach(t=>{
+      document.getElementById('prof-type-'+t).classList.toggle('sel',t===_profType);
+    });
+    _profToggleTypeSection(_profType);
+    // 나이
+    if(_profAge){
+      const label={'10s':'10대','20s':'20대','30s':'30대','40s':'40대','50s':'50대','60s':'60대','70s+':'70대 이상'}[_profAge];
+      document.querySelectorAll('#prof-age-grid .ob-age-btn').forEach(b=>b.classList.toggle('sel',b.textContent===label));
+    }
+    // 업종
+    if(_profBiz)document.getElementById('prof-biz-select').value=_profBiz;
+    // 목적
+    ['portfolio','news','reg','research','journal'].forEach(p=>{
+      const el=document.getElementById('prof-p-'+p);
+      if(el)el.checked=(data.purposes||[]).includes(p);
+    });
+    // 마케팅
+    const mkEl=document.getElementById('prof-marketing');
+    if(mkEl)mkEl.checked=!!data.marketing_email;
+  });
+}
+function closeProfileModal(){document.getElementById('profile-overlay').classList.add('hidden');}
+
+function _profToggleTypeSection(type){
+  document.getElementById('prof-age-section').style.display=type==='personal'?'':'none';
+  document.getElementById('prof-biz-section').style.display=type==='business'?'':'none';
+}
+function profSelectType(type){
+  _profType=type;
+  ['personal','business'].forEach(t=>document.getElementById('prof-type-'+t).classList.toggle('sel',t===type));
+  _profToggleTypeSection(type);
+}
+function profSelectAge(age){
+  _profAge=age;
+  const label={'10s':'10대','20s':'20대','30s':'30대','40s':'40대','50s':'50대','60s':'60대','70s+':'70대 이상'}[age];
+  document.querySelectorAll('#prof-age-grid .ob-age-btn').forEach(b=>b.classList.toggle('sel',b.textContent===label));
+}
+
+async function saveProfile(){
+  const errEl=document.getElementById('profile-err');
+  const okEl=document.getElementById('profile-ok');
+  errEl.textContent='';okEl.textContent='';
+  if(!_currentUser)return;
+  const biz=document.getElementById('prof-biz-select').value;
+  const purposes=['portfolio','news','reg','research','journal'].filter(p=>document.getElementById('prof-p-'+p)?.checked);
+  const marketing=document.getElementById('prof-marketing').checked;
+  const{error}=await _sb.from('user_profiles').upsert({
+    user_id:_currentUser.id,
+    user_type:_profType,
+    age_range:_profType==='personal'?_profAge:null,
+    business_type:_profType==='business'?biz:null,
+    purposes,
+    marketing_email:marketing,
+    onboarding_done:true,
+    updated_at:new Date().toISOString()
+  });
+  if(error){errEl.textContent='저장에 실패했습니다.';return;}
+  okEl.textContent='저장했습니다.';
+  setTimeout(()=>{okEl.textContent='';},2500);
+}
+
+// ════════════════════════════════════════
+// 데이터 동기화 (Cloud ↔ Local)
+// ════════════════════════════════════════
+async function _loadFromCloud(user){
+  const{data,error}=await _sb.from('user_data').select('*').eq('user_id',user.id).single();
+  if(error||!data){
+    // 첫 로그인 — 현재 localStorage 데이터를 클라우드에 업로드
+    _syncToCloud(true);
+    return;
+  }
+  // 클라우드 데이터 → 메모리 + localStorage 반영
+  if(Array.isArray(data.stocks)){
+    stocks=data.stocks;
+    localStorage.setItem('pf_s',JSON.stringify(stocks));
+    // 샘플 플래그 제거
+    localStorage.removeItem('pf_is_sample');
+  }
+  if(Array.isArray(data.memos)){
+    memos=data.memos;
+    localStorage.setItem('pf_m',JSON.stringify(memos));
+  }
+  if(Array.isArray(data.memo_archive)){
+    memoArchive=data.memo_archive;
+    localStorage.setItem('pf_ma',JSON.stringify(memoArchive));
+  }
+  if(data.cash_krw!=null){cashKRW=parseFloat(data.cash_krw)||0;localStorage.setItem('cash_krw',cashKRW);}
+  if(data.cash_usd!=null){cashUSD=parseFloat(data.cash_usd)||0;localStorage.setItem('cash_usd',cashUSD);}
+  if(Array.isArray(data.quote_symbols)&&data.quote_symbols.length){
+    quoteSymbols=data.quote_symbols;
+    localStorage.setItem('fh_q',JSON.stringify(quoteSymbols));
+  }
+  if(data.notify_master!=null){
+    notifyMaster=!!data.notify_master;
+    localStorage.setItem('pf_notify_master',notifyMaster);
+  }
+  // UI 재렌더링
+  renderStocks();renderMemos();updateCashDisplay();updateMasterNotifyBtn();
+}
+
+function _syncToCloud(immediate){
+  if(!_currentUser)return;
+  clearTimeout(_syncTimer);
+  const doSync=async()=>{
+    await _sb.from('user_data').upsert({
+      user_id:_currentUser.id,
+      stocks:stocks,
+      memos:memos,
+      memo_archive:memoArchive,
+      cash_krw:cashKRW,
+      cash_usd:cashUSD,
+      quote_symbols:quoteSymbols,
+      notify_master:notifyMaster,
+      updated_at:new Date().toISOString()
+    });
+  };
+  if(immediate)doSync();
+  else _syncTimer=setTimeout(doSync,1200);
+}
+
+// ── Auth 상태 변화 감지 (로그인/로그아웃/이메일인증 완료)
+_sb.auth.onAuthStateChange(async(event,session)=>{
+  if(event==='SIGNED_IN'&&session?.user){
+    _currentUser=session.user;
+    _updateNavAuth(_currentUser);
+    closeAuthModal();
+    // 온보딩 완료 여부 확인
+    const{data:prof}=await _sb.from('user_profiles').select('onboarding_done').eq('user_id',_currentUser.id).single();
+    if(!prof||!prof.onboarding_done){_showOnboarding();}
+    else{await _loadFromCloud(_currentUser);}
+  }else if(event==='SIGNED_OUT'){
+    _currentUser=null;
+    _updateNavAuth(null);
+  }
+});
 
 // Supabase Edge Function 헬퍼 (키 저장 / 프록시 호출)
 async function storeApiKey(service,key){
@@ -911,6 +1373,7 @@ function saveCashEdit(type){
   document.getElementById('cash-'+type+'-view').style.display='flex';
   updateCashDisplay();
   renderStocks();
+  _syncToCloud();
 }
 function cancelCashEdit(type){
   document.getElementById('cash-'+type+'-form').style.display='none';
@@ -975,6 +1438,7 @@ function renderStocks(){
     return`<tr id="sr-${i}"><td style="font-weight:600">${mktBadge}${s.name}</td><td style="font-size:var(--text-sm);color:var(--color-text-tertiary);font-family:monospace">${s.ticker}</td><td>${pFmt(s.buy)}</td><td style="font-weight:600">${pFmt(s.cur)}${stateTag}</td><td>${s.qty}</td><td>${evalFmt}</td><td class="${r>=0?'up':'down'}" style="font-weight:600">${(r>=0?'+':'')+r.toFixed(2)}%</td><td>${s.status==='hold'?w.toFixed(1)+'%':'—'}</td><td><span style="font-size:var(--text-sm);font-weight:700;padding:2px 7px;border-radius:20px;${bc}">${s.status==='buy'?'매수':s.status==='hold'?'보유':'관심'}</span></td><td>${styleBadge}</td><td style="text-align:center"><span style="font-size:var(--text-sm);font-weight:700;padding:2px 6px;border-radius:4px;background:${ac.bg};color:${ac.c}">${acctCh}</span></td><td style="white-space:nowrap"><button type="button" onclick="editStock(${i})" style="font-size:var(--text-sm);padding:3px 7px;border:1px solid var(--color-border-input);border-radius:6px;background:var(--color-bg-surface);cursor:pointer;color:var(--color-text-secondary);margin-right:4px">편집</button><button type="button" onclick="removeStock(${i})" style="font-size:var(--text-sm);padding:3px 7px;border:1px solid var(--color-error-border);border-radius:6px;background:var(--color-bg-surface);cursor:pointer;color:var(--color-error);margin-right:4px">삭제</button><button type="button" onclick="${s.hidden?'unhideStock':'hideStock'}(${i})" style="font-size:var(--text-sm);padding:3px 7px;border:1px solid ${s.hidden?'var(--color-accent-border)':'var(--color-border-subtle)'};border-radius:6px;background:${s.hidden?'var(--color-accent-bg)':'var(--color-bg-surface)'};cursor:pointer;color:${s.hidden?'var(--color-accent)':'var(--color-text-placeholder)'}">${s.hidden?'복원':'숨김'}</button></td></tr>`;
   }).join('');
   localStorage.setItem('pf_s',JSON.stringify(stocks));
+  _syncToCloud();
 }
 
 const ACCT_COLOR={
@@ -1395,6 +1859,7 @@ async function refreshQuotes(){
   const res=await Promise.allSettled(quoteSymbols.map(sym=>proxyApiCall('finnhub','quote',{symbol:sym}).then(d=>({sym,...d}))));
   document.getElementById('quote-grid').innerHTML=res.map((r,i)=>{if(r.status!=='fulfilled')return`<div class="q-card"><div class="q-sym">${quoteSymbols[i]}</div><div class="q-price neu">오류</div></div>`;const d=r.value;const cls=d.dp==null?'neu':d.dp>=0?'up':'down';return`<div class="q-card"><div class="q-sym">${d.sym}</div><div class="q-price ${cls}">$${d.c?d.c.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}):'—'}</div><div class="q-chg ${cls}">${d.dp!=null?(d.dp>=0?'▲ +':'▼ ')+Math.abs(d.dp).toFixed(2)+'%':'—'}</div></div>`}).join('');
   localStorage.setItem('fh_q',JSON.stringify(quoteSymbols));
+  _syncToCloud();
 }
 
 function addQuote(){const sym=document.getElementById('quote-sym').value.trim().toUpperCase();if(!sym||quoteSymbols.includes(sym))return;quoteSymbols.push(sym);document.getElementById('quote-sym').value='';refreshQuotes();}
@@ -1470,6 +1935,7 @@ function addMemo(){
   const time=(dateStr&&timeStr)?new Date(`${dateStr}T${timeStr}:00`).toISOString():new Date().toISOString();
   memos.unshift({id:Date.now(),text:txt,tag:selTagV,time,important:false});
   localStorage.setItem('pf_m',JSON.stringify(memos));
+  _syncToCloud();
   document.getElementById('memo-txt').value='';
   resetMemoDateTime();
   renderMemos();
@@ -1623,6 +2089,7 @@ function saveMemoEdit(id){
   const notifyAtStr=document.getElementById('medit-notifyat-'+id)?.value;
   if(notifyAtStr&&dateStr)memos[idx].notifyAt=new Date(`${dateStr}T${notifyAtStr}:00`).toISOString();
   localStorage.setItem('pf_m',JSON.stringify(memos));
+  _syncToCloud();
   renderMemos();
 }
 
@@ -1634,24 +2101,28 @@ function completeMemo(id){
   memos.splice(idx,1);
   localStorage.setItem('pf_m',JSON.stringify(memos));
   localStorage.setItem('pf_ma',JSON.stringify(memoArchive));
+  _syncToCloud();
   switchMemoView('archive');
 }
 
 function deleteMemo(id){
   memos=memos.filter(m=>m.id!==id);
   localStorage.setItem('pf_m',JSON.stringify(memos));
+  _syncToCloud();
   renderMemos();
 }
 
 function deleteArchive(id){
   memoArchive=memoArchive.filter(m=>m.id!==id);
   localStorage.setItem('pf_ma',JSON.stringify(memoArchive));
+  _syncToCloud();
   renderMemos();
 }
 
 function toggleMasterNotify(){
   notifyMaster=!notifyMaster;
   localStorage.setItem('pf_notify_master',notifyMaster);
+  _syncToCloud();
   updateMasterNotifyBtn();
 }
 function updateMasterNotifyBtn(){
@@ -1667,6 +2138,7 @@ function toggleMemoImportant(id){
   if(idx<0)return;
   memos[idx].important=!memos[idx].important;
   localStorage.setItem('pf_m',JSON.stringify(memos));
+  _syncToCloud();
   renderMemos();
 }
 function toggleEditImportant(id){
@@ -1687,6 +2159,7 @@ function toggleMemoNotify(id){
   if(idx<0)return;
   memos[idx].notify=!memos[idx].notify;
   localStorage.setItem('pf_m',JSON.stringify(memos));
+  _syncToCloud();
   renderMemos();
 }
 function toggleEditNotify(id){
@@ -1718,7 +2191,7 @@ function goPage(name,btn){
     const savedTab=localStorage.getItem('cur_itab_research')||'sites';
     const tabBtn=document.querySelector(`#page-research .itab[onclick*="'${savedTab}','research'"]`);
     if(tabBtn)swInner(savedTab,'research',tabBtn);
-    if(savedTab==='reg'&&!regAllItems.length)loadRegRSS();
+    if(savedTab==='reg'&&!regAllItems.length){if(!_loadRegCache())loadRegRSS();}
   }
 }
 
@@ -1987,6 +2460,23 @@ const REG_FEEDS_KR=[
 let regAllItems=[];
 function _parseRSSItems(xml,f){return Array.from(xml.querySelectorAll('entry, item')).slice(0,8).map(el=>({key:f.key,source:f.name,label:f.label,color:f.color,bg:f.bg,title:el.querySelector('title')?.textContent?.trim()||'',summary:(el.querySelector('summary, description')?.textContent||'').replace(/<[^>]+>/g,'').trim().slice(0,180),link:el.querySelector('link')?.textContent?.trim()||el.querySelector('link')?.getAttribute('href')||'#',date:el.querySelector('updated, pubDate')?.textContent?.trim()||''}));}
 async function _fetchRSSProxy(url){const ctrl=new AbortController();const tid=setTimeout(()=>ctrl.abort(),12000);try{const r=await fetch(SUPA_URL,{method:'POST',headers:_sh,body:JSON.stringify({action:'rss-proxy',url}),signal:ctrl.signal});if(!r.ok)throw new Error('HTTP '+r.status);const text=await r.text();const xml=new DOMParser().parseFromString(text,'text/xml');if(xml.querySelector('parsererror'))throw new Error('parse_error');return xml;}finally{clearTimeout(tid);}}
+function _loadRegCache(){
+  try{
+    const raw=localStorage.getItem('reg_cache');
+    if(!raw)return false;
+    const c=JSON.parse(raw);
+    if(!c||!c.us||!c.kr)return false;
+    const usEl=document.getElementById('reg-feed-us'),krEl=document.getElementById('reg-feed-kr');
+    const dot=document.getElementById('reg-live-dot'),txt=document.getElementById('reg-upd-txt');
+    renderRegFeed(usEl,c.us,'미국 규제 뉴스를 불러올 수 없습니다');
+    renderRegFeed(krEl,c.kr,'한국 규제 뉴스를 불러올 수 없습니다');
+    regAllItems=[...c.us,...c.kr];
+    dot.style.background='var(--color-success)';
+    dot.style.animation='pulse 2s infinite';
+    txt.textContent='캐시: '+new Date(c.time).toLocaleTimeString('ko-KR');
+    return true;
+  }catch(e){return false;}
+}
 async function loadRegRSS(){
   const dot=document.getElementById('reg-live-dot'),txt=document.getElementById('reg-upd-txt'),usEl=document.getElementById('reg-feed-us'),krEl=document.getElementById('reg-feed-kr');
   const spin='<div class="empty" style="font-size:var(--text-sm)"><span class="spin">⟳</span> 로딩 중...</div>';
@@ -2004,6 +2494,10 @@ async function loadRegRSS(){
   renderRegFeed(krEl,krItems,'한국 규제 뉴스를 불러올 수 없습니다');
   regAllItems=[...usItems,...krItems];
   const total=regAllItems.length;
+  if(total){
+    const now=new Date().toISOString();
+    try{localStorage.setItem('reg_cache',JSON.stringify({us:usItems,kr:krItems,time:now}));}catch(e){}
+  }
   dot.style.background=total?'var(--color-success)':'var(--color-error)';
   dot.style.animation=total?'pulse 2s infinite':'none';
   txt.textContent=total?'업데이트: '+new Date().toLocaleTimeString('ko-KR'):'로드 실패';
@@ -2299,6 +2793,19 @@ renderStocks();renderMemos();renderSites();updateFxRate();updateSampleNotice();u
 if(stocks.length)fetchPrices().then(()=>checkAndAutoFetch());
 else checkAndAutoFetch();
 setInterval(checkAndAutoFetch,60000);
+// ─ Auth 세션 확인 — 로그인되어 있으면 클라우드 데이터 로드, 없으면 로그인 모달 표시
+(async()=>{
+  const{data:{session}}=await _sb.auth.getSession();
+  if(session?.user){
+    _currentUser=session.user;
+    _updateNavAuth(_currentUser);
+    const{data:prof}=await _sb.from('user_profiles').select('onboarding_done').eq('user_id',_currentUser.id).single();
+    if(!prof||!prof.onboarding_done){_showOnboarding();}
+    else{await _loadFromCloud(_currentUser);}
+  }else{
+    openAuthModal();
+  }
+})();
 if(CKEY){
   document.getElementById('pn-ai-dot').style.display='inline-block';
   // 오늘 저장된 AI 요약 자동 복원
@@ -2310,5 +2817,279 @@ if(CKEY){
 }
 loadPortfolioNews();
 </script>
+
+<!-- ══ 로그인/회원가입 모달 ══ -->
+<div class="auth-overlay hidden" id="auth-overlay">
+  <div class="auth-modal">
+    <div class="auth-logo">📊 투자 허브</div>
+
+    <!-- 로그인 폼 -->
+    <div id="auth-login-view">
+      <div class="auth-tabs">
+        <button class="auth-tab on" onclick="switchAuthTab('login')">로그인</button>
+        <button class="auth-tab" onclick="switchAuthTab('signup')">회원가입</button>
+      </div>
+      <div class="auth-field"><label>이메일</label><input type="email" id="login-email" placeholder="이메일 주소" autocomplete="email"></div>
+      <div class="auth-field"><label>비밀번호</label><input type="password" id="login-pw" placeholder="비밀번호" autocomplete="current-password" onkeydown="if(event.key==='Enter')doSignIn()"></div>
+      <div class="auth-err" id="login-err"></div>
+      <button class="auth-btn auth-btn-primary" onclick="doSignIn()">로그인</button>
+      <div style="text-align:center">
+        <button class="auth-btn auth-btn-ghost" onclick="switchAuthTab('forgot')">비밀번호를 잊으셨나요?</button>
+      </div>
+    </div>
+
+    <!-- 회원가입 폼 -->
+    <div id="auth-signup-view" style="display:none">
+      <div class="auth-tabs">
+        <button class="auth-tab" onclick="switchAuthTab('login')">로그인</button>
+        <button class="auth-tab on" onclick="switchAuthTab('signup')">회원가입</button>
+      </div>
+      <div class="auth-field"><label>이메일</label><input type="email" id="signup-email" placeholder="이메일 주소" autocomplete="email"></div>
+      <div class="auth-field"><label>비밀번호</label><input type="password" id="signup-pw" placeholder="8자 이상" autocomplete="new-password"></div>
+      <div class="auth-field"><label>비밀번호 확인</label><input type="password" id="signup-pw2" placeholder="비밀번호 재입력" autocomplete="new-password" onkeydown="if(event.key==='Enter')doSignUp()"></div>
+      <div class="auth-err" id="signup-err"></div>
+      <button class="auth-btn auth-btn-primary" onclick="doSignUp()">회원가입</button>
+    </div>
+
+    <!-- 비밀번호 찾기 폼 -->
+    <div id="auth-forgot-view" style="display:none">
+      <div style="margin-bottom:16px">
+        <button onclick="switchAuthTab('login')" style="background:none;border:none;cursor:pointer;font-size:var(--text-sm);color:var(--color-text-tertiary)">← 로그인으로 돌아가기</button>
+      </div>
+      <div style="font-size:var(--text-xl);font-weight:700;margin-bottom:6px">비밀번호 재설정</div>
+      <div style="font-size:var(--text-sm);color:var(--color-text-secondary);margin-bottom:16px">가입한 이메일로 재설정 링크를 보내드립니다.</div>
+      <div class="auth-field"><label>이메일</label><input type="email" id="forgot-email" placeholder="이메일 주소" onkeydown="if(event.key==='Enter')doForgotPw()"></div>
+      <div class="auth-err" id="forgot-err"></div>
+      <div class="auth-ok" id="forgot-ok"></div>
+      <button class="auth-btn auth-btn-primary" onclick="doForgotPw()">재설정 링크 발송</button>
+    </div>
+
+    <!-- 이메일 인증 대기 화면 -->
+    <div id="auth-verify-view" style="display:none">
+      <div class="verify-box">
+        <div class="verify-icon">📧</div>
+        <div class="verify-title">이메일을 확인해주세요</div>
+        <div class="verify-desc">아래 이메일로 인증 링크를 발송했습니다.<br>링크를 클릭하면 자동으로 로그인됩니다.</div>
+        <div class="verify-email-badge" id="verify-email-badge"></div>
+        <button class="auth-btn auth-btn-primary" onclick="resendVerify()" style="margin-top:4px">인증 이메일 재발송</button>
+        <div class="auth-ok" id="resend-ok"></div>
+        <div style="text-align:center;margin-top:12px">
+          <button class="auth-btn auth-btn-ghost" onclick="switchAuthTab('login')">다른 계정으로 로그인</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ 온보딩 마법사 ══ -->
+<div class="ob-overlay hidden" id="ob-overlay">
+  <div class="ob-modal">
+    <div class="ob-progress">
+      <div class="ob-dot done" id="ob-dot-1"></div>
+      <div class="ob-dot" id="ob-dot-2"></div>
+      <div class="ob-dot" id="ob-dot-3"></div>
+      <div class="ob-dot" id="ob-dot-4"></div>
+    </div>
+
+    <!-- Step 1: 개인/기업 -->
+    <div class="ob-step on" id="ob-step-1">
+      <div class="ob-step-title">어떤 사용자이신가요?</div>
+      <div class="ob-step-sub">투자 허브를 어떤 목적으로 활용하시나요?</div>
+      <div class="ob-type-grid">
+        <div class="ob-type-card" id="ob-type-personal" onclick="selectUserType('personal')">
+          <div class="ob-type-icon">👤</div>
+          <div class="ob-type-label">개인</div>
+        </div>
+        <div class="ob-type-card" id="ob-type-business" onclick="selectUserType('business')">
+          <div class="ob-type-icon">🏢</div>
+          <div class="ob-type-label">기업</div>
+        </div>
+      </div>
+      <div class="ob-err" id="ob-err-1"></div>
+      <div class="ob-btns"><button class="ob-btn-next" onclick="obNext(1)">다음 →</button></div>
+    </div>
+
+    <!-- Step 2: 나이대 (개인) / 업종 (기업) -->
+    <div class="ob-step" id="ob-step-2">
+      <!-- 개인: 나이대 -->
+      <div id="ob-s2-personal">
+        <div class="ob-step-title">연령대를 선택해주세요</div>
+        <div class="ob-step-sub">맞춤형 정보 제공에 활용됩니다.</div>
+        <div class="ob-age-grid">
+          <button class="ob-age-btn" onclick="selectAge('10s')">10대</button>
+          <button class="ob-age-btn" onclick="selectAge('20s')">20대</button>
+          <button class="ob-age-btn" onclick="selectAge('30s')">30대</button>
+          <button class="ob-age-btn" onclick="selectAge('40s')">40대</button>
+          <button class="ob-age-btn" onclick="selectAge('50s')">50대</button>
+          <button class="ob-age-btn" onclick="selectAge('60s')">60대</button>
+          <button class="ob-age-btn" onclick="selectAge('70s+')">70대 이상</button>
+        </div>
+      </div>
+      <!-- 기업: 업종 -->
+      <div id="ob-s2-business" style="display:none">
+        <div class="ob-step-title">업종을 선택해주세요</div>
+        <div class="ob-step-sub">KSIC 한국표준산업분류 기준입니다.</div>
+        <select class="ob-select" id="ob-business-select" onchange="selectBusiness(this.value)">
+          <option value="">업종 선택</option>
+          <option value="농업·임업·어업">농업·임업·어업</option>
+          <option value="광업">광업</option>
+          <option value="제조업">제조업</option>
+          <option value="전기·가스·증기 및 공기조절 공급업">전기·가스·증기 및 공기조절 공급업</option>
+          <option value="수도·하수·폐기물 처리, 원료 재생업">수도·하수·폐기물 처리, 원료 재생업</option>
+          <option value="건설업">건설업</option>
+          <option value="도매 및 소매업">도매 및 소매업</option>
+          <option value="운수 및 창고업">운수 및 창고업</option>
+          <option value="숙박 및 음식점업">숙박 및 음식점업</option>
+          <option value="정보통신업">정보통신업</option>
+          <option value="금융 및 보험업">금융 및 보험업</option>
+          <option value="부동산업">부동산업</option>
+          <option value="전문·과학 및 기술 서비스업">전문·과학 및 기술 서비스업</option>
+          <option value="사업시설 관리·지원 및 임대 서비스업">사업시설 관리·지원 및 임대 서비스업</option>
+          <option value="공공행정·국방 및 사회보장 행정">공공행정·국방 및 사회보장 행정</option>
+          <option value="교육 서비스업">교육 서비스업</option>
+          <option value="보건업 및 사회복지 서비스업">보건업 및 사회복지 서비스업</option>
+          <option value="예술·스포츠 및 여가 관련 서비스업">예술·스포츠 및 여가 관련 서비스업</option>
+          <option value="협회·단체·수리 및 기타 개인 서비스업">협회·단체·수리 및 기타 개인 서비스업</option>
+          <option value="가구 내 고용활동 및 자가소비 생산활동">가구 내 고용활동 및 자가소비 생산활동</option>
+          <option value="국제 및 외국기관">국제 및 외국기관</option>
+        </select>
+      </div>
+      <div class="ob-err" id="ob-err-2"></div>
+      <div class="ob-btns">
+        <button class="ob-btn-prev" onclick="obPrev(2)">← 이전</button>
+        <button class="ob-btn-next" onclick="obNext(2)">다음 →</button>
+      </div>
+    </div>
+
+    <!-- Step 3: 서비스 사용 목적 -->
+    <div class="ob-step" id="ob-step-3">
+      <div class="ob-step-title">서비스 사용 목적을 알려주세요</div>
+      <div class="ob-step-sub">복수 선택 가능합니다.</div>
+      <div class="ob-purpose-list">
+        <label class="ob-purpose-item" onclick="togglePurpose(this,'portfolio')">
+          <input type="checkbox" value="portfolio">
+          <span class="ob-purpose-text">📈 개인 투자 포트폴리오 관리</span>
+        </label>
+        <label class="ob-purpose-item" onclick="togglePurpose(this,'news')">
+          <input type="checkbox" value="news">
+          <span class="ob-purpose-text">📰 금융 뉴스 및 시장 동향 파악</span>
+        </label>
+        <label class="ob-purpose-item" onclick="togglePurpose(this,'reg')">
+          <input type="checkbox" value="reg">
+          <span class="ob-purpose-text">⚖️ 규제·정책 변화 모니터링</span>
+        </label>
+        <label class="ob-purpose-item" onclick="togglePurpose(this,'research')">
+          <input type="checkbox" value="research">
+          <span class="ob-purpose-text">🔍 투자 리서치 정보 수집</span>
+        </label>
+        <label class="ob-purpose-item" onclick="togglePurpose(this,'journal')">
+          <input type="checkbox" value="journal">
+          <span class="ob-purpose-text">📓 투자 일지 작성·관리</span>
+        </label>
+      </div>
+      <div class="ob-err" id="ob-err-3"></div>
+      <div class="ob-btns">
+        <button class="ob-btn-prev" onclick="obPrev(3)">← 이전</button>
+        <button class="ob-btn-next" onclick="obNext(3)">다음 →</button>
+      </div>
+    </div>
+
+    <!-- Step 4: 마케팅 동의 -->
+    <div class="ob-step" id="ob-step-4">
+      <div class="ob-step-title">마케팅 수신 동의</div>
+      <div class="ob-step-sub">서비스 업데이트 및 유용한 정보를 보내드립니다.</div>
+      <div class="ob-marketing-box" id="ob-marketing-box" onclick="toggleMarketing()">
+        <input type="checkbox" id="ob-marketing-chk" style="width:16px;height:16px;margin-top:2px;accent-color:var(--color-text-primary);flex-shrink:0;cursor:pointer">
+        <div>
+          <div class="ob-marketing-title">이메일 수신 동의 <span style="font-size:var(--text-xs);color:var(--color-text-tertiary);font-weight:400">(선택)</span></div>
+          <div class="ob-marketing-desc">서비스 업데이트, 주요 기능 안내 등의 이메일을 수신합니다.</div>
+        </div>
+      </div>
+      <div class="ob-btns">
+        <button class="ob-btn-prev" onclick="obPrev(4)">← 이전</button>
+        <button class="ob-btn-next" onclick="obSubmit()">시작하기 🚀</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ 프로필 설정 모달 ══ -->
+<div class="profile-overlay hidden" id="profile-overlay">
+  <div class="profile-modal">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px">
+      <div class="profile-title" style="margin-bottom:0">프로필 설정</div>
+      <button onclick="closeProfileModal()" style="background:none;border:none;cursor:pointer;font-size:18px;color:var(--color-text-tertiary)">✕</button>
+    </div>
+    <div class="profile-section">
+      <div class="profile-label">계정 이메일</div>
+      <div id="profile-email-display" style="font-size:var(--text-md);color:var(--color-text-strong);padding:8px 0;border-bottom:1px solid var(--color-border-faint)"></div>
+    </div>
+    <div class="profile-section">
+      <div class="profile-label">사용자 유형</div>
+      <div style="display:flex;gap:8px">
+        <button class="ob-age-btn" id="prof-type-personal" onclick="profSelectType('personal')">개인</button>
+        <button class="ob-age-btn" id="prof-type-business" onclick="profSelectType('business')">기업</button>
+      </div>
+    </div>
+    <div class="profile-section" id="prof-age-section">
+      <div class="profile-label">연령대</div>
+      <div class="ob-age-grid" id="prof-age-grid">
+        <button class="ob-age-btn" onclick="profSelectAge('10s')">10대</button>
+        <button class="ob-age-btn" onclick="profSelectAge('20s')">20대</button>
+        <button class="ob-age-btn" onclick="profSelectAge('30s')">30대</button>
+        <button class="ob-age-btn" onclick="profSelectAge('40s')">40대</button>
+        <button class="ob-age-btn" onclick="profSelectAge('50s')">50대</button>
+        <button class="ob-age-btn" onclick="profSelectAge('60s')">60대</button>
+        <button class="ob-age-btn" onclick="profSelectAge('70s+')">70대 이상</button>
+      </div>
+    </div>
+    <div class="profile-section" id="prof-biz-section" style="display:none">
+      <div class="profile-label">업종</div>
+      <select class="ob-select" id="prof-biz-select">
+        <option value="">업종 선택</option>
+        <option value="농업·임업·어업">농업·임업·어업</option>
+        <option value="광업">광업</option>
+        <option value="제조업">제조업</option>
+        <option value="전기·가스·증기 및 공기조절 공급업">전기·가스·증기 및 공기조절 공급업</option>
+        <option value="수도·하수·폐기물 처리, 원료 재생업">수도·하수·폐기물 처리, 원료 재생업</option>
+        <option value="건설업">건설업</option>
+        <option value="도매 및 소매업">도매 및 소매업</option>
+        <option value="운수 및 창고업">운수 및 창고업</option>
+        <option value="숙박 및 음식점업">숙박 및 음식점업</option>
+        <option value="정보통신업">정보통신업</option>
+        <option value="금융 및 보험업">금융 및 보험업</option>
+        <option value="부동산업">부동산업</option>
+        <option value="전문·과학 및 기술 서비스업">전문·과학 및 기술 서비스업</option>
+        <option value="사업시설 관리·지원 및 임대 서비스업">사업시설 관리·지원 및 임대 서비스업</option>
+        <option value="공공행정·국방 및 사회보장 행정">공공행정·국방 및 사회보장 행정</option>
+        <option value="교육 서비스업">교육 서비스업</option>
+        <option value="보건업 및 사회복지 서비스업">보건업 및 사회복지 서비스업</option>
+        <option value="예술·스포츠 및 여가 관련 서비스업">예술·스포츠 및 여가 관련 서비스업</option>
+        <option value="협회·단체·수리 및 기타 개인 서비스업">협회·단체·수리 및 기타 개인 서비스업</option>
+        <option value="가구 내 고용활동 및 자가소비 생산활동">가구 내 고용활동 및 자가소비 생산활동</option>
+        <option value="국제 및 외국기관">국제 및 외국기관</option>
+      </select>
+    </div>
+    <div class="profile-section">
+      <div class="profile-label">서비스 사용 목적</div>
+      <div style="display:flex;flex-direction:column;gap:6px" id="prof-purpose-list">
+        <label style="display:flex;align-items:center;gap:8px;font-size:var(--text-md);cursor:pointer"><input type="checkbox" id="prof-p-portfolio" style="accent-color:var(--color-text-primary)"> 개인 투자 포트폴리오 관리</label>
+        <label style="display:flex;align-items:center;gap:8px;font-size:var(--text-md);cursor:pointer"><input type="checkbox" id="prof-p-news" style="accent-color:var(--color-text-primary)"> 금융 뉴스 및 시장 동향 파악</label>
+        <label style="display:flex;align-items:center;gap:8px;font-size:var(--text-md);cursor:pointer"><input type="checkbox" id="prof-p-reg" style="accent-color:var(--color-text-primary)"> 규제·정책 변화 모니터링</label>
+        <label style="display:flex;align-items:center;gap:8px;font-size:var(--text-md);cursor:pointer"><input type="checkbox" id="prof-p-research" style="accent-color:var(--color-text-primary)"> 투자 리서치 정보 수집</label>
+        <label style="display:flex;align-items:center;gap:8px;font-size:var(--text-md);cursor:pointer"><input type="checkbox" id="prof-p-journal" style="accent-color:var(--color-text-primary)"> 투자 일지 작성·관리</label>
+      </div>
+    </div>
+    <div class="profile-section">
+      <label style="display:flex;align-items:center;gap:8px;font-size:var(--text-md);cursor:pointer">
+        <input type="checkbox" id="prof-marketing" style="accent-color:var(--color-text-primary)"> 이메일 마케팅 수신 동의
+      </label>
+    </div>
+    <div class="auth-err" id="profile-err"></div>
+    <div class="auth-ok" id="profile-ok"></div>
+    <button class="auth-btn auth-btn-primary" onclick="saveProfile()" style="margin-top:8px">저장</button>
+  </div>
+</div>
+
 </body>
 </html>
