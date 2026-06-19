@@ -551,7 +551,7 @@ input:focus-visible,textarea:focus-visible{outline:2px solid var(--color-info);o
       <div class="section-lbl" style="margin-bottom:0">보유 종목 최신 소식 <span style="font-size:var(--text-xs);font-weight:400;text-transform:none;letter-spacing:0;color:var(--color-text-muted)">(미국 Finnhub · 국내 Naver)</span></div>
       <div style="display:flex;gap:5px;align-items:center">
         <span id="pn-ai-dot" style="display:none;width:6px;height:6px;border-radius:50%;background:var(--color-success);flex-shrink:0;animation:pulse 2s infinite"></span>
-        <button class="btn" style="font-size:var(--text-sm)" onclick="handleAiSummaryBtn()" id="pn-ai-btn">AI 요약</button>
+        <button class="btn" style="font-size:var(--text-sm)" onclick="handleAiSummaryBtn()" id="pn-ai-btn">🤖 AI 뉴스 브리핑</button>
         <button class="btn" onclick="loadPortfolioNews()" aria-label="보유 종목 뉴스 새로고침">↻</button>
       </div>
     </div>
@@ -754,6 +754,15 @@ input:focus-visible,textarea:focus-visible{outline:2px solid var(--color-info);o
       </div>
     </div>
 
+    <!-- 규제 AI 요약 -->
+    <div style="margin-bottom:14px" id="reg-ai-section">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+        <button class="btn" style="font-size:var(--text-sm)" onclick="generateRegSummary()" id="reg-ai-btn">🤖 규제 AI 요약</button>
+        <span style="font-size:var(--text-xs);color:var(--color-text-muted)">최신 규제 3건 · 한국어 2문장 요약</span>
+      </div>
+      <div id="reg-ai-result" style="display:none"></div>
+    </div>
+
     <!-- 미국 / 한국 2컬럼 -->
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
       <div>
@@ -772,6 +781,70 @@ input:focus-visible,textarea:focus-visible{outline:2px solid var(--color-info);o
      PAGE 5: 투자 일지
 ═══════════════════════════════════════════ -->
 <div id="page-memo" class="page">
+
+  <!-- 📋 투자 보고서 섹션 -->
+  <div id="report-banner" style="display:none;background:var(--color-info-bg);border:1px solid var(--color-info-border);border-radius:10px;padding:10px 14px;margin-bottom:12px;display:none;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
+    <span id="report-banner-msg" style="font-size:var(--text-base);color:var(--color-info)"></span>
+    <div style="display:flex;gap:6px">
+      <button class="btn" id="report-banner-btn" onclick="handleReportBanner()" style="font-size:var(--text-sm);border-color:var(--color-info);color:var(--color-info)">지금 생성</button>
+      <button class="btn" onclick="dismissReportBanner()" style="font-size:var(--text-sm)">나중에</button>
+    </div>
+  </div>
+
+  <div style="background:var(--color-bg-surface);border:1px solid var(--color-border-default);border-radius:12px;padding:14px 16px;margin-bottom:14px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+      <span style="font-size:var(--text-base);font-weight:700;color:var(--color-text-primary)">📋 투자 보고서</span>
+      <button class="btn" style="font-size:var(--text-sm)" onclick="toggleReportSettings()">⚙ 설정</button>
+    </div>
+
+    <!-- 설정 패널 -->
+    <div id="report-settings-panel" style="display:none;background:var(--color-bg-base);border:1px solid var(--color-border-default);border-radius:8px;padding:12px 14px;margin-bottom:12px;font-size:var(--text-sm)">
+      <div style="margin-bottom:10px">
+        <div style="font-weight:600;color:var(--color-text-secondary);margin-bottom:6px">주간 보고서 발행 시점</div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+          <span style="color:var(--color-text-tertiary)">매주</span>
+          <select id="rpt-week-day" style="font-size:var(--text-sm);padding:3px 6px;border:1px solid var(--color-border-input);border-radius:6px;font-family:inherit;background:var(--color-bg-surface)">
+            <option value="0">일요일</option><option value="1" selected>월요일</option><option value="2">화요일</option><option value="3">수요일</option><option value="4">목요일</option><option value="5">금요일</option><option value="6">토요일</option>
+          </select>
+          <input type="time" id="rpt-week-time" value="09:00" style="font-size:var(--text-sm);padding:3px 6px;border:1px solid var(--color-border-input);border-radius:6px;font-family:inherit;background:var(--color-bg-surface)"/>
+        </div>
+      </div>
+      <div style="margin-bottom:10px">
+        <div style="font-weight:600;color:var(--color-text-secondary);margin-bottom:6px">월간 보고서 발행 시점</div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+          <span style="color:var(--color-text-tertiary)">매월</span>
+          <select id="rpt-month-day" style="font-size:var(--text-sm);padding:3px 6px;border:1px solid var(--color-border-input);border-radius:6px;font-family:inherit;background:var(--color-bg-surface)">
+            ${[...Array(28)].map((_,i)=>`<option value="${i+1}"${i===0?' selected':''}>${i+1}일</option>`).join('')}
+          </select>
+          <input type="time" id="rpt-month-time" value="09:00" style="font-size:var(--text-sm);padding:3px 6px;border:1px solid var(--color-border-input);border-radius:6px;font-family:inherit;background:var(--color-bg-surface)"/>
+          <button class="btn" onclick="saveReportSettings()" style="font-size:var(--text-sm);border-color:var(--color-success);color:var(--color-success)">저장</button>
+        </div>
+      </div>
+      <div id="rpt-settings-ok" style="color:var(--color-success);font-size:var(--text-sm);display:none">✓ 저장됐습니다</div>
+    </div>
+
+    <!-- 주간 보고서 -->
+    <div style="margin-bottom:10px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+        <span style="font-size:var(--text-sm);font-weight:600;color:var(--color-text-secondary)" id="rpt-week-label">주간 보고서</span>
+        <button class="btn" style="font-size:var(--text-xs)" onclick="generateWeeklyReport()" id="rpt-week-btn">생성</button>
+      </div>
+      <div id="rpt-week-content" style="font-size:var(--text-base);color:var(--color-text-tertiary)">아직 생성된 보고서가 없습니다.</div>
+    </div>
+
+    <!-- 구분선 -->
+    <div style="border-top:1px solid var(--color-border-default);margin-bottom:10px"></div>
+
+    <!-- 월간 보고서 -->
+    <div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+        <span style="font-size:var(--text-sm);font-weight:600;color:var(--color-text-secondary)" id="rpt-month-label">월간 보고서</span>
+        <button class="btn" style="font-size:var(--text-xs)" onclick="generateMonthlyReport()" id="rpt-month-btn">생성</button>
+      </div>
+      <div id="rpt-month-content" style="font-size:var(--text-base);color:var(--color-text-tertiary)">아직 생성된 보고서가 없습니다.</div>
+    </div>
+  </div>
+
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.75rem">
     <div class="memo-view-tabs">
       <button class="memo-vtab active" id="vtab-active" onclick="switchMemoView('active')">활성 일지</button>
@@ -2266,6 +2339,7 @@ function goPage(name,btn){
   localStorage.setItem('cur_page',name);
   if(name==='indices')loadAllIndices();
   if(name==='news')initNewsUI();
+  if(name==='memo')checkReportSchedule();
   if(name==='research'){
     const savedTab=localStorage.getItem('cur_itab_research')||'sites';
     const tabBtn=document.querySelector(`#page-research .itab[onclick*="'${savedTab}','research'"]`);
@@ -2622,11 +2696,11 @@ async function runAiSummary(){
     return;
   }
 
-  // 뉴스 미로드 시 전체 종목 최신 1건씩 사전 fetch
+  // 뉴스 미로드 시 보유(hold) 종목 최신 1건씩 사전 fetch
   if(!_pnItems.length){
     sumDiv.style.display='block';
     sumDiv.innerHTML='<div style="font-size:var(--text-base);color:var(--color-text-tertiary);padding:8px 10px"><span class="spin">⟳</span> 뉴스 불러오는 중...</div>';
-    const targets=stocks.filter(s=>s.ticker&&s.ticker.trim()!=='');
+    const targets=stocks.filter(s=>s.ticker&&s.ticker.trim()!==''&&s.status==='hold');
     await Promise.allSettled(targets.map(async s=>{
       const isKR=/\.(KS|KQ)$/i.test(s.ticker);
       if(_newsCache[s.ticker]===undefined){
@@ -2714,9 +2788,232 @@ function resetGoogleAiKey(){
   document.getElementById('pn-ai-summary').style.display='none';
   togglePnKeyRow();
 }
+// ══════════════════════════════════════════
+// 투자 보고서 (주간 · 월간)
+// ══════════════════════════════════════════
+
+function _getWeekKey(date){
+  const d=new Date(date||Date.now());
+  const jan1=new Date(d.getFullYear(),0,1);
+  const wk=Math.ceil(((d-jan1)/86400000+jan1.getDay()+1)/7);
+  return d.getFullYear()+'W'+String(wk).padStart(2,'0');
+}
+function _getMonthKey(date){
+  const d=new Date(date||Date.now());
+  return d.getFullYear()+String(d.getMonth()+1).padStart(2,'0');
+}
+
+function toggleReportSettings(){
+  const p=document.getElementById('report-settings-panel');
+  p.style.display=p.style.display==='none'?'block':'none';
+  if(p.style.display==='block')_loadReportSettingsToUI();
+}
+
+function _loadReportSettingsToUI(){
+  let s={};try{s=JSON.parse(localStorage.getItem('ai_report_settings')||'{}');}catch(_){}
+  const wd=document.getElementById('rpt-week-day');if(wd&&s.weekDay!=null)wd.value=s.weekDay;
+  const wt=document.getElementById('rpt-week-time');if(wt&&s.weekHour!=null)wt.value=String(s.weekHour).padStart(2,'0')+':'+String(s.weekMin||0).padStart(2,'0');
+  const md=document.getElementById('rpt-month-day');if(md&&s.monthDay!=null)md.value=s.monthDay;
+  const mt=document.getElementById('rpt-month-time');if(mt&&s.monthHour!=null)mt.value=String(s.monthHour).padStart(2,'0')+':'+String(s.monthMin||0).padStart(2,'0');
+}
+
+function saveReportSettings(){
+  const wd=parseInt(document.getElementById('rpt-week-day').value)||1;
+  const wt=(document.getElementById('rpt-week-time').value||'09:00').split(':');
+  const md=parseInt(document.getElementById('rpt-month-day').value)||1;
+  const mt=(document.getElementById('rpt-month-time').value||'09:00').split(':');
+  const s={weekDay:wd,weekHour:parseInt(wt[0]),weekMin:parseInt(wt[1]||0),monthDay:md,monthHour:parseInt(mt[0]),monthMin:parseInt(mt[1]||0)};
+  localStorage.setItem('ai_report_settings',JSON.stringify(s));
+  const ok=document.getElementById('rpt-settings-ok');ok.style.display='block';setTimeout(()=>ok.style.display='none',2000);
+}
+
+async function _callGeminiReport(prompt){
+  if(!CKEY)return{ok:false,reason:'no_key'};
+  try{
+    const data=await proxyApiCall('googleai','',{contents:[{parts:[{text:prompt}]}]});
+    if(data.error)return{ok:false,reason:'api_error',message:data.error.message||''};
+    const txt=data.candidates?.[0]?.content?.parts?.[0]?.text||'';
+    if(!txt)return{ok:false,reason:'empty'};
+    return{ok:true,text:txt.trim()};
+  }catch(e){return{ok:false,reason:'network',message:e.message};}
+}
+
+function _buildReportHtml(title,dateLabel,text,generatedAt){
+  return`<div style="background:var(--color-bg-base);border-radius:8px;padding:10px 12px">
+    <div style="font-size:var(--text-xs);color:var(--color-text-muted);margin-bottom:5px">${escapeHtml(dateLabel)} · 생성 ${escapeHtml(generatedAt)}</div>
+    <div style="font-size:var(--text-base);color:var(--color-text-primary);line-height:1.75;white-space:pre-wrap">${escapeHtml(text)}</div>
+  </div>`;
+}
+
+function renderReportSection(){
+  const weekKey=_getWeekKey();
+  const monthKey=_getMonthKey();
+  const now=getKSTNow();
+  const d=new Date(Date.now()+9*3600000);
+
+  const wData=JSON.parse(localStorage.getItem('ai_weekly_'+weekKey)||'null');
+  const wEl=document.getElementById('rpt-week-content');
+  const wLabel=document.getElementById('rpt-week-label');
+  const startOfWeek=new Date(d);startOfWeek.setDate(d.getDate()-d.getDay());
+  const endOfWeek=new Date(startOfWeek);endOfWeek.setDate(startOfWeek.getDate()+6);
+  const fmt=dt=>dt.toLocaleDateString('ko-KR',{month:'numeric',day:'numeric'});
+  if(wLabel)wLabel.textContent=`주간 보고서 (${fmt(startOfWeek)} ~ ${fmt(endOfWeek)})`;
+  if(wEl){
+    if(wData)wEl.innerHTML=_buildReportHtml('주간',`${fmt(startOfWeek)} ~ ${fmt(endOfWeek)}`,wData.text,wData.generatedAt);
+    else wEl.textContent='아직 생성된 보고서가 없습니다.';
+  }
+
+  const mData=JSON.parse(localStorage.getItem('ai_monthly_'+monthKey)||'null');
+  const mEl=document.getElementById('rpt-month-content');
+  const mLabel=document.getElementById('rpt-month-label');
+  const monthStr=d.getFullYear()+'년 '+(d.getMonth()+1)+'월';
+  if(mLabel)mLabel.textContent=`월간 보고서 (${monthStr})`;
+  if(mEl){
+    if(mData)mEl.innerHTML=_buildReportHtml('월간',monthStr,mData.text,mData.generatedAt);
+    else mEl.textContent='아직 생성된 보고서가 없습니다.';
+  }
+}
+
+async function generateWeeklyReport(){
+  if(!CKEY){alert('Google AI 키가 필요합니다. 투자 종목 관리 페이지에서 등록해주세요.');return;}
+  const btn=document.getElementById('rpt-week-btn');
+  const el=document.getElementById('rpt-week-content');
+  const now=new Date(Date.now()+9*3600000);
+  const cutoff=new Date(now.getTime()-7*24*3600000);
+  const items=memos.filter(m=>new Date(m.time)>=cutoff);
+  if(!items.length){el.textContent='최근 7일 내 작성된 투자 일지가 없습니다.';return;}
+  el.innerHTML='<span class="spin">⟳</span> AI 보고서 생성 중...';
+  btn.disabled=true;
+  const prompt=`다음은 최근 1주일간의 투자 일지입니다. 주요 투자 활동, 관심 종목, 투자 판단, 특이 사항을 포함해서 한국어 3~4문장으로 요약해줘:\n\n`+
+    items.map((m,i)=>`[${new Date(m.time).toLocaleDateString('ko-KR')}] ${m.text}`).join('\n');
+  const result=await _callGeminiReport(prompt);
+  btn.disabled=false;
+  if(!result.ok){el.textContent='보고서 생성 실패 · 다시 시도해주세요';return;}
+  const weekKey=_getWeekKey();
+  const generatedAt=getKSTNow().dateStr;
+  const data={text:result.text,generatedAt};
+  try{localStorage.setItem('ai_weekly_'+weekKey,JSON.stringify(data));}catch(_){}
+  el.innerHTML=_buildReportHtml('주간','이번 주',result.text,generatedAt);
+  // 오래된 주간 보고서 정리 (8주 이상)
+  _cleanOldReports('ai_weekly_',8);
+}
+
+async function generateMonthlyReport(){
+  if(!CKEY){alert('Google AI 키가 필요합니다. 투자 종목 관리 페이지에서 등록해주세요.');return;}
+  const btn=document.getElementById('rpt-month-btn');
+  const el=document.getElementById('rpt-month-content');
+  const now=new Date(Date.now()+9*3600000);
+  const cutoff=new Date(now.getTime()-30*24*3600000);
+  const items=[...memos,...memoArchive].filter(m=>new Date(m.time)>=cutoff);
+  if(!items.length){el.textContent='최근 30일 내 작성된 투자 일지가 없습니다.';return;}
+  el.innerHTML='<span class="spin">⟳</span> AI 보고서 생성 중...';
+  btn.disabled=true;
+  const prompt=`다음은 최근 1개월간의 투자 일지입니다. 한 달간의 투자 활동 흐름, 주요 종목 동향, 반복된 투자 패턴, 주목할 변화를 포함해서 한국어 4~5문장으로 요약해줘:\n\n`+
+    items.sort((a,b)=>new Date(a.time)-new Date(b.time)).map(m=>`[${new Date(m.time).toLocaleDateString('ko-KR')}] ${m.text}`).join('\n');
+  const result=await _callGeminiReport(prompt);
+  btn.disabled=false;
+  if(!result.ok){el.textContent='보고서 생성 실패 · 다시 시도해주세요';return;}
+  const monthKey=_getMonthKey();
+  const d=new Date(Date.now()+9*3600000);
+  const generatedAt=getKSTNow().dateStr;
+  const data={text:result.text,generatedAt};
+  try{localStorage.setItem('ai_monthly_'+monthKey,JSON.stringify(data));}catch(_){}
+  el.innerHTML=_buildReportHtml('월간',d.getFullYear()+'년 '+(d.getMonth()+1)+'월',result.text,generatedAt);
+  _cleanOldReports('ai_monthly_',4);
+}
+
+function _cleanOldReports(prefix,keepCount){
+  const keys=Object.keys(localStorage).filter(k=>k.startsWith(prefix)).sort();
+  if(keys.length>keepCount)keys.slice(0,keys.length-keepCount).forEach(k=>localStorage.removeItem(k));
+}
+
+let _reportBannerType=null;
+function checkReportSchedule(){
+  if(!CKEY)return;
+  let s={};try{s=JSON.parse(localStorage.getItem('ai_report_settings')||'{}');}catch(_){}
+  const kst=new Date(Date.now()+9*3600000);
+  const curDay=kst.getUTCDay();
+  const curHour=kst.getUTCHours();
+  const curMin=kst.getUTCMinutes();
+  const curHhmm=curHour*60+curMin;
+
+  const weekKey=_getWeekKey();
+  const weekDay=s.weekDay??1;
+  const weekHhmm=(s.weekHour??9)*60+(s.weekMin??0);
+  if(curDay===weekDay&&curHhmm>=weekHhmm&&!localStorage.getItem('ai_weekly_'+weekKey)&&localStorage.getItem('rpt_week_dismiss')!==weekKey){
+    _showReportBanner('weekly');return;
+  }
+
+  const monthKey=_getMonthKey();
+  const mDay=s.monthDay??1;
+  const mHhmm=(s.monthHour??9)*60+(s.monthMin??0);
+  if(kst.getUTCDate()>=mDay&&curHhmm>=mHhmm&&!localStorage.getItem('ai_monthly_'+monthKey)&&localStorage.getItem('rpt_month_dismiss')!==monthKey){
+    _showReportBanner('monthly');
+  }
+}
+
+function _showReportBanner(type){
+  _reportBannerType=type;
+  const banner=document.getElementById('report-banner');
+  const msg=document.getElementById('report-banner-msg');
+  if(!banner||!msg)return;
+  msg.textContent=type==='weekly'?'💡 이번 주 투자 보고서 생성 시간입니다.':'💡 이번 달 투자 보고서 생성 시간입니다.';
+  banner.style.display='flex';
+}
+
+function handleReportBanner(){
+  document.getElementById('report-banner').style.display='none';
+  if(_reportBannerType==='weekly')generateWeeklyReport();
+  else generateMonthlyReport();
+  _reportBannerType=null;
+}
+
+function dismissReportBanner(){
+  document.getElementById('report-banner').style.display='none';
+  const kst=new Date(Date.now()+9*3600000);
+  if(_reportBannerType==='weekly')localStorage.setItem('rpt_week_dismiss',_getWeekKey());
+  else localStorage.setItem('rpt_month_dismiss',_getMonthKey());
+  _reportBannerType=null;
+}
+
+async function generateRegSummary(){
+  const el=document.getElementById('reg-ai-result');
+  const btn=document.getElementById('reg-ai-btn');
+  if(!CKEY){el.style.display='block';el.innerHTML='<div class="info-box" style="margin:0">🔑 Google AI 키가 필요합니다. 투자 종목 관리 페이지에서 키를 등록해주세요.</div>';return;}
+  const todayKey=getKSTNow().dateStr;
+  const cached=localStorage.getItem('ai_reg_'+todayKey);
+  if(cached){el.style.display=el.style.display==='none'?'block':'none';if(el.style.display==='block')el.innerHTML=cached;return;}
+  if(!regAllItems.length){el.style.display='block';el.innerHTML='<div style="font-size:var(--text-base);color:var(--color-text-tertiary);padding:6px 0">↻ 갱신 버튼으로 규제 데이터를 먼저 불러와 주세요.</div>';return;}
+  el.style.display='block';
+  el.innerHTML='<div style="font-size:var(--text-base);color:var(--color-text-tertiary);padding:6px 0"><span class="spin">⟳</span> AI 요약 중...</div>';
+  btn.disabled=true;
+  const top3=regAllItems.slice(0,3);
+  const prompt='다음 규제 정보 3개를 각각 한국어 2문장으로 요약해줘. 핵심 내용과 투자자에게 미치는 영향 위주로. JSON 배열만 출력 (예: ["요약1","요약2","요약3"]):\n\n'+
+    top3.map((d,i)=>`${i+1}. [${d.source}] ${d.title}\n${d.summary||''}`).join('\n\n');
+  try{
+    const data=await proxyApiCall('googleai','',{contents:[{parts:[{text:prompt}]}]});
+    btn.disabled=false;
+    if(data.error){el.innerHTML='<div class="err-box">AI 오류: '+escapeHtml(data.error.message||'알 수 없는 오류')+'</div>';return;}
+    const txt=data.candidates?.[0]?.content?.parts?.[0]?.text||'';
+    const clean=txt.replace(/```json|```/g,'').trim();
+    let summaries=[];
+    try{summaries=JSON.parse(clean);}catch(_){const m=clean.match(/\[[\s\S]*\]/);if(m)try{summaries=JSON.parse(m[0]);}catch(_){}}
+    if(!summaries.length){el.innerHTML='<div class="err-box">요약 파싱 실패 · 다시 시도해주세요</div>';return;}
+    const rows=top3.map((d,i)=>`<div style="display:flex;gap:10px;align-items:flex-start;padding:8px 0;${i<top3.length-1?'border-bottom:1px solid var(--color-bg-overlay)':''}">
+      <span style="font-size:var(--text-xs);font-weight:700;padding:2px 7px;border-radius:20px;background:var(--color-warning-bg);color:var(--color-warning-text);flex-shrink:0;white-space:nowrap;margin-top:2px">${escapeHtml(d.source)}</span>
+      <span style="font-size:var(--text-base);color:var(--color-text-primary);line-height:1.65">${escapeHtml(summaries[i]||d.title)}</span>
+    </div>`).join('');
+    const html=`<div style="background:var(--color-bg-base);border:1px solid var(--color-border-default);border-radius:10px;padding:10px 14px;margin-bottom:4px">
+      <div style="font-size:var(--text-sm);font-weight:700;color:var(--color-warning-dark);margin-bottom:6px">AI 규제 요약 <span style="font-weight:400;color:var(--color-text-muted);font-size:var(--text-xs)">${todayKey}</span></div>
+      ${rows}</div>`;
+    el.innerHTML=html;
+    try{localStorage.setItem('ai_reg_'+todayKey,html);}catch(_){}
+  }catch(e){btn.disabled=false;el.innerHTML='<div class="err-box">네트워크 오류 · 다시 시도해주세요</div>';}
+}
+
 async function translateNewsItems(items){
   if(!CKEY||!items.length)return{ok:false,reason:'no_key'};
-  const prompt='다음 뉴스들을 각각 한국어로 핵심만 최대 3문장으로 요약해줘. JSON 배열만 출력 (예: ["요약1","요약2"]):\n\n'+
+  const prompt='다음 뉴스들을 각각 한국어 2문장으로 요약해줘. 투자자 관점에서 핵심 사실 위주로. JSON 배열만 출력 (예: ["요약1","요약2"]):\n\n'+
     items.map((item,i)=>`${i+1}. [${item.ticker}] ${item.news.headline}\n${item.news.summary||''}`).join('\n\n');
   try{
     const data=await proxyApiCall('googleai','',{contents:[{parts:[{text:prompt}]}]});
@@ -2862,6 +3159,8 @@ async function checkAndAutoFetch(){
 // ─ 초기화
 updateCashDisplay();
 renderStocks();renderMemos();renderSites();updateFxRate();updateSampleNotice();updateMasterNotifyBtn();resetMemoDateTime();
+renderReportSection();
+setTimeout(checkReportSchedule,1500);
 // ─ 마지막 방문 페이지 복원
 (function(){
   const saved=localStorage.getItem('cur_page');
