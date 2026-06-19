@@ -303,6 +303,8 @@ tr:hover td{background:var(--color-bg-subtle)}
 .memo-vtab{font-size:var(--text-base);padding:5px 16px;border-radius:20px;border:1px solid var(--color-border-input);background:var(--color-bg-surface);cursor:pointer;color:var(--color-text-tertiary);font-family:inherit;font-weight:500}
 .memo-vtab.active{background:var(--color-text-primary);color:var(--color-bg-surface);border-color:var(--color-text-primary);font-weight:700}
 .archive-card{background:var(--color-bg-archive);border:1px solid var(--color-border-default);border-radius:10px;padding:10px 12px;margin-bottom:6px}
+.philo-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.philo-card{background:var(--color-bg-surface);border:1px solid var(--color-border-default);border-radius:10px;padding:12px 14px;margin-bottom:8px}
 .archive-completed-at{font-size:var(--text-sm);color:var(--color-accent-soft);font-weight:600}
 
 /* ── NEWS ── */
@@ -415,6 +417,7 @@ input:focus-visible,textarea:focus-visible{outline:2px solid var(--color-info);o
   .metrics{grid-template-columns:1fr 1fr}
   .memo-compose{flex-direction:column}
   .memo-compose .btn{align-self:flex-end}
+  .philo-grid{grid-template-columns:1fr}
   .auth-modal,.ob-modal,.profile-modal{padding:24px 16px;border-radius:var(--radius-xl)}
   #ticker-search{width:100%!important}
   .ticker-search-wrap{width:100%}
@@ -777,6 +780,7 @@ input:focus-visible,textarea:focus-visible{outline:2px solid var(--color-info);o
     <div class="memo-view-tabs">
       <button class="memo-vtab active" id="vtab-active" onclick="switchMemoView('active')">활성 일지</button>
       <button class="memo-vtab" id="vtab-archive" onclick="switchMemoView('archive')">아카이브</button>
+      <button class="memo-vtab" id="vtab-philosophy" onclick="switchMemoView('philosophy')">투자 철학</button>
     </div>
     <button id="notify-master-btn" type="button" onclick="toggleMasterNotify()" style="font-size:var(--text-base);padding:5px 12px;border:1px solid var(--color-border-input);border-radius:8px;background:var(--color-bg-surface);cursor:pointer;color:var(--color-text-tertiary);font-family:inherit">전체 알림 OFF</button>
   </div>
@@ -1187,6 +1191,10 @@ async function _loadFromCloud(user){
     notifyMaster=!!data.notify_master;
     localStorage.setItem('pf_notify_master',notifyMaster);
   }
+  if(Array.isArray(data.invest_philosophy)){
+    investPhilosophy=data.invest_philosophy;
+    localStorage.setItem('pf_phil',JSON.stringify(investPhilosophy));
+  }
   // UI 재렌더링
   renderStocks();renderMemos();updateCashDisplay();updateMasterNotifyBtn();
   // 로그인 시 서버 저장 API 키 자동 복원
@@ -1206,6 +1214,7 @@ function _syncToCloud(immediate){
       cash_usd:cashUSD,
       quote_symbols:quoteSymbols,
       notify_master:notifyMaster,
+      invest_philosophy:investPhilosophy,
       updated_at:new Date().toISOString()
     });
   };
@@ -1285,6 +1294,8 @@ const _nSem=(()=>{let n=0,q=[];return{get:()=>n<2?(n++,Promise.resolve()):new Pr
 // Naver Finance용 — _tryProxy 동일 사용 (두 프록시 동시 경쟁)
 async function proxyFetchDirect(url,ms=5000){await _nSem.get();try{return await _tryProxy(url,ms);}finally{_nSem.put();}}
 
+let investPhilosophy=[];
+try{investPhilosophy=JSON.parse(localStorage.getItem('pf_phil')||'[]')}catch(e){}
 let stocks=[],memos=[],memoArchive=[],memoView='active',selTagV='general',memoEditTag='general',archiveTagFilter='all',FKEY='',newsCat='general',quoteSymbols=['NVDA','AAPL','TSLA','MSFT'],stkFilter='all',stkMarket='all',stkStyle='all',fxRate=1400;
 let notifyMaster=localStorage.getItem('pf_notify_master')==='true';
 const IDX_DEFAULT={kr:true,us:true,vix:true,futures:false,crypto:false,fx:false,commodities:false};
@@ -2069,6 +2080,7 @@ function switchMemoView(view){
   memoView=view;
   document.getElementById('vtab-active').classList.toggle('active',view==='active');
   document.getElementById('vtab-archive').classList.toggle('active',view==='archive');
+  document.getElementById('vtab-philosophy').classList.toggle('active',view==='philosophy');
   const compose=document.getElementById('memo-compose-area');
   if(compose)compose.style.display=view==='active'?'':'none';
   const filterRow=document.getElementById('archive-filter-row');
@@ -2090,6 +2102,7 @@ function switchMemoView(view){
 function renderMemos(){
   const el=document.getElementById('memo-list');
   if(memoView==='archive'){renderArchive(el);return;}
+  if(memoView==='philosophy'){renderPhilosophy(el);return;}
   if(!memos.length){
     el.innerHTML='<div style="color:var(--color-text-tertiary);font-size:var(--text-md);padding:.5rem 0">첫 투자 일지를 남겨보세요.</div>';
     return;
@@ -2139,6 +2152,74 @@ function renderMemos(){
   el.innerHTML=previewHtml+listHtml;
 }
 
+// ═══════════════════════════════════════════════════════════════
+// 투자 철학 (Philosophy)
+// ═══════════════════════════════════════════════════════════════
+
+function _philoBtns(sourceId){
+  const p=investPhilosophy.find(x=>x.sourceId===sourceId);
+  const ms=p?.type==='must',ns=p?.type==='never';
+  const s='font-size:var(--text-sm);padding:2px 7px;border-radius:5px;cursor:pointer;font-family:inherit;';
+  return`<button type="button" onclick="addToPhilosophy(${sourceId},'must')" style="${s}border:1px solid ${ms?'var(--color-success)':'var(--color-border-input)'};background:${ms?'var(--color-success-bg)':'var(--color-bg-surface)'};color:${ms?'var(--color-success-text)':'var(--color-text-tertiary)'}">${ms?'✓ 지켜야 할 것':'✅ 지켜야 할 것'}</button>
+<button type="button" onclick="addToPhilosophy(${sourceId},'never')" style="${s}border:1px solid ${ns?'var(--color-error)':'var(--color-border-input)'};background:${ns?'var(--color-error-bg)':'var(--color-bg-surface)'};color:${ns?'var(--color-error-text)':'var(--color-text-tertiary)'}">${ns?'✓ 절대 금지':'❌ 절대 금지'}</button>`;
+}
+
+function addToPhilosophy(sourceId,type){
+  const src=memoArchive.find(m=>m.id===sourceId);
+  if(!src)return;
+  const existing=investPhilosophy.find(p=>p.sourceId===sourceId);
+  if(existing){existing.type=type;}
+  else{investPhilosophy.push({id:Date.now(),text:src.text,type,sourceId,createdAt:new Date().toISOString()});}
+  localStorage.setItem('pf_phil',JSON.stringify(investPhilosophy));
+  _syncToCloud();
+  renderMemos();
+}
+
+function removePhilosophy(id){
+  investPhilosophy=investPhilosophy.filter(p=>p.id!==id);
+  localStorage.setItem('pf_phil',JSON.stringify(investPhilosophy));
+  _syncToCloud();
+  renderMemos();
+}
+
+function movePhilosophy(id,dir){
+  const type=investPhilosophy.find(p=>p.id===id)?.type;
+  if(!type)return;
+  const idx=investPhilosophy.map((p,i)=>p.type===type?i:-1).filter(i=>i>=0);
+  const pos=idx.findIndex(i=>investPhilosophy[i].id===id);
+  if(dir==='up'&&pos>0){const a=idx[pos],b=idx[pos-1];[investPhilosophy[a],investPhilosophy[b]]=[investPhilosophy[b],investPhilosophy[a]];}
+  else if(dir==='down'&&pos<idx.length-1){const a=idx[pos],b=idx[pos+1];[investPhilosophy[a],investPhilosophy[b]]=[investPhilosophy[b],investPhilosophy[a]];}
+  localStorage.setItem('pf_phil',JSON.stringify(investPhilosophy));
+  _syncToCloud();
+  renderMemos();
+}
+
+function renderPhilosophy(el){
+  const s='font-size:var(--text-sm);padding:2px 7px;border-radius:5px;cursor:pointer;font-family:inherit;border:1px solid var(--color-border-input);background:var(--color-bg-surface);';
+  const mustItems=investPhilosophy.filter(p=>p.type==='must');
+  const neverItems=investPhilosophy.filter(p=>p.type==='never');
+  const empty=`<div style="color:var(--color-text-tertiary);font-size:var(--text-base);padding:1.5rem 0;text-align:center;border:1px dashed var(--color-border-default);border-radius:10px">아직 없습니다<br><span style="font-size:var(--text-sm)">아카이브에서 추가해보세요</span></div>`;
+  const col=(items)=>!items.length?empty:items.map((p,i)=>`
+    <div class="philo-card">
+      <div style="font-size:var(--text-md);color:var(--color-text-primary);line-height:1.65;margin-bottom:8px;white-space:pre-wrap">${escapeHtml(p.text)}</div>
+      <div style="display:flex;gap:5px;justify-content:flex-end">
+        <button onclick="movePhilosophy(${p.id},'up')" ${i===0?'disabled':''} style="${s}color:${i===0?'var(--color-text-placeholder)':'var(--color-text-secondary)'}">↑</button>
+        <button onclick="movePhilosophy(${p.id},'down')" ${i===items.length-1?'disabled':''} style="${s}color:${i===items.length-1?'var(--color-text-placeholder)':'var(--color-text-secondary)'}">↓</button>
+        <button onclick="removePhilosophy(${p.id})" style="${s}border-color:var(--color-error-border);color:var(--color-error)">삭제</button>
+      </div>
+    </div>`).join('');
+  el.innerHTML=`<div class="philo-grid">
+    <div>
+      <div style="font-size:var(--text-sm);font-weight:700;color:var(--color-success-deep);margin-bottom:10px;padding-bottom:8px;border-bottom:2px solid var(--color-success-bg)">✅ 지켜야 할 것 (${mustItems.length})</div>
+      ${col(mustItems)}
+    </div>
+    <div>
+      <div style="font-size:var(--text-sm);font-weight:700;color:var(--color-error-text);margin-bottom:10px;padding-bottom:8px;border-bottom:2px solid var(--color-error-bg)">❌ 절대 하면 안 되는 것 (${neverItems.length})</div>
+      ${col(neverItems)}
+    </div>
+  </div>`;
+}
+
 function setArchiveFilter(tag,btn){
   archiveTagFilter=tag;
   const row=document.getElementById('archive-filter-row');
@@ -2174,7 +2255,10 @@ function renderArchive(el){
             <span class="archive-completed-at">완료 ${new Date(m.completedAt).toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'})}</span>
             <span class="memo-time">작성 ${new Date(m.time).toLocaleDateString('ko-KR',{month:'numeric',day:'numeric'})} ${new Date(m.time).toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'})}</span>
           </div>
-          <button type="button" onclick="deleteArchive(${m.id})" style="font-size:var(--text-sm);padding:2px 7px;border:1px solid var(--color-error-border);border-radius:5px;background:var(--color-bg-surface);cursor:pointer;color:var(--color-error)">삭제</button>
+          <div style="display:flex;gap:5px;align-items:center;flex-wrap:wrap">
+            ${_philoBtns(m.id)}
+            <button type="button" onclick="deleteArchive(${m.id})" style="font-size:var(--text-sm);padding:2px 7px;border:1px solid var(--color-error-border);border-radius:5px;background:var(--color-bg-surface);cursor:pointer;color:var(--color-error)">삭제</button>
+          </div>
         </div>
         <div class="memo-text" style="color:var(--color-text-secondary)">${escapeHtml(m.text)}</div>
       </div>`;
