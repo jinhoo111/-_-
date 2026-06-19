@@ -3129,7 +3129,7 @@ setInterval(checkAndAutoFetch,60000);
 </div>
 
 <!-- ══ 프로필 설정 모달 ══ -->
-<div class="profile-overlay hidden" id="profile-overlay">
+<div class="profile-overlay hidden" id="profile-overlay" onclick="if(event.target===this)closeProfileModal()">
   <div class="profile-modal">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px">
       <div class="profile-title" style="margin-bottom:0">프로필 설정</div>
