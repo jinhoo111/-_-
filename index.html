@@ -2997,7 +2997,7 @@ setInterval(checkAndAutoFetch,60000);
 </div>
 
 <!-- ══ 온보딩 마법사 ══ -->
-<div class="ob-overlay hidden" id="ob-overlay">
+<div class="ob-overlay hidden" id="ob-overlay" onclick="if(event.target===this)document.getElementById('ob-overlay').classList.add('hidden')">
   <div class="ob-modal">
     <div class="ob-progress">
       <div class="ob-dot done" id="ob-dot-1"></div>
