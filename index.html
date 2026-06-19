@@ -780,8 +780,7 @@ input:focus-visible,textarea:focus-visible{outline:2px solid var(--color-info);o
     </div>
     <button id="notify-master-btn" type="button" onclick="toggleMasterNotify()" style="font-size:var(--text-base);padding:5px 12px;border:1px solid var(--color-border-input);border-radius:8px;background:var(--color-bg-surface);cursor:pointer;color:var(--color-text-tertiary);font-family:inherit">전체 알림 OFF</button>
   </div>
-  <div id="memo-list" style="max-height:420px;overflow-y:auto;margin-bottom:.875rem"></div>
-  <div id="memo-compose-area" style="border-top:1px solid var(--color-border-default);padding-top:.875rem">
+  <div id="memo-compose-area" style="border-bottom:1px solid var(--color-border-default);padding-bottom:.875rem;margin-bottom:.875rem">
     <div class="tag-btns" id="tag-btns">
       <button class="tbtn sel" onclick="selTag('general',this)" style="background:var(--color-info-bg);color:var(--color-info);border-color:var(--color-info)">일반</button>
       <button class="tbtn" onclick="selTag('buy',this)">매수</button>
@@ -813,6 +812,7 @@ input:focus-visible,textarea:focus-visible{outline:2px solid var(--color-info);o
       <button class="btn" onclick="addMemo()" style="align-self:flex-end;padding:8px 14px">전송</button>
     </div>
   </div>
+  <div id="memo-list"></div>
 </div>
 
 <!-- ══════════ SCRIPT ══════════ -->
