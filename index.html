@@ -1246,6 +1246,8 @@ async function _restoreApiKeyState(){
     const inp=document.getElementById('api-key-input');if(inp)inp.value='••••••••••••••••';
     const cb=document.getElementById('clear-btn');if(cb)cb.style.display='flex';
     setKeyStatus('live','연결됨 · 실시간 활성');
+    // 뉴스 탭이 현재 열려 있으면 자동 갱신 (로그인 후 뉴스 탭 활성 케이스)
+    if(document.getElementById('page-news')?.classList.contains('on')){loadMarketNews();refreshQuotes();}
   }
   if(ckRes.exists){
     CKEY='***';
@@ -1895,7 +1897,10 @@ async function connectAPI(){
     setKeyStatus('live','연결됨 · 실시간 활성');
     renderPortfolioChips();loadMarketNews();refreshQuotes();
   }catch(e){
-    setKeyStatus('err',e.message==='store_failed'?'서버 저장 실패 · 잠시 후 재시도':'API 키가 잘못됐습니다');
+    const msg=e.message==='store_failed'
+      ?(_currentSession?'서버 저장 실패 · 잠시 후 재시도':'로그인 후 API 키를 저장할 수 있습니다')
+      :'API 키가 잘못됐습니다';
+    setKeyStatus('err',msg);
   }
   btn.disabled=false;btn.textContent='연결';
 }
@@ -2896,17 +2901,10 @@ async function checkAndAutoFetch(){
 // ─ 초기화
 updateCashDisplay();
 renderStocks();renderMemos();renderSites();updateFxRate();updateSampleNotice();updateMasterNotifyBtn();resetMemoDateTime();
-// ─ 마지막 방문 페이지 복원
-(function(){
-  const saved=localStorage.getItem('cur_page');
-  if(!saved||saved==='portfolio')return;
-  const btn=[...document.querySelectorAll('.nav-tab')].find(b=>b.getAttribute('onclick')?.includes(`'${saved}'`));
-  if(btn)goPage(saved,btn);
-})();
 if(stocks.length)fetchPrices().then(()=>checkAndAutoFetch());
 else checkAndAutoFetch();
 setInterval(checkAndAutoFetch,60000);
-// ─ Auth 세션 확인 — 로그인 시 클라우드 데이터 로드, 비회원은 로컬 그대로 사용
+// ─ Auth 세션 확인 → 페이지 복원 순서 보장 (Finnhub가 user JWT 필요하므로 세션 확인 이후 복원)
 (async()=>{
   const{data:{session}}=await _sb.auth.getSession();
   if(session?.user){
@@ -2917,16 +2915,21 @@ setInterval(checkAndAutoFetch,60000);
     if(!prof||!prof.onboarding_done){_showOnboarding();}
     else{await _loadFromCloud(_currentUser);}
   }
-  // 인증 확인 완료 후 실행 — Finnhub 호출이 user JWT 필요하므로 세션 확인 이후로 이동
   if(CKEY){
     document.getElementById('pn-ai-dot').style.display='inline-block';
-    const _sd=localStorage.getItem('ai_summary_date'),_sh=localStorage.getItem('ai_summary_html');
-    if(_sd===getKSTNow().dateStr&&_sh){
+    const _sd=localStorage.getItem('ai_summary_date'),_summaryHtml=localStorage.getItem('ai_summary_html');
+    if(_sd===getKSTNow().dateStr&&_summaryHtml){
       const _el=document.getElementById('pn-ai-summary');
-      if(_el){_el.style.display='block';_el.innerHTML=_sh;}
+      if(_el){_el.style.display='block';_el.innerHTML=_summaryHtml;}
     }
   }
   loadPortfolioNews();
+  // 마지막 방문 페이지 복원 — Auth 확인 완료 후 실행하여 API 오류 방지
+  const saved=localStorage.getItem('cur_page');
+  if(saved&&saved!=='portfolio'){
+    const btn=[...document.querySelectorAll('.nav-tab')].find(b=>b.getAttribute('onclick')?.includes(`'${saved}'`));
+    if(btn)goPage(saved,btn);
+  }
 })();
 </script>
 
