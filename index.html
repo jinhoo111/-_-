@@ -2934,7 +2934,7 @@ setInterval(checkAndAutoFetch,60000);
 </script>
 
 <!-- ══ 로그인/회원가입 모달 ══ -->
-<div class="auth-overlay hidden" id="auth-overlay">
+<div class="auth-overlay hidden" id="auth-overlay" onclick="if(event.target===this)closeAuthModal()">
   <div class="auth-modal">
     <div class="auth-logo">📊 투자 허브</div>
 
