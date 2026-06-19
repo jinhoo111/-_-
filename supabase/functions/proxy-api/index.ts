@@ -135,6 +135,25 @@ serve(async (req) => {
       }
     }
 
+    // ── 네이버 주식 뉴스 (CORS 우회 프록시)
+    if (action === "naver-news") {
+      const code = body.code as string;
+      if (!code) throw new Error("code required");
+      const url = `https://m.stock.naver.com/api/news/stock/${code}?pageSize=5`;
+      const r = await fetch(url, {
+        headers: {
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+          "Referer": "https://m.stock.naver.com/",
+          "Accept": "application/json",
+        },
+      });
+      if (!r.ok) throw new Error(`naver_news_error:${r.status}`);
+      const data = await r.json();
+      return new Response(JSON.stringify(data), {
+        headers: { ...CORS, "Content-Type": "application/json" },
+      });
+    }
+
     // ── 네이버 종목 검색 (CORS 우회 프록시)
     if (action === "naver-search") {
       const url = `https://ac.stock.naver.com/ac?q=${encodeURIComponent(query ?? "")}&target=stock`;
@@ -194,10 +213,10 @@ serve(async (req) => {
         });
       }
 
-      // Google AI (Gemini 2.0 Flash) 프록시
+      // Google AI (Gemini 1.5 Flash 8B) 프록시
       if (service === "googleai") {
         const r = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
+          `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-8b:generateContent?key=${apiKey}`,
           {
             method: "POST",
             headers: { "Content-Type": "application/json" },

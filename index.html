@@ -3115,8 +3115,7 @@ async function fetchStockNews(ticker,isKR){
     const code=ticker.replace(/\.(KS|KQ)$/i,'');
     let rawItems=null;
     try{
-      const res=await proxyFetch(`https://m.stock.naver.com/api/news/stock/${code}?pageSize=5`,8000);
-      const data=await res.json();
+      const data=await fetch(SUPA_URL,{method:'POST',headers:_sh,body:JSON.stringify({action:'naver-news',code})}).then(r=>r.json());
       // 실제 응답: {value:[{total,items:[기사]},…],Count:N}
       if(Array.isArray(data?.value))rawItems=data.value.flatMap(d=>d.items||[]);
       else if(Array.isArray(data))rawItems=data.flatMap(d=>d.items||[]);
