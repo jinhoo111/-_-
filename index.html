@@ -3215,17 +3215,17 @@ setInterval(checkAndAutoFetch,60000);
     if(!prof||!prof.onboarding_done){_showOnboarding();}
     else{await _loadFromCloud(_currentUser);}
   }
-})();
-if(CKEY){
-  document.getElementById('pn-ai-dot').style.display='inline-block';
-  // 오늘 저장된 AI 요약 자동 복원
-  const _sd=localStorage.getItem('ai_summary_date'),_sh=localStorage.getItem('ai_summary_html');
-  if(_sd===getKSTNow().dateStr&&_sh){
-    const _el=document.getElementById('pn-ai-summary');
-    if(_el){_el.style.display='block';_el.innerHTML=_sh;}
+  // 인증 확인 완료 후 실행 — Finnhub 호출이 user JWT 필요하므로 세션 확인 이후로 이동
+  if(CKEY){
+    document.getElementById('pn-ai-dot').style.display='inline-block';
+    const _sd=localStorage.getItem('ai_summary_date'),_sh=localStorage.getItem('ai_summary_html');
+    if(_sd===getKSTNow().dateStr&&_sh){
+      const _el=document.getElementById('pn-ai-summary');
+      if(_el){_el.style.display='block';_el.innerHTML=_sh;}
+    }
   }
-}
-loadPortfolioNews();
+  loadPortfolioNews();
+})();
 </script>
 
 <!-- ══ 로그인/회원가입 모달 ══ -->
