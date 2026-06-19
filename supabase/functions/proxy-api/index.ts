@@ -32,6 +32,16 @@ async function decryptKey(encrypted_key: string, iv: string, secret: string): Pr
   return DEC.decode(dec);
 }
 
+// Authorization 헤더의 JWT로 Supabase 사용자 ID 추출
+async function getUserId(req: Request, sb: ReturnType<typeof createClient>): Promise<string | null> {
+  const authHeader = req.headers.get("Authorization");
+  const token = authHeader?.replace("Bearer ", "");
+  if (!token) return null;
+  const { data: { user }, error } = await sb.auth.getUser(token);
+  if (error || !user) return null;
+  return user.id;
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: CORS });
 
@@ -45,10 +55,18 @@ serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
     );
 
-    // ── 키 저장
+    // ── 키 저장 (계정별)
     if (action === "store-key") {
+      const userId = await getUserId(req, sb);
+      if (!userId) {
+        return new Response(JSON.stringify({ error: "unauthorized" }), {
+          status: 401,
+          headers: { ...CORS, "Content-Type": "application/json" },
+        });
+      }
       const enc = await encryptKey(key, SECRET);
       const { error } = await sb.from("api_keys").upsert({
+        user_id: userId,
         service,
         ...enc,
         updated_at: new Date().toISOString(),
@@ -59,17 +77,31 @@ serve(async (req) => {
       });
     }
 
-    // ── 키 존재 확인
+    // ── 키 존재 확인 (계정별)
     if (action === "key-exists") {
-      const { data } = await sb.from("api_keys").select("service").eq("service", service).maybeSingle();
+      const userId = await getUserId(req, sb);
+      if (!userId) {
+        return new Response(JSON.stringify({ exists: false }), {
+          headers: { ...CORS, "Content-Type": "application/json" },
+        });
+      }
+      const { data } = await sb
+        .from("api_keys")
+        .select("service")
+        .eq("user_id", userId)
+        .eq("service", service)
+        .maybeSingle();
       return new Response(JSON.stringify({ exists: !!data }), {
         headers: { ...CORS, "Content-Type": "application/json" },
       });
     }
 
-    // ── 키 삭제
+    // ── 키 삭제 (계정별)
     if (action === "delete-key") {
-      await sb.from("api_keys").delete().eq("service", service);
+      const userId = await getUserId(req, sb);
+      if (userId) {
+        await sb.from("api_keys").delete().eq("user_id", userId).eq("service", service);
+      }
       return new Response(JSON.stringify({ ok: true }), {
         headers: { ...CORS, "Content-Type": "application/json" },
       });
@@ -120,11 +152,20 @@ serve(async (req) => {
       });
     }
 
-    // ── API 프록시 호출
+    // ── API 프록시 호출 (계정별 키 사용)
     if (action === "call") {
+      const userId = await getUserId(req, sb);
+      if (!userId) {
+        return new Response(JSON.stringify({ error: "fh_auth" }), {
+          status: 401,
+          headers: { ...CORS, "Content-Type": "application/json" },
+        });
+      }
+
       const { data: row, error } = await sb
         .from("api_keys")
         .select("encrypted_key, iv")
+        .eq("user_id", userId)
         .eq("service", service)
         .single();
 
@@ -153,10 +194,10 @@ serve(async (req) => {
         });
       }
 
-      // Google AI (Gemini) 프록시
+      // Google AI (Gemini 2.0 Flash) 프록시
       if (service === "googleai") {
         const r = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
+          `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
           {
             method: "POST",
             headers: { "Content-Type": "application/json" },

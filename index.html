@@ -814,7 +814,7 @@ input:focus-visible,textarea:focus-visible{outline:2px solid var(--color-info);o
         <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
           <span style="color:var(--color-text-tertiary)">매월</span>
           <select id="rpt-month-day" style="font-size:var(--text-sm);padding:3px 6px;border:1px solid var(--color-border-input);border-radius:6px;font-family:inherit;background:var(--color-bg-surface)">
-            ${[...Array(28)].map((_,i)=>`<option value="${i+1}"${i===0?' selected':''}>${i+1}일</option>`).join('')}
+            <option value="1" selected>1일</option><option value="2">2일</option><option value="3">3일</option><option value="4">4일</option><option value="5">5일</option><option value="6">6일</option><option value="7">7일</option><option value="8">8일</option><option value="9">9일</option><option value="10">10일</option><option value="11">11일</option><option value="12">12일</option><option value="13">13일</option><option value="14">14일</option><option value="15">15일</option><option value="16">16일</option><option value="17">17일</option><option value="18">18일</option><option value="19">19일</option><option value="20">20일</option><option value="21">21일</option><option value="22">22일</option><option value="23">23일</option><option value="24">24일</option><option value="25">25일</option><option value="26">26일</option><option value="27">27일</option><option value="28">28일</option>
           </select>
           <input type="time" id="rpt-month-time" value="09:00" style="font-size:var(--text-sm);padding:3px 6px;border:1px solid var(--color-border-input);border-radius:6px;font-family:inherit;background:var(--color-bg-surface)"/>
           <button class="btn" onclick="saveReportSettings()" style="font-size:var(--text-sm);border-color:var(--color-success);color:var(--color-success)">저장</button>
@@ -894,6 +894,7 @@ const SUPA_BASE='https://yijkwuiqnviapztqskak.supabase.co';
 const SUPA_URL=SUPA_BASE+'/functions/v1/proxy-api';
 const SUPA_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inlpamt3dWlxbnZpYXB6dHFza2FrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE1ODIwMzAsImV4cCI6MjA5NzE1ODAzMH0.n2CuPFPqQeCvZ0-pH-eNqdvuSJrWAH3nOIEt7dBFs_M';
 const _sh={'Content-Type':'application/json','apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY};
+function _apiHeaders(){const t=_currentSession?.access_token||SUPA_KEY;return{'Content-Type':'application/json','apikey':SUPA_KEY,'Authorization':'Bearer '+t};}
 function escapeHtml(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 function safeUrl(u){return(u&&/^https?:\/\//i.test(u))?u:'#';}
 function _jsStr(s){return String(s||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/\n/g,'\\n').replace(/\r/g,'');}
@@ -907,6 +908,7 @@ function saveToMemo(headline,url){
 // ── Supabase Auth 클라이언트
 const _sb=window.supabase.createClient(SUPA_BASE,SUPA_KEY);
 let _currentUser=null;
+let _currentSession=null;
 let _syncTimer=null;
 let _signupEmail='';
 
@@ -1247,6 +1249,8 @@ async function _loadFromCloud(user){
   }
   // UI 재렌더링
   renderStocks();renderMemos();updateCashDisplay();updateMasterNotifyBtn();
+  // 로그인 시 서버 저장 API 키 자동 복원
+  await _restoreApiKeyState();
 }
 
 function _syncToCloud(immediate){
@@ -1273,6 +1277,7 @@ function _syncToCloud(immediate){
 _sb.auth.onAuthStateChange(async(event,session)=>{
   if(event==='SIGNED_IN'&&session?.user){
     _currentUser=session.user;
+    _currentSession=session;
     _updateNavAuth(_currentUser);
     closeAuthModal();
     // 온보딩 완료 여부 확인
@@ -1281,23 +1286,45 @@ _sb.auth.onAuthStateChange(async(event,session)=>{
     else{await _loadFromCloud(_currentUser);}
   }else if(event==='SIGNED_OUT'){
     _currentUser=null;
+    _currentSession=null;
     _updateNavAuth(null);
   }
 });
 
 // Supabase Edge Function 헬퍼 (키 저장 / 프록시 호출)
 async function storeApiKey(service,key){
-  const r=await fetch(SUPA_URL,{method:'POST',headers:_sh,body:JSON.stringify({action:'store-key',service,key})});
+  const r=await fetch(SUPA_URL,{method:'POST',headers:_apiHeaders(),body:JSON.stringify({action:'store-key',service,key})});
   return r.json();
 }
 async function proxyApiCall(service,path,params={}){
-  const r=await fetch(SUPA_URL,{method:'POST',headers:_sh,body:JSON.stringify({action:'call',service,path,params})});
+  const r=await fetch(SUPA_URL,{method:'POST',headers:_apiHeaders(),body:JSON.stringify({action:'call',service,path,params})});
   if(r.status===401){const d=await r.json();throw new Error(d.error||'fh_auth');}
   if(!r.ok)throw new Error('proxy_error:'+r.status);
   return r.json();
 }
 function _deleteApiKeyOnServer(service){
-  fetch(SUPA_URL,{method:'POST',headers:_sh,body:JSON.stringify({action:'delete-key',service})}).catch(()=>{});
+  fetch(SUPA_URL,{method:'POST',headers:_apiHeaders(),body:JSON.stringify({action:'delete-key',service})}).catch(()=>{});
+}
+async function _restoreApiKeyState(){
+  if(!_currentSession)return;
+  const h=_apiHeaders();
+  const[fhRes,ckRes]=await Promise.all([
+    fetch(SUPA_URL,{method:'POST',headers:h,body:JSON.stringify({action:'key-exists',service:'finnhub'})}).then(r=>r.json()).catch(()=>({})),
+    fetch(SUPA_URL,{method:'POST',headers:h,body:JSON.stringify({action:'key-exists',service:'googleai'})}).then(r=>r.json()).catch(()=>({}))
+  ]);
+  if(fhRes.exists){
+    FKEY='***';
+    localStorage.setItem('fhkey_stored','1');
+    const inp=document.getElementById('api-key-input');if(inp)inp.value='••••••••••••••••';
+    const cb=document.getElementById('clear-btn');if(cb)cb.style.display='flex';
+    setKeyStatus('live','연결됨 · 실시간 활성');
+  }
+  if(ckRes.exists){
+    CKEY='***';
+    localStorage.setItem('ck_stored','1');
+    const dot=document.getElementById('pn-ai-dot');if(dot)dot.style.display='inline-block';
+    const row=document.getElementById('pn-key-row');if(row)row.style.display='none';
+  }
 }
 
 // ─ 글로벌 설정 및 변수 초기화
@@ -2719,10 +2746,17 @@ async function runAiSummary(){
     return;
   }
 
+  // 보유(hold) 종목만 필터링
+  const holdItems=_pnItems.filter(item=>{const st=stocks.find(s=>s.ticker===item.ticker);return st&&st.status==='hold';});
+  if(!holdItems.length){
+    sumDiv.style.display='block';
+    sumDiv.innerHTML='<div style="font-size:var(--text-base);color:var(--color-text-disabled);padding:8px 10px">보유 종목의 뉴스가 없습니다.</div>';
+    return;
+  }
   sumDiv.style.display='block';
   sumDiv.innerHTML='<div style="font-size:var(--text-base);color:var(--color-text-tertiary);padding:8px 10px"><span class="spin">⟳</span> AI 요약 중...</div>';
   if(btn)btn.disabled=true;
-  const result=await translateNewsItems(_pnItems);
+  const result=await translateNewsItems(holdItems);
   if(btn)btn.disabled=false;
 
   if(!result.ok){
@@ -3176,6 +3210,7 @@ setInterval(checkAndAutoFetch,60000);
   const{data:{session}}=await _sb.auth.getSession();
   if(session?.user){
     _currentUser=session.user;
+    _currentSession=session;
     _updateNavAuth(_currentUser);
     const{data:prof}=await _sb.from('user_profiles').select('onboarding_done').eq('user_id',_currentUser.id).single();
     if(!prof||!prof.onboarding_done){_showOnboarding();}
