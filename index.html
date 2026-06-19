@@ -812,6 +812,18 @@ input:focus-visible,textarea:focus-visible{outline:2px solid var(--color-info);o
       <button class="btn" onclick="addMemo()" style="align-self:flex-end;padding:8px 14px">전송</button>
     </div>
   </div>
+  <!-- 아카이브 태그 필터 (아카이브 탭에서만 표시) -->
+  <div id="archive-filter-row" style="display:none;margin-bottom:.75rem">
+    <div style="display:flex;gap:6px;flex-wrap:wrap">
+      <button class="tbtn sel" onclick="setArchiveFilter('all',this)" style="background:var(--color-bg-overlay);color:var(--color-text-primary)">전체</button>
+      <button class="tbtn" onclick="setArchiveFilter('general',this)">일반</button>
+      <button class="tbtn" onclick="setArchiveFilter('buy',this)">매수</button>
+      <button class="tbtn" onclick="setArchiveFilter('sell',this)">매도</button>
+      <button class="tbtn" onclick="setArchiveFilter('macro',this)">매크로</button>
+      <button class="tbtn" onclick="setArchiveFilter('review',this)">복기</button>
+      <button class="tbtn" onclick="setArchiveFilter('idea',this)">아이디어</button>
+    </div>
+  </div>
   <div id="memo-list"></div>
 </div>
 
@@ -1273,7 +1285,7 @@ const _nSem=(()=>{let n=0,q=[];return{get:()=>n<2?(n++,Promise.resolve()):new Pr
 // Naver Finance용 — _tryProxy 동일 사용 (두 프록시 동시 경쟁)
 async function proxyFetchDirect(url,ms=5000){await _nSem.get();try{return await _tryProxy(url,ms);}finally{_nSem.put();}}
 
-let stocks=[],memos=[],memoArchive=[],memoView='active',selTagV='general',memoEditTag='general',FKEY='',newsCat='general',quoteSymbols=['NVDA','AAPL','TSLA','MSFT'],stkFilter='all',stkMarket='all',stkStyle='all',fxRate=1400;
+let stocks=[],memos=[],memoArchive=[],memoView='active',selTagV='general',memoEditTag='general',archiveTagFilter='all',FKEY='',newsCat='general',quoteSymbols=['NVDA','AAPL','TSLA','MSFT'],stkFilter='all',stkMarket='all',stkStyle='all',fxRate=1400;
 let notifyMaster=localStorage.getItem('pf_notify_master')==='true';
 const IDX_DEFAULT={kr:true,us:true,vix:true,futures:false,crypto:false,fx:false,commodities:false};
 const IDX_LINK_MAP={
@@ -2059,6 +2071,19 @@ function switchMemoView(view){
   document.getElementById('vtab-archive').classList.toggle('active',view==='archive');
   const compose=document.getElementById('memo-compose-area');
   if(compose)compose.style.display=view==='active'?'':'none';
+  const filterRow=document.getElementById('archive-filter-row');
+  if(filterRow){
+    filterRow.style.display=view==='archive'?'':'none';
+    if(view==='archive'){
+      archiveTagFilter='all';
+      filterRow.querySelectorAll('.tbtn').forEach((b,i)=>{
+        b.classList.toggle('sel',i===0);
+        b.style.background=i===0?'var(--color-bg-overlay)':'';
+        b.style.color=i===0?'var(--color-text-primary)':'';
+        b.style.borderColor='';
+      });
+    }
+  }
   renderMemos();
 }
 
@@ -2114,13 +2139,24 @@ function renderMemos(){
   el.innerHTML=previewHtml+listHtml;
 }
 
+function setArchiveFilter(tag,btn){
+  archiveTagFilter=tag;
+  const row=document.getElementById('archive-filter-row');
+  row.querySelectorAll('.tbtn').forEach(b=>{b.classList.remove('sel');b.style.background='';b.style.color='';b.style.borderColor='';});
+  btn.classList.add('sel');
+  if(tag==='all'){btn.style.background='var(--color-bg-overlay)';btn.style.color='var(--color-text-primary)';}
+  else{const c=TAG[tag];btn.style.background=c.bg;btn.style.color=c.c;btn.style.borderColor=c.c;}
+  renderMemos();
+}
+
 function renderArchive(el){
-  if(!memoArchive.length){
-    el.innerHTML='<div style="color:var(--color-text-tertiary);font-size:var(--text-md);padding:.5rem 0">완료 처리된 일지가 없습니다.</div>';
+  const list=archiveTagFilter==='all'?memoArchive:memoArchive.filter(m=>(m.tag||'general')===archiveTagFilter);
+  if(!list.length){
+    el.innerHTML=`<div style="color:var(--color-text-tertiary);font-size:var(--text-md);padding:.5rem 0">${archiveTagFilter==='all'?'완료 처리된 일지가 없습니다.':'해당 태그의 아카이브가 없습니다.'}</div>`;
     return;
   }
   const grp={};
-  memoArchive.forEach(m=>{
+  list.forEach(m=>{
     const k=new Date(m.completedAt).toLocaleDateString('ko-KR',{month:'long',day:'numeric',weekday:'short'});
     if(!grp[k])grp[k]=[];
     grp[k].push(m);
