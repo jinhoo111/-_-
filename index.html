@@ -845,6 +845,7 @@ function _jsStr(s){return String(s||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'"
 function saveToMemo(headline,url){
   const memoBtn=[...document.querySelectorAll('.nav-tab')].find(b=>b.getAttribute('onclick')?.includes("'memo'"));
   if(memoBtn)goPage('memo',memoBtn);
+  switchMemoView('active');
   const txt=document.getElementById('memo-txt');
   if(txt){txt.value='[뉴스] '+headline+(url&&url!=='#'?'\n'+url:'');setTimeout(()=>txt.focus(),100);}
 }
@@ -1205,7 +1206,7 @@ function _syncToCloud(immediate){
   if(!_currentUser)return;
   clearTimeout(_syncTimer);
   const doSync=async()=>{
-    await _sb.from('user_data').upsert({
+    const{error}=await _sb.from('user_data').upsert({
       user_id:_currentUser.id,
       stocks:stocks,
       memos:memos,
@@ -1217,6 +1218,7 @@ function _syncToCloud(immediate){
       invest_philosophy:investPhilosophy,
       updated_at:new Date().toISOString()
     });
+    if(error)console.warn('[sync] 클라우드 저장 실패:',error.message);
   };
   if(immediate)doSync();
   else _syncTimer=setTimeout(doSync,1200);
@@ -2113,7 +2115,7 @@ function renderMemos(){
       <div style="font-size:var(--text-base);font-weight:700;color:var(--color-warning-dark);margin-bottom:6px">⭐ 중요 메모 (${importants.length}개)</div>
       ${importants.map(m=>{
         const c=TAG[m.tag]||TAG.general;
-        const preview=m.text.split('\n')[0].slice(0,60)+(m.text.length>60?'…':'');
+        const preview=escapeHtml(m.text.split('\n')[0].slice(0,60))+(m.text.length>60?'…':'');
         const dateStr=new Date(m.time).toLocaleDateString('ko-KR',{month:'numeric',day:'numeric'});
         return`<div class="important-preview-item" onclick="scrollToMemo(${m.id})">
           <span style="font-size:var(--text-xs);font-weight:700;padding:2px 7px;border-radius:20px;background:${c.bg};color:${c.c};white-space:nowrap;flex-shrink:0">${c.l}</span>
@@ -2239,7 +2241,7 @@ function renderArchive(el){
   }
   const grp={};
   list.forEach(m=>{
-    const k=new Date(m.completedAt).toLocaleDateString('ko-KR',{month:'long',day:'numeric',weekday:'short'});
+    const k=new Date(m.completedAt||m.time).toLocaleDateString('ko-KR',{month:'long',day:'numeric',weekday:'short'});
     if(!grp[k])grp[k]=[];
     grp[k].push(m);
   });
@@ -2253,7 +2255,7 @@ function renderArchive(el){
           <div style="display:flex;align-items:center;gap:6px">
             <span style="font-size:var(--text-xs);font-weight:700;padding:2px 8px;border-radius:20px;background:${c.bg};color:${c.c}">${c.l}</span>
             ${imp?'<span style="font-size:var(--text-sm);color:var(--color-warning-dark)">⭐</span>':''}
-            <span class="archive-completed-at">완료 ${new Date(m.completedAt).toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'})}</span>
+            <span class="archive-completed-at">완료 ${new Date(m.completedAt||m.time).toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'})}</span>
             <span class="memo-time">작성 ${new Date(m.time).toLocaleDateString('ko-KR',{month:'numeric',day:'numeric'})} ${new Date(m.time).toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'})}</span>
           </div>
           <div style="display:flex;gap:5px;align-items:center;flex-wrap:wrap">
