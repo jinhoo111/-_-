@@ -9,22 +9,16 @@ const CORS = {
 };
 
 // KST 기준 영업일 계산 (YYYYMMDD)
-// - 장마감(15:30) 이후 → 당일 기준
-// - 08:00 이전 → 전전 영업일 (당일 데이터 미업로드 상태)
-// - 주말 자동 건너뜀
 function getPrevTradingDay(extraDaysBack = 0): string {
   const now = new Date();
   now.setTime(now.getTime() + 9 * 60 * 60 * 1000); // UTC → KST
 
   const kstHour = now.getUTCHours();
-
-  // 8시 이전이면 KRX 데이터가 아직 전날 것도 미업로드일 수 있어 하루 더 뺌
   let daysBack = kstHour < 8 ? 2 : 1;
   daysBack += extraDaysBack;
 
   now.setUTCDate(now.getUTCDate() - daysBack);
 
-  // 주말 건너뜀 (일=0, 토=6)
   while (now.getUTCDay() === 0 || now.getUTCDay() === 6) {
     now.setUTCDate(now.getUTCDate() - 1);
   }
@@ -33,6 +27,12 @@ function getPrevTradingDay(extraDaysBack = 0): string {
   const m = String(now.getUTCMonth() + 1).padStart(2, "0");
   const d = String(now.getUTCDate()).padStart(2, "0");
   return `${y}${m}${d}`;
+}
+
+// num() : KRX가 문자열 또는 쉼표 포함 숫자로 반환할 수 있으므로 안전하게 파싱
+function num(v: any): number {
+  if (v == null) return 0;
+  return Number(String(v).replace(/,/g, "")) || 0;
 }
 
 // KRX 투자자별 순매수 상위 종목 조회 (타임아웃 8초)
@@ -75,15 +75,26 @@ async function fetchKrxInvestor(
     if (!res.ok) throw new Error(`KRX HTTP ${res.status}`);
     const json = await res.json();
 
-    const raw: any[] = json.OutBlock_1 || json.block1 || json.items || [];
+    // [진단] 첫 아이템의 키 목록 로그 — 필드명 확인용
+    const raw: any[] = json.OutBlock_1 || json.output || json.block1 || json.items ||
+      (Array.isArray(json) ? json : []);
+    if (raw.length > 0) {
+      console.log("[KRX debug] keys:", Object.keys(raw[0]).join(", "));
+      console.log("[KRX debug] first item:", JSON.stringify(raw[0]));
+    } else {
+      console.log("[KRX debug] empty raw. top-level keys:", Object.keys(json).join(", "));
+    }
+
     return raw.slice(0, 15).map((item: any, i: number) => ({
       rank: i + 1,
-      code: item.ISU_CD || item.ISU_CD_KRN || "",
-      name: item.ISU_ABBRV || item.ISU_NM || item.ISU_SRT_CD || "—",
-      netBuyQty: item.NETBUY_QTY  || item.순매수거래량   || 0,
-      netBuyAmt: item.NETBUY_AMT  || item.순매수거래대금  || 0,
-      buyAmt:    item.BUY_AMT     || item.매수거래대금   || 0,
-      sellAmt:   item.SEL_AMT     || item.매도거래대금   || 0,
+      code: item.ISU_CD || item.ISU_SRT_CD || item.ISU_CD_KRN || "",
+      name: item.ISU_ABBRV || item.ISU_NM || "—",
+      // TRDVOL = 거래량(주), TRDVAL = 거래대금(천원)
+      // 기존 QTY/AMT 스타일도 폴백으로 유지
+      netBuyQty: num(item.NETBUY_TRDVOL ?? item.NETBUY_QTY),
+      netBuyAmt: num(item.NETBUY_TRDVAL ?? item.NETBUY_AMT),
+      buyAmt:    num(item.BUY_TRDVAL    ?? item.BUY_AMT),
+      sellAmt:   num(item.SEL_TRDVAL    ?? item.SEL_AMT),
     }));
   } finally {
     clearTimeout(timer);
@@ -100,7 +111,6 @@ serve(async (req: Request) => {
     const body = await req.json();
     const { action } = body;
 
-    // krx-investor: 국장 투자자별 순매수 TOP15
     if (action === "krx-investor") {
       const market = body.market === "KOSDAQ" ? "KOSDAQ" : "KOSPI";
 
@@ -110,11 +120,9 @@ serve(async (req: Request) => {
         개인: "8000",
       };
 
-      // 날짜 결정: 요청에 date가 없으면 자동 계산, extraDaysBack으로 재시도 지원
       const extraDaysBack = Number(body.extraDaysBack || 0);
       const date = body.date || getPrevTradingDay(extraDaysBack);
 
-      // 기관·외인·개인 3종 병렬 호출
       const results = await Promise.allSettled(
         Object.entries(INVESTOR_CODES).map(async ([label, code]) => {
           const data = await fetchKrxInvestor(market, code, date);
@@ -133,7 +141,6 @@ serve(async (req: Request) => {
         }
       }
 
-      // 데이터가 완전히 비어있으면 빈 날짜임을 클라이언트에 알림
       if (totalRows === 0) {
         return new Response(
           JSON.stringify({ empty: true, date, market }),

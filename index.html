@@ -864,7 +864,7 @@ input:focus-visible,textarea:focus-visible{outline:2px solid var(--color-info);o
   </div>
 
   <!-- ── 국장 투자자 동향 ── -->
-  <div id="ip-flow-kr-investor" class="on">
+  <div id="ip-flow-kr-investor" class="ipanel on">
     <div class="flow-selector">
       <div style="display:flex;gap:5px">
         <button class="tbtn sel" id="flow-mkt-kospi"  onclick="setFlowMarket('KOSPI',this)">KOSPI</button>
@@ -883,7 +883,7 @@ input:focus-visible,textarea:focus-visible{outline:2px solid var(--color-info);o
   </div>
 
   <!-- ── 국장 옵션 ── -->
-  <div id="ip-flow-kr-options">
+  <div id="ip-flow-kr-options" class="ipanel">
     <div class="flow-placeholder">📋 국장 KOSPI200 옵션<br><span style="font-size:var(--text-sm)">준비 중</span></div>
   </div>
 </div>
@@ -2073,7 +2073,7 @@ function renderPortfolioChips(){
 
 function selTag(tag,btn){
   selTagV=tag;
-  document.querySelectorAll('.tbtn').forEach(b=>{
+  document.querySelectorAll('#tag-btns .tbtn').forEach(b=>{
     b.classList.remove('sel');
     b.style.background='';
     b.style.color='';
@@ -3094,7 +3094,8 @@ let _flowMarket='KOSPI';
 let _flowInvestor='기관';
 
 function _fmtKRW(won){
-  const n=Math.abs(Number(won||0));
+  // KRX 거래대금은 천원(×1,000) 단위로 반환됨 → 원 단위로 변환 후 포매팅
+  const n=Math.abs(Number(won||0))*1000;
   if(n>=1e12)return(n/1e12).toFixed(1)+'조';
   if(n>=1e8)return(n/1e8).toFixed(0)+'억';
   if(n>=1e4)return(n/1e4).toFixed(0)+'만';
