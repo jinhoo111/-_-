@@ -422,6 +422,27 @@ input:focus-visible,textarea:focus-visible{outline:2px solid var(--color-info);o
   #ticker-search{width:100%!important}
   .ticker-search-wrap{width:100%}
 }
+
+/* ══════════════════════════════════════
+   기관·옵션 페이지
+══════════════════════════════════════ */
+.flow-selector{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:.875rem}
+.flow-divider{width:1px;height:22px;background:var(--color-border-default);flex-shrink:0}
+.flow-date{font-size:var(--text-sm);color:var(--color-text-tertiary);margin-bottom:.75rem;padding:5px 10px;background:var(--color-bg-muted);border-radius:7px;display:inline-block}
+.flow-table{width:100%;border-collapse:collapse;font-size:var(--text-base)}
+.flow-table th{font-size:var(--text-sm);color:var(--color-text-tertiary);font-weight:600;text-align:right;padding:6px 8px;border-bottom:2px solid var(--color-border-default);white-space:nowrap}
+.flow-table th:first-child,.flow-table th:nth-child(2){text-align:left}
+.flow-table td{padding:8px 8px;border-bottom:1px solid var(--color-border-faint);text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.flow-table td:first-child{text-align:center;color:var(--color-text-muted);font-weight:700;width:2rem}
+.flow-table td:nth-child(2){text-align:left;font-weight:600;color:var(--color-text-primary)}
+.flow-table tr:hover td{background:var(--color-bg-subtle)}
+.flow-table .pos{color:var(--color-error-text);font-weight:600}
+.flow-table .neg{color:var(--color-info);font-weight:600}
+.flow-placeholder{text-align:center;padding:3rem 1rem;color:var(--color-text-tertiary);border:2px dashed var(--color-border-default);border-radius:12px;margin-top:1rem;line-height:2}
+@media(max-width:640px){
+  .flow-table th:nth-child(5),.flow-table th:nth-child(6),
+  .flow-table td:nth-child(5),.flow-table td:nth-child(6){display:none}
+}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 </head>
@@ -436,6 +457,7 @@ input:focus-visible,textarea:focus-visible{outline:2px solid var(--color-info);o
     <button class="nav-tab"     onclick="goPage('news',this)">뉴스</button>
     <button class="nav-tab"     onclick="goPage('research',this)">리서치·규제</button>
     <button class="nav-tab"     onclick="goPage('memo',this)">투자 일지</button>
+    <button class="nav-tab"     onclick="goPage('flow',this)">기관·옵션</button>
   </div>
   <div class="nav-right" id="nav-right">
     <button id="nav-login-btn" class="nav-login-btn" onclick="openAuthModal()">로그인</button>
@@ -831,11 +853,47 @@ input:focus-visible,textarea:focus-visible{outline:2px solid var(--color-info);o
   <div id="memo-list"></div>
 </div>
 
+<!-- ══════════════════════════════════════════
+     PAGE 6: 기관·옵션
+══════════════════════════════════════════ -->
+<div id="page-flow" class="page">
+  <!-- 내부 탭 -->
+  <div class="inner-tab-bar" style="margin-bottom:1rem">
+    <button class="itab on" onclick="swInner('kr-investor','flow',this)">국장 투자자</button>
+    <button class="itab"    onclick="swInner('kr-options','flow',this)">국장 옵션</button>
+  </div>
+
+  <!-- ── 국장 투자자 동향 ── -->
+  <div id="ip-flow-kr-investor" class="on">
+    <div class="flow-selector">
+      <div style="display:flex;gap:5px">
+        <button class="tbtn sel" id="flow-mkt-kospi"  onclick="setFlowMarket('KOSPI',this)">KOSPI</button>
+        <button class="tbtn"     id="flow-mkt-kosdaq" onclick="setFlowMarket('KOSDAQ',this)">KOSDAQ</button>
+      </div>
+      <div class="flow-divider"></div>
+      <div style="display:flex;gap:5px">
+        <button class="tbtn sel" id="flow-inv-inst"    onclick="setFlowInvestor('기관',this)">기관</button>
+        <button class="tbtn"     id="flow-inv-foreign" onclick="setFlowInvestor('외인',this)">외인</button>
+        <button class="tbtn"     id="flow-inv-indiv"   onclick="setFlowInvestor('개인',this)">개인</button>
+      </div>
+      <button class="fbtn" onclick="loadKrxInvestor()" style="margin-left:auto">↻ 새로고침</button>
+    </div>
+    <div id="flow-date-info"></div>
+    <div id="flow-investor-content"><div class="empty"><span class="spin">⟳</span> 불러오는 중...</div></div>
+  </div>
+
+  <!-- ── 국장 옵션 ── -->
+  <div id="ip-flow-kr-options">
+    <div class="flow-placeholder">📋 국장 KOSPI200 옵션<br><span style="font-size:var(--text-sm)">준비 중</span></div>
+  </div>
+</div>
+
 <!-- ══════════ SCRIPT ══════════ -->
 <script>
 // ★ Supabase 설정
 const SUPA_BASE='https://yijkwuiqnviapztqskak.supabase.co';
 const SUPA_URL=SUPA_BASE+'/functions/v1/proxy-api';
+const MARKET_URL=SUPA_BASE+'/functions/v1/market-data';
 const SUPA_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inlpamt3dWlxbnZpYXB6dHFza2FrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE1ODIwMzAsImV4cCI6MjA5NzE1ODAzMH0.n2CuPFPqQeCvZ0-pH-eNqdvuSJrWAH3nOIEt7dBFs_M';
 const _sh={'Content-Type':'application/json','apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY};
 function _apiHeaders(){const t=_currentSession?.access_token||SUPA_KEY;return{'Content-Type':'application/json','apikey':SUPA_KEY,'Authorization':'Bearer '+t};}
@@ -2422,6 +2480,12 @@ function goPage(name,btn){
   localStorage.setItem('cur_page',name);
   if(name==='indices')loadAllIndices();
   if(name==='news')initNewsUI();
+  if(name==='flow'){
+    const savedTab=localStorage.getItem('cur_itab_flow')||'kr-investor';
+    const tabBtn=document.querySelector(`#page-flow .itab[onclick*="'${savedTab}','flow'"]`);
+    if(tabBtn)swInner(savedTab,'flow',tabBtn);
+    if(savedTab==='kr-investor'&&!_flowData)loadKrxInvestor();
+  }
   if(name==='research'){
     const savedTab=localStorage.getItem('cur_itab_research')||'sites';
     const tabBtn=document.querySelector(`#page-research .itab[onclick*="'${savedTab}','research'"]`);
@@ -3019,6 +3083,120 @@ async function checkAndAutoFetch(){
     localStorage.setItem('auto_fetch_kr',dateStr);
     await fetchPricesForMarket('kr');
   }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// 기관·옵션 페이지
+// ═══════════════════════════════════════════════════════════════
+
+let _flowData=null;
+let _flowMarket='KOSPI';
+let _flowInvestor='기관';
+
+function _fmtKRW(won){
+  const n=Math.abs(Number(won||0));
+  if(n>=1e12)return(n/1e12).toFixed(1)+'조';
+  if(n>=1e8)return(n/1e8).toFixed(0)+'억';
+  if(n>=1e4)return(n/1e4).toFixed(0)+'만';
+  return n.toLocaleString();
+}
+
+function _fmtQty(v){
+  const n=Math.abs(Number(v||0));
+  if(n>=1e4)return(n/1e4).toFixed(1)+'만주';
+  return Number(n).toLocaleString()+'주';
+}
+
+function setFlowMarket(market,btn){
+  _flowMarket=market;
+  document.querySelectorAll('#ip-flow-kr-investor .tbtn').forEach(b=>{
+    b.classList.remove('sel');b.style.background='';b.style.color='';b.style.borderColor='';
+  });
+  btn.classList.add('sel');
+  _flowData=null;
+  loadKrxInvestor();
+}
+
+function setFlowInvestor(type,btn){
+  _flowInvestor=type;
+  const row=btn.closest('div');
+  row.querySelectorAll('.tbtn').forEach(b=>{
+    b.classList.remove('sel');b.style.background='';b.style.color='';b.style.borderColor='';
+  });
+  btn.classList.add('sel');
+  renderKrxInvestor();
+}
+
+async function loadKrxInvestor(extraDaysBack=0){
+  const el=document.getElementById('flow-investor-content');
+  const info=document.getElementById('flow-date-info');
+  if(extraDaysBack===0){
+    el.innerHTML='<div class="empty"><span class="spin">⟳</span> KRX 데이터 불러오는 중...</div>';
+    if(info)info.innerHTML='';
+  }
+  const ctrl=new AbortController();
+  const timer=setTimeout(()=>ctrl.abort(),15000);
+  try{
+    const res=await fetch(MARKET_URL,{
+      method:'POST',
+      headers:_sh,
+      body:JSON.stringify({action:'krx-investor',market:_flowMarket,extraDaysBack}),
+      signal:ctrl.signal
+    });
+    clearTimeout(timer);
+    if(!res.ok)throw new Error('서버 오류 (HTTP '+res.status+')');
+    const json=await res.json();
+    if(json.error)throw new Error(json.error);
+    // KRX 데이터가 아직 없는 날이면 전날로 자동 재시도 (최대 2회)
+    if(json.empty&&extraDaysBack<2){
+      return loadKrxInvestor(extraDaysBack+1);
+    }
+    if(json.empty){
+      el.innerHTML='<div class="empty">KRX 데이터를 아직 찾을 수 없습니다.<br><span style="font-size:var(--text-sm)">장마감(15:30) 이후 다시 시도해주세요.</span></div>';
+      return;
+    }
+    _flowData=json;
+    if(info){
+      const d=String(_flowData.date||'');
+      const dateStr=d.length===8?`${d.slice(0,4)}.${d.slice(4,6)}.${d.slice(6,8)}`:'—';
+      info.innerHTML=`<div class="flow-date">📅 ${dateStr} 장마감 기준 · KRX 공식 데이터</div>`;
+    }
+    renderKrxInvestor();
+  }catch(e){
+    clearTimeout(timer);
+    const msg=e.name==='AbortError'?'요청 시간 초과 (15초) — KRX 서버가 느린 상태입니다':escapeHtml(e.message);
+    el.innerHTML=`<div class="err-box">${msg}<br><button onclick="loadKrxInvestor()" style="margin-top:6px;font-size:var(--text-sm);padding:3px 10px;border:1px solid var(--color-border-input);border-radius:6px;background:var(--color-bg-surface);cursor:pointer">다시 시도</button></div>`;
+  }
+}
+
+function renderKrxInvestor(){
+  const el=document.getElementById('flow-investor-content');
+  if(!_flowData){loadKrxInvestor();return;}
+  const items=_flowData[_flowInvestor]||[];
+  if(!items.length){
+    el.innerHTML=`<div class="empty">${escapeHtml(_flowMarket)} ${escapeHtml(_flowInvestor)} 데이터가 없습니다.<br><span style="font-size:var(--text-sm)">장마감(15:30) 이후 또는 다음 영업일에 확인해주세요.</span></div>`;
+    return;
+  }
+  el.innerHTML=`<div style="overflow-x:auto"><table class="flow-table">
+    <thead><tr>
+      <th>순위</th><th>종목명</th>
+      <th>순매수(주)</th><th>매집금액</th>
+      <th>매수금액</th><th>매도금액</th>
+    </tr></thead>
+    <tbody>
+    ${items.map((r,i)=>{
+      const net=Number(r.netBuyAmt||0);
+      return`<tr>
+        <td>${i+1}</td>
+        <td>${escapeHtml(r.name||'—')}</td>
+        <td class="${net>=0?'pos':'neg'}">${_fmtQty(r.netBuyQty)}</td>
+        <td class="${net>=0?'pos':'neg'}">${_fmtKRW(r.netBuyAmt)}</td>
+        <td>${_fmtKRW(r.buyAmt)}</td>
+        <td>${_fmtKRW(r.sellAmt)}</td>
+      </tr>`;
+    }).join('')}
+    </tbody>
+  </table></div>`;
 }
 
 // ─ 초기화
