@@ -1650,11 +1650,11 @@ async function _restoreApiKeyState(){
 }
 
 // ─ 글로벌 설정 및 변수 초기화
-// 두 프록시 동시 경쟁 — 먼저 성공한 쪽 사용 (순차 대기 제거, 속도·안정성 향상)
-async function _tryProxy(url,ms=5000){
+// 공개 CORS 프록시 전부 불안정 → market-data yahoo-finance 액션 우선, corsproxy.io 폴백
+async function _tryProxy(url,ms=6000){
   const _parse=t=>{const s=(t||'').trim();if(!s.startsWith('{')&&!s.startsWith('['))throw new Error('bad-json');return new Response(s,{status:200,headers:{'content-type':'application/json'}});};
-  const p1=fetch('https://corsproxy.io/?'+encodeURIComponent(url)).then(r=>{if(!r.ok)throw 0;return r.text();}).then(_parse);
-  const p2=fetch('https://api.allorigins.win/get?url='+encodeURIComponent(url)).then(r=>{if(!r.ok)throw 0;return r.json();}).then(d=>_parse(d.contents||''));
+  const p1=fetch(DART_PROXY_URL,{method:'POST',headers:{'Content-Type':'application/json','apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY},body:JSON.stringify({action:'yahoo-finance',url})}).then(r=>{if(!r.ok)throw 0;return r.text();}).then(_parse);
+  const p2=fetch('https://corsproxy.io/?'+encodeURIComponent(url)).then(r=>{if(!r.ok)throw 0;return r.text();}).then(_parse);
   return Promise.race([Promise.any([p1,p2]),new Promise((_,rej)=>setTimeout(()=>rej(new Error('timeout')),ms))]);
 }
 // Yahoo Finance용 세마포어 (max 3: rate limit 방지 + 병렬성 향상)
