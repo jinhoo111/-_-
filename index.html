@@ -866,12 +866,12 @@ body.biz-mode .personal-only{display:none!important}
 ═══════════════════════════════════════════ -->
 <div id="page-research" class="page">
   <div class="inner-tab-bar">
-    <button class="itab on" onclick="swInner('sites','research',this)">🏦 리서치 사이트</button>
-    <button class="itab"    onclick="swInner('reg','research',this);if(!regAllItems.length){if(!_loadRegCache())loadRegRSS();}">⚖️ 규제 모니터링</button>
+    <button class="itab"    onclick="swInner('sites','research',this)">🏦 리서치 사이트</button>
+    <button class="itab on" onclick="swInner('reg','research',this);if(!regAllItems.length){if(!_loadRegCache())loadRegRSS();}">⚖️ 규제 모니터링</button>
   </div>
 
   <!-- 사이트 링크 -->
-  <div id="ip-research-sites" class="ipanel on">
+  <div id="ip-research-sites" class="ipanel">
     <div class="filter-row" id="site-filter">
       <button class="fbtn on" onclick="siteFilter('all',this)">전체</button>
       <button class="fbtn" onclick="siteFilter('ib',this)">IB 리서치</button>
@@ -884,7 +884,7 @@ body.biz-mode .personal-only{display:none!important}
   </div>
 
   <!-- 규제 RSS 실시간 -->
-  <div id="ip-research-reg" class="ipanel">
+  <div id="ip-research-reg" class="ipanel on">
     <!-- 헤더 : 바로가기(좌) + 상태·갱신(우) -->
     <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:.875rem;flex-wrap:wrap">
       <!-- 규제기관 바로가기 -->
@@ -937,9 +937,10 @@ body.biz-mode .personal-only{display:none!important}
 
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.75rem">
     <div class="memo-view-tabs">
-      <button class="memo-vtab active" id="vtab-active" onclick="switchMemoView('active')">활성 일지</button>
-      <button class="memo-vtab" id="vtab-archive" onclick="switchMemoView('archive')">아카이브</button>
-      <button class="memo-vtab" id="vtab-philosophy" onclick="switchMemoView('philosophy')">투자 철학</button>
+      <button class="memo-vtab active" id="vtab-active"     onclick="switchMemoView('active')">활성 일지</button>
+      <button class="memo-vtab"        id="vtab-calendar"   onclick="switchMemoView('calendar')">📅 캘린더</button>
+      <button class="memo-vtab"        id="vtab-archive"    onclick="switchMemoView('archive')">아카이브</button>
+      <button class="memo-vtab"        id="vtab-philosophy" onclick="switchMemoView('philosophy')">투자 철학</button>
     </div>
     <button id="notify-master-btn" type="button" onclick="toggleMasterNotify()" style="font-size:var(--text-base);padding:5px 12px;border:1px solid var(--color-border-input);border-radius:8px;background:var(--color-bg-surface);cursor:pointer;color:var(--color-text-tertiary);font-family:inherit">전체 알림 OFF</button>
   </div>
@@ -982,9 +983,8 @@ body.biz-mode .personal-only{display:none!important}
         <button class="tbtn" onclick="setArchiveFilter('sell',this)">매도</button>
       </div>
       <div class="archive-view-toggle">
-        <button class="av-btn on" id="avbtn-card"     onclick="setArchiveView('card')"     title="카드 뷰">☰ 카드</button>
-        <button class="av-btn"    id="avbtn-list"     onclick="setArchiveView('list')"     title="리스트 뷰">≡ 리스트</button>
-        <button class="av-btn"    id="avbtn-calendar" onclick="setArchiveView('calendar')" title="캘린더 뷰">□ 캘린더</button>
+        <button class="av-btn on" id="avbtn-card" onclick="setArchiveView('card')" title="카드 뷰">☰ 카드</button>
+        <button class="av-btn"    id="avbtn-list" onclick="setArchiveView('list')" title="리스트 뷰">≡ 리스트</button>
       </div>
     </div>
   </div>
@@ -1546,20 +1546,16 @@ _sb.auth.onAuthStateChange(async(event,session)=>{
 
 // Supabase Edge Function 헬퍼 (키 저장 / 프록시 호출)
 async function storeApiKey(service,key){
-  // Finnhub → market-data (fh-key column in user_profiles, server-side validation)
-  if(service==='finnhub'){
-    const r=await fetch(DART_PROXY_URL,{method:'POST',headers:_apiHeaders(),body:JSON.stringify({action:'store-fh-key',key})});
-    return r.json();
-  }
   const r=await fetch(SUPA_URL,{method:'POST',headers:_apiHeaders(),body:JSON.stringify({action:'store-key',service,key})});
   return r.json();
 }
 async function proxyApiCall(service,path,params={}){
-  // Finnhub (personal + biz both): market-data fh-call (handles key routing internally)
-  if(service==='finnhub'){
+  // 승인된 기업 사용자의 Finnhub 호출 → 관리자 키로 market-data 통해 프록시
+  if(service==='finnhub'&&_userType==='business'&&_bizApproved){
     const r=await fetch(DART_PROXY_URL,{method:'POST',headers:_apiHeaders(),
-      body:JSON.stringify({action:'fh-call',path,params})});
-    if(!r.ok){const d=await r.json().catch(()=>({}));throw new Error(d.error||'proxy_error:'+r.status);}
+      body:JSON.stringify({action:'finnhub-proxy',path,params})});
+    if(r.status===401){const d=await r.json();throw new Error(d.error||'fh_auth');}
+    if(!r.ok)throw new Error('proxy_error:'+r.status);
     return r.json();
   }
   const r=await fetch(SUPA_URL,{method:'POST',headers:_apiHeaders(),body:JSON.stringify({action:'call',service,path,params})});
@@ -1568,10 +1564,6 @@ async function proxyApiCall(service,path,params={}){
   return r.json();
 }
 function _deleteApiKeyOnServer(service){
-  if(service==='finnhub'){
-    fetch(DART_PROXY_URL,{method:'POST',headers:_apiHeaders(),body:JSON.stringify({action:'delete-fh-key'})}).catch(()=>{});
-    return;
-  }
   fetch(SUPA_URL,{method:'POST',headers:_apiHeaders(),body:JSON.stringify({action:'delete-key',service})}).catch(()=>{});
 }
 async function _restoreApiKeyState(){
@@ -1607,7 +1599,7 @@ async function _restoreApiKeyState(){
   }
 
   const[fhRes,ckRes,dartRes]=await Promise.all([
-    fetch(DART_PROXY_URL,{method:'POST',headers:h,body:JSON.stringify({action:'fh-key-exists'})}).then(r=>r.json()).catch(()=>({})),
+    fetch(SUPA_URL,{method:'POST',headers:h,body:JSON.stringify({action:'key-exists',service:'finnhub'})}).then(r=>r.json()).catch(()=>({})),
     fetch(SUPA_URL,{method:'POST',headers:h,body:JSON.stringify({action:'key-exists',service:'googleai'})}).then(r=>r.json()).catch(()=>({})),
     fetch(DART_PROXY_URL,{method:'POST',headers:h,body:JSON.stringify({action:'dart-key-exists'})}).then(r=>r.json()).catch(()=>({}))
   ]);
@@ -1623,11 +1615,6 @@ async function _restoreApiKeyState(){
     const cb=document.getElementById('clear-btn');if(cb)cb.style.display='flex';
     setKeyStatus('live','연결됨 · 실시간 활성');
     if(document.getElementById('page-news')?.classList.contains('on')){loadMarketNews();refreshQuotes();}
-  }else if(localStorage.getItem('fhkey_stored')){
-    // 이전 proxy-api 저장 키 → market-data로 마이그레이션 필요: localStorage 정리 후 재입력 유도
-    localStorage.removeItem('fhkey_stored');
-    FKEY='';
-    setKeyStatus('wait','Finnhub API 키를 다시 연결해주세요 (시스템 업그레이드)');
   }
   if(ckRes.exists){
     CKEY='***';
@@ -2293,16 +2280,15 @@ function initNewsUI(){
 
 async function connectAPI(){
   const val=document.getElementById('api-key-input').value.trim();if(!val||val.startsWith('•')){setKeyStatus('err','API 키를 입력해주세요');return;}
-  if(!_currentSession){setKeyStatus('err','로그인 후 API 키를 저장할 수 있습니다');return;}
   const btn=document.getElementById('connect-btn');btn.disabled=true;btn.textContent='확인 중...';
   try{
-    // 서버 단일 검증 + 저장 (market-data store-fh-key가 Finnhub 직접 검증)
+    // 1단계: 키 유효성 직접 검증 (1회)
+    const r=await fetch(`https://finnhub.io/api/v1/news?category=general&token=${val}`);
+    if(!r.ok)throw new Error('invalid_key');
+    const d=await r.json();if(!Array.isArray(d))throw new Error('invalid_key');
+    // 2단계: 유효한 키를 서버에 저장
     const res=await storeApiKey('finnhub',val);
-    if(res.error){
-      const errMap={fh_key_invalid:'API 키가 잘못됐습니다',auth_required:'로그인 후 API 키를 저장할 수 있습니다',invalid_key:'API 키 형식이 올바르지 않습니다'};
-      throw new Error(errMap[res.error]||('서버 오류: '+res.error));
-    }
-    if(!res.ok)throw new Error('서버 저장 실패 · 잠시 후 재시도');
+    if(!res.ok)throw new Error('store_failed');
     FKEY='***';
     localStorage.setItem('fhkey_stored','1');
     localStorage.removeItem('fhkey');
@@ -2311,7 +2297,10 @@ async function connectAPI(){
     setKeyStatus('live','연결됨 · 실시간 활성');
     renderPortfolioChips();loadMarketNews();refreshQuotes();
   }catch(e){
-    setKeyStatus('err',e.message||'오류가 발생했습니다');
+    const msg=e.message==='store_failed'
+      ?(_currentSession?'서버 저장 실패 · 잠시 후 재시도':'로그인 후 API 키를 저장할 수 있습니다')
+      :'API 키가 잘못됐습니다';
+    setKeyStatus('err',msg);
   }
   btn.disabled=false;btn.textContent='연결';
 }
@@ -2467,6 +2456,7 @@ function addMemo(){
 function switchMemoView(view){
   memoView=view;
   document.getElementById('vtab-active').classList.toggle('active',view==='active');
+  const calTab=document.getElementById('vtab-calendar');if(calTab)calTab.classList.toggle('active',view==='calendar');
   document.getElementById('vtab-archive').classList.toggle('active',view==='archive');
   document.getElementById('vtab-philosophy').classList.toggle('active',view==='philosophy');
   const compose=document.getElementById('memo-compose-area');
@@ -2482,17 +2472,14 @@ function switchMemoView(view){
         b.style.color=i===0?'var(--color-text-primary)':'';
         b.style.borderColor='';
       });
-      // 뷰 토글 버튼 상태 동기화
-      ['card','list','calendar'].forEach(m=>{
+      ['card','list'].forEach(m=>{
         const btn=document.getElementById('avbtn-'+m);
         if(btn)btn.classList.toggle('on',m===archiveViewMode);
       });
-      // 캘린더 뷰면 태그 필터 숨김
-      const tagFilter=document.getElementById('archive-tag-filter');
-      if(tagFilter)tagFilter.style.display=archiveViewMode==='calendar'?'none':'flex';
-      // 캘린더 월 초기화 → 현재 월로
-      _calYear=new Date().getFullYear();_calMonth=new Date().getMonth();_calSelectedDay=null;
     }
+  }
+  if(view==='calendar'){
+    _calYear=new Date().getFullYear();_calMonth=new Date().getMonth();_calSelectedDay=null;
   }
   renderMemos();
 }
@@ -2501,6 +2488,7 @@ function renderMemos(){
   const el=document.getElementById('memo-list');
   if(memoView==='archive'){renderArchive(el);return;}
   if(memoView==='philosophy'){renderPhilosophy(el);return;}
+  if(memoView==='calendar'){renderArchiveCalendar(el);return;}
   if(!memos.length){
     el.innerHTML='<div style="color:var(--color-text-tertiary);font-size:var(--text-md);padding:.5rem 0">첫 투자 일지를 남겨보세요.</div>';
     return;
@@ -2637,19 +2625,15 @@ function setArchiveFilter(tag,btn){
 
 function setArchiveView(mode){
   archiveViewMode=mode;
-  ['card','list','calendar'].forEach(m=>{
+  ['card','list'].forEach(m=>{
     const btn=document.getElementById('avbtn-'+m);
     if(btn)btn.classList.toggle('on',m===mode);
   });
-  // 캘린더 뷰에서는 태그 필터 숨김 (날짜 기반 탐색으로 충분)
-  const tagFilter=document.getElementById('archive-tag-filter');
-  if(tagFilter)tagFilter.style.display=mode==='calendar'?'none':'flex';
   renderMemos();
 }
 
 function renderArchive(el){
   if(archiveViewMode==='list'){renderArchiveList(el);return;}
-  if(archiveViewMode==='calendar'){renderArchiveCalendar(el);return;}
   const list=archiveTagFilter==='all'?memoArchive:memoArchive.filter(m=>(m.tag||'general')===archiveTagFilter);
   if(!list.length){
     el.innerHTML=`<div style="color:var(--color-text-tertiary);font-size:var(--text-md);padding:.5rem 0">${archiveTagFilter==='all'?'완료 처리된 일지가 없습니다.':'해당 태그의 아카이브가 없습니다.'}</div>`;
@@ -2716,13 +2700,77 @@ function renderArchiveList(el){
 
 let _calYear=new Date().getFullYear(),_calMonth=new Date().getMonth();
 
+// 주요 시장 일정 (FOMC, 어닝시즌, 잭슨홀, OpEx 등)
+const MARKET_EVENTS=[
+  // FOMC 금리 결정일 2025
+  {date:'2025-01-29',type:'fomc',title:'FOMC 결정'},
+  {date:'2025-03-19',type:'fomc',title:'FOMC 결정'},
+  {date:'2025-05-07',type:'fomc',title:'FOMC 결정'},
+  {date:'2025-06-18',type:'fomc',title:'FOMC 결정'},
+  {date:'2025-07-30',type:'fomc',title:'FOMC 결정'},
+  {date:'2025-09-17',type:'fomc',title:'FOMC 결정'},
+  {date:'2025-10-29',type:'fomc',title:'FOMC 결정'},
+  {date:'2025-12-10',type:'fomc',title:'FOMC 결정'},
+  // FOMC 금리 결정일 2026
+  {date:'2026-01-28',type:'fomc',title:'FOMC 결정'},
+  {date:'2026-03-18',type:'fomc',title:'FOMC 결정'},
+  {date:'2026-04-29',type:'fomc',title:'FOMC 결정'},
+  {date:'2026-06-10',type:'fomc',title:'FOMC 결정'},
+  {date:'2026-07-29',type:'fomc',title:'FOMC 결정'},
+  {date:'2026-09-16',type:'fomc',title:'FOMC 결정'},
+  {date:'2026-10-28',type:'fomc',title:'FOMC 결정'},
+  {date:'2026-12-09',type:'fomc',title:'FOMC 결정'},
+  // 잭슨홀 심포지엄
+  {date:'2025-08-21',type:'event',title:'잭슨홀 심포지엄'},
+  {date:'2026-08-20',type:'event',title:'잭슨홀 심포지엄'},
+  // 어닝시즌 시작
+  {date:'2025-01-15',type:'earnings',title:'Q4 어닝시즌'},
+  {date:'2025-04-11',type:'earnings',title:'Q1 어닝시즌'},
+  {date:'2025-07-11',type:'earnings',title:'Q2 어닝시즌'},
+  {date:'2025-10-10',type:'earnings',title:'Q3 어닝시즌'},
+  {date:'2026-01-15',type:'earnings',title:'Q4 어닝시즌'},
+  {date:'2026-04-10',type:'earnings',title:'Q1 어닝시즌'},
+  {date:'2026-07-10',type:'earnings',title:'Q2 어닝시즌'},
+  {date:'2026-10-09',type:'earnings',title:'Q3 어닝시즌'},
+  // 분기 옵션만기 (Quarterly OpEx — 3rd Friday)
+  {date:'2025-03-21',type:'opex',title:'분기 OpEx'},
+  {date:'2025-06-20',type:'opex',title:'분기 OpEx'},
+  {date:'2025-09-19',type:'opex',title:'분기 OpEx'},
+  {date:'2025-12-19',type:'opex',title:'분기 OpEx'},
+  {date:'2026-03-20',type:'opex',title:'분기 OpEx'},
+  {date:'2026-06-19',type:'opex',title:'분기 OpEx'},
+  {date:'2026-09-18',type:'opex',title:'분기 OpEx'},
+  {date:'2026-12-18',type:'opex',title:'분기 OpEx'},
+  // 미국 CPI 발표 (대략적 일정)
+  {date:'2025-01-15',type:'macro',title:'미국 CPI'},
+  {date:'2025-02-12',type:'macro',title:'미국 CPI'},
+  {date:'2025-03-12',type:'macro',title:'미국 CPI'},
+  {date:'2025-04-10',type:'macro',title:'미국 CPI'},
+  {date:'2025-05-13',type:'macro',title:'미국 CPI'},
+  {date:'2025-06-11',type:'macro',title:'미국 CPI'},
+  {date:'2025-07-15',type:'macro',title:'미국 CPI'},
+  {date:'2025-08-12',type:'macro',title:'미국 CPI'},
+  {date:'2025-09-10',type:'macro',title:'미국 CPI'},
+  {date:'2025-10-15',type:'macro',title:'미국 CPI'},
+  {date:'2025-11-12',type:'macro',title:'미국 CPI'},
+  {date:'2025-12-10',type:'macro',title:'미국 CPI'},
+];
+
+const EV_STYLE={
+  fomc:  {bg:'#fef2f2',c:'#dc2626',label:'🏦'},
+  earnings:{bg:'#eff6ff',c:'#2563eb',label:'📊'},
+  event: {bg:'#f5f3ff',c:'#7c3aed',label:'🏔️'},
+  opex:  {bg:'#fff7ed',c:'#c2410c',label:'⚡'},
+  macro: {bg:'#f0fdf4',c:'#15803d',label:'📈'},
+};
+
 function renderArchiveCalendar(el){
   const today=new Date();
   const y=_calYear,mo=_calMonth;
-  const firstDay=new Date(y,mo,1).getDay(); // 0=일
+  const firstDay=new Date(y,mo,1).getDay();
   const lastDate=new Date(y,mo+1,0).getDate();
 
-  // 날짜별 메모 인덱스 빌드
+  // 날짜별 내 메모
   const byDate={};
   memoArchive.forEach(m=>{
     const d=new Date(m.completedAt||m.time);
@@ -2733,25 +2781,45 @@ function renderArchiveCalendar(el){
     }
   });
 
+  // 날짜별 주요 일정
+  const byEvents={};
+  MARKET_EVENTS.forEach(ev=>{
+    const d=new Date(ev.date+'T00:00:00');
+    if(d.getFullYear()===y&&d.getMonth()===mo){
+      const k=d.getDate();
+      if(!byEvents[k])byEvents[k]=[];
+      byEvents[k].push(ev);
+    }
+  });
+
   const DOW=['일','월','화','수','목','금','토'];
-  const dowHtml=DOW.map((d,i)=>`<div class="arc-cal-dow">${d}</div>`).join('');
+  const dowHtml=DOW.map(d=>`<div class="arc-cal-dow">${d}</div>`).join('');
 
   const cells=[];
-  // 앞 빈칸 (일요일 시작)
   for(let i=0;i<firstDay;i++)cells.push('<div class="arc-cal-day empty"></div>');
   for(let d=1;d<=lastDate;d++){
-    const memos=byDate[d]||[];
+    const dayMemos=byDate[d]||[];
+    const dayEvents=byEvents[d]||[];
+    const hasAny=dayMemos.length||dayEvents.length;
     const isToday=today.getFullYear()===y&&today.getMonth()===mo&&today.getDate()===d;
-    const dow=(firstDay+d-1)%7; // 0=일,6=토
-    const cls=['arc-cal-day',memos.length?'has-memo':'',isToday?'today':'',dow===0?'sun':dow===6?'sat':''].filter(Boolean).join(' ');
-    const chips=memos.slice(0,3).map(m=>{
+    const dow=(firstDay+d-1)%7;
+    const cls=['arc-cal-day',hasAny?'has-memo':'',isToday?'today':'',dow===0?'sun':dow===6?'sat':''].filter(Boolean).join(' ');
+
+    // 주요 일정 칩 (최대 2개)
+    const evChips=dayEvents.slice(0,2).map(ev=>{
+      const s=EV_STYLE[ev.type]||EV_STYLE.event;
+      return`<span class="arc-tag-chip" style="background:${s.bg};color:${s.c};font-weight:600">${s.label} ${ev.title}</span>`;
+    }).join('');
+    // 내 일지 칩 (남은 공간, 최대 2개)
+    const memoChips=dayMemos.slice(0,2).map(m=>{
       const c=TAG[m.tag]||TAG.general;
       return`<span class="arc-tag-chip" style="background:${c.bg};color:${c.c}">${c.l}</span>`;
-    }).join('')+(memos.length>3?`<span class="arc-tag-chip" style="background:var(--color-bg-overlay);color:var(--color-text-muted)">+${memos.length-3}</span>`:'');
-    const onclick=memos.length?`onclick="selectCalDay(${d})"` : '';
+    }).join('')+(dayMemos.length>2?`<span class="arc-tag-chip" style="background:var(--color-bg-overlay);color:var(--color-text-muted)">+${dayMemos.length-2}</span>`:'');
+
+    const onclick=hasAny?`onclick="selectCalDay(${d})"` : '';
     cells.push(`<div class="${cls}" id="cal-day-${d}" ${onclick}>
       <span class="arc-cal-num">${d}</span>
-      <div>${chips}</div>
+      <div>${evChips}${memoChips}</div>
     </div>`);
   }
 
@@ -2792,11 +2860,25 @@ function selectCalDay(d){
     const dt=new Date(m.completedAt||m.time);
     return dt.getFullYear()===y&&dt.getMonth()===mo&&dt.getDate()===d;
   });
+  const dayEvents=MARKET_EVENTS.filter(ev=>{
+    const dt=new Date(ev.date+'T00:00:00');
+    return dt.getFullYear()===y&&dt.getMonth()===mo&&dt.getDate()===d;
+  });
   const dow=['일','월','화','수','목','금','토'][new Date(y,mo,d).getDay()];
   const det=document.getElementById('arc-cal-detail');
   if(!det)return;
+  const evHtml=dayEvents.map(ev=>{
+    const s=EV_STYLE[ev.type]||EV_STYLE.event;
+    return`<div style="display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:8px;background:${s.bg};margin-bottom:6px">
+      <span style="font-size:1.1em">${s.label}</span>
+      <span style="font-size:var(--text-base);font-weight:700;color:${s.c}">${ev.title}</span>
+      <span style="font-size:var(--text-sm);color:var(--color-text-muted);margin-left:auto">주요 일정</span>
+    </div>`;
+  }).join('');
   det.innerHTML=`<div class="arc-cal-detail">
-    <div style="font-size:var(--text-base);font-weight:700;color:var(--color-text-secondary);margin-bottom:8px">${mo+1}월 ${d}일 ${dow}요일 일지 (${dayMemos.length}건)</div>
+    <div style="font-size:var(--text-base);font-weight:700;color:var(--color-text-secondary);margin-bottom:8px">${mo+1}월 ${d}일 ${dow}요일</div>
+    ${evHtml}
+    ${dayMemos.length?`<div style="font-size:var(--text-sm);color:var(--color-text-muted);margin:8px 0 6px;font-weight:600">내 일지 (${dayMemos.length}건)</div>`:''}
     ${dayMemos.map(m=>{
       const c=TAG[m.tag]||TAG.general;
       const imp=!!m.important;
@@ -3003,10 +3085,10 @@ function goPage(name,btn){
   if(name==='indices')loadAllIndices();
   if(name==='news')initNewsUI();
   if(name==='research'){
-    const savedTab=localStorage.getItem('cur_itab_research')||'sites';
+    const savedTab=localStorage.getItem('cur_itab_research')||'reg';
     const tabBtn=document.querySelector(`#page-research .itab[onclick*="'${savedTab}','research'"]`);
     if(tabBtn)swInner(savedTab,'research',tabBtn);
-    if(savedTab==='reg'&&!regAllItems.length){if(!_loadRegCache())loadRegRSS();}
+    if(!regAllItems.length){if(!_loadRegCache())loadRegRSS();}
   }
 }
 
