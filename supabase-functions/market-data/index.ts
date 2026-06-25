@@ -35,12 +35,24 @@ serve(async (req: Request) => {
       return user || null;
     };
 
+    // 기본 프로필 (기존 컬럼 — 항상 존재)
     const getProfile = async (userId: string) => {
       const { data } = await supabase
         .from("user_profiles")
-        .select("dart_api_key, dart_daily_count, dart_count_date, business_approved, user_type, is_admin, shared_finnhub_key")
+        .select("dart_api_key, dart_daily_count, dart_count_date, business_approved, user_type")
         .eq("user_id", userId)
         .single();
+      return data;
+    };
+
+    // 관리자 확장 프로필 (신규 컬럼 — SQL 추가 후 사용 가능)
+    const getAdminProfile = async (userId: string) => {
+      const { data, error } = await supabase
+        .from("user_profiles")
+        .select("is_admin, shared_finnhub_key, dart_api_key")
+        .eq("user_id", userId)
+        .single();
+      if (error) return null; // 컬럼 미존재 시 graceful fallback
       return data;
     };
 
@@ -49,14 +61,15 @@ serve(async (req: Request) => {
 
     // 관리자 공유 키 조회 (DB 우선, 환경변수 fallback)
     const getAdminKeys = async () => {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("user_profiles")
         .select("dart_api_key, shared_finnhub_key")
         .eq("is_admin", true)
         .single();
+      // is_admin 컬럼 없으면 error → env var fallback
       return {
-        dart: data?.dart_api_key || Deno.env.get("OWNER_DART_KEY") || "",
-        finnhub: data?.shared_finnhub_key || Deno.env.get("OWNER_FINNHUB_KEY") || "",
+        dart: (error ? null : data?.dart_api_key) || Deno.env.get("OWNER_DART_KEY") || "",
+        finnhub: (error ? null : data?.shared_finnhub_key) || Deno.env.get("OWNER_FINNHUB_KEY") || "",
       };
     };
 
@@ -72,7 +85,7 @@ serve(async (req: Request) => {
     if (action === "admin-save-finnhub-key") {
       const user = await getUser();
       if (!user) return err("auth_required", 401);
-      const profile = await getProfile(user.id);
+      const profile = await getAdminProfile(user.id);
       if (!profile?.is_admin) return err("admin_only", 403);
       const { key } = body;
       if (!key || typeof key !== "string" || key.length < 10) return err("invalid_key");
@@ -88,7 +101,7 @@ serve(async (req: Request) => {
     if (action === "admin-delete-finnhub-key") {
       const user = await getUser();
       if (!user) return err("auth_required", 401);
-      const profile = await getProfile(user.id);
+      const profile = await getAdminProfile(user.id);
       if (!profile?.is_admin) return err("admin_only", 403);
       await supabase.from("user_profiles").update({ shared_finnhub_key: null }).eq("user_id", user.id);
       return ok({ ok: true });
@@ -97,7 +110,7 @@ serve(async (req: Request) => {
     if (action === "admin-keys-status") {
       const user = await getUser();
       if (!user) return err("auth_required", 401);
-      const profile = await getProfile(user.id);
+      const profile = await getAdminProfile(user.id);
       if (!profile?.is_admin) return err("admin_only", 403);
       return ok({
         dart: profile.dart_api_key ? { exists: true, masked: "···" + profile.dart_api_key.slice(-4) } : { exists: false },
