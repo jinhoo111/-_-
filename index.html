@@ -1027,10 +1027,16 @@ body.biz-mode .personal-only{display:none!important}
   <!-- 메인 컨텐츠 -->
   <div id="monitor-main">
     <div class="monitor-topbar">
-      <div class="monitor-search-wrap">
-        <input type="text" id="monitor-search" placeholder="종목코드(6자리) 또는 회사명 검색" class="monitor-search-input"
-               onkeydown="if(event.key==='Enter')addMonitorCompany()"/>
+      <div class="monitor-search-wrap" style="position:relative">
+        <input type="text" id="monitor-search"
+               placeholder="🔍 회사명(삼성전자, SK하이닉스…) 또는 종목코드(6자리)"
+               class="monitor-search-input" autocomplete="off"
+               oninput="monitorSearchInput(this.value)"
+               onkeydown="monitorSearchKeyDown(event)"/>
         <button id="monitor-add-btn" onclick="addMonitorCompany()" class="btn" style="flex-shrink:0;white-space:nowrap">추가</button>
+        <div id="monitor-dropdown" style="display:none;position:absolute;top:100%;left:0;right:48px;
+          background:var(--color-bg-primary);border:1px solid var(--color-border);border-radius:var(--radius-md);
+          box-shadow:0 6px 20px rgba(0,0,0,.15);z-index:200;max-height:280px;overflow-y:auto;margin-top:2px"></div>
       </div>
       <div class="monitor-controls">
         <div class="monitor-view-toggle">
@@ -1511,6 +1517,10 @@ function _syncToCloud(immediate){
 
 // ── Auth 상태 변화 감지 (로그인/로그아웃/이메일인증 완료)
 _sb.auth.onAuthStateChange(async(event,session)=>{
+  if(event==='TOKEN_REFRESHED'&&session){
+    _currentSession=session; // 토큰 갱신 시 세션만 업데이트
+    return;
+  }
   if(event==='SIGNED_IN'&&session?.user){
     _currentUser=session.user;
     _currentSession=session;
@@ -1557,6 +1567,7 @@ function _deleteApiKeyOnServer(service){
   fetch(SUPA_URL,{method:'POST',headers:_apiHeaders(),body:JSON.stringify({action:'delete-key',service})}).catch(()=>{});
 }
 async function _restoreApiKeyState(){
+  try{const{data:{session}}=await _sb.auth.getSession();if(session)_currentSession=session;}catch(e){}
   if(!_currentSession)return;
   const h=_apiHeaders();
 
@@ -3601,21 +3612,26 @@ async function saveDartKey(){
   const key=(input?.value||'').trim();
   if(!key){if(errEl)errEl.textContent='API 키를 입력해주세요.';return;}
   if(!termsCheck?.checked){if(errEl)errEl.textContent='이용약관에 동의해주세요.';return;}
+  // 항상 최신 세션 토큰 확보
+  try{const{data:{session}}=await _sb.auth.getSession();if(session)_currentSession=session;}catch(e){}
   if(!_currentSession){if(errEl)errEl.textContent='로그인이 필요합니다.';return;}
   if(btn){btn.disabled=true;btn.textContent='검증 중...';}
   if(errEl)errEl.textContent='';
   try{
     const r=await fetch(DART_PROXY_URL,{method:'POST',headers:_apiHeaders(),body:JSON.stringify({action:'store-dart-key',key})});
+    let d={};
+    try{d=await r.json();}catch(e){}
     if(!r.ok){
       const status=r.status;
-      const errMsg=status===404?'Edge Function을 찾을 수 없습니다. Supabase에 market-data 함수가 배포되었는지 확인하세요.':
+      const serverMsg=d.error||'';
+      const errMsg=status===404?'Edge Function을 찾을 수 없습니다 (404). Supabase market-data 배포를 확인하세요.':
                    status===401?'인증 오류. 다시 로그인 후 시도해주세요.':
-                   `서버 오류(${status}). Edge Function 배포 상태를 확인해주세요.`;
+                   status===502?'DART API 서버에 연결할 수 없습니다. 잠시 후 다시 시도하세요.':
+                   serverMsg?`오류: ${serverMsg}`:`서버 오류(${status}).`;
       if(errEl)errEl.textContent=errMsg;
       if(btn){btn.disabled=false;btn.textContent='등록';}
       return;
     }
-    const d=await r.json();
     if(d.ok){
       dartKeyStored=true;
       const lbl=document.getElementById('monitor-dart-key-label');
@@ -3627,10 +3643,12 @@ async function saveDartKey(){
     }else{
       const msg={
         dart_key_invalid:'유효하지 않은 DART API 키입니다. opendart.fss.or.kr에서 키를 확인해주세요.',
+        dart_key_unregistered:'등록되지 않은 키입니다. DART OpenAPI 사이트에서 키 활성화 여부를 확인하세요.',
         rate_limit_exceeded:'일일 호출 한도(300건)를 초과했습니다. 내일 다시 시도하세요.',
-        invalid_key:'키 형식이 올바르지 않습니다. 40자리 영문+숫자 키를 입력하세요.',
+        invalid_key:'키 형식이 올바르지 않습니다 (40자리 영문+숫자).',
       };
-      if(errEl)errEl.textContent=msg[d.error]||('저장 실패: '+(d.error||'다시 시도해주세요'));
+      const raw=d.error||'';
+      if(errEl)errEl.textContent=msg[raw]||(raw.startsWith('db_error')?'DB 저장 오류. 관리자에게 문의하세요.':('저장 실패: '+raw));
     }
   }catch(e){
     if(errEl)errEl.textContent='네트워크 오류. 인터넷 연결 또는 Edge Function 배포 상태를 확인해주세요.';
@@ -3750,28 +3768,136 @@ function _renderDemoMonitor(){
   </div>`;
 }
 
+// ── 기업 검색 자동완성 ────────────────────
+let _monitorTsTimer=null, _monitorSelectedCode='', _monitorDdIdx=-1;
+
+function monitorSearchInput(val){
+  _monitorSelectedCode='';
+  const q=val.trim();
+  const dd=document.getElementById('monitor-dropdown');
+  if(q.length<1){if(dd)dd.style.display='none';return;}
+  clearTimeout(_monitorTsTimer);
+  _monitorTsTimer=setTimeout(()=>_monitorNaverSearch(q),300);
+}
+
+async function _monitorNaverSearch(q){
+  try{
+    const res=await fetch(SUPA_URL,{method:'POST',headers:_sh,
+      body:JSON.stringify({action:'naver-search',query:q})});
+    const data=await res.json();
+    const items=Array.isArray(data?.items)?data.items:[];
+    const results=[];
+    for(const it of items){
+      const nation=(it.nationCode||'').toUpperCase();
+      if(nation!=='KOR')continue; // DART는 국내 주식만
+      const type=(it.typeCode||'').toUpperCase();
+      const suffix=type==='KOSDAQ'?'.KQ':'.KS';
+      results.push({code:it.code,sym:it.code+suffix,name:it.name||it.code,mkt:type||'KOSPI'});
+      if(results.length>=8)break;
+    }
+    _renderMonitorDropdown(results,q);
+  }catch(e){}
+}
+
+function _renderMonitorDropdown(results,q){
+  const dd=document.getElementById('monitor-dropdown');
+  if(!dd)return;
+  if(!results.length){
+    // 6자리 숫자 직접입력도 허용
+    if(/^\d{6}$/.test(q)){
+      dd.style.display='none';
+      return;
+    }
+    dd.innerHTML=`<div style="padding:12px;font-size:var(--text-sm);color:var(--color-text-tertiary);text-align:center">검색 결과가 없습니다</div>`;
+    dd.style.display='block';
+    return;
+  }
+  _monitorDdIdx=-1;
+  dd.style.display='block';
+  dd.innerHTML=results.map((r,i)=>{
+    const c=r.code.replace(/'/g,"\\'"),n=(r.name||'').replace(/'/g,"\\'");
+    const badge=`<span style="font-size:10px;font-weight:700;padding:1px 5px;border-radius:4px;
+      background:var(--color-warning-bg);color:var(--color-warning-text);flex-shrink:0">${r.mkt}</span>`;
+    return`<div data-mdd="${i}" onclick="pickMonitorCompany('${c}','${n.replace(/\\/g,'\\\\')}')"
+      style="display:flex;align-items:center;gap:8px;padding:8px 12px;cursor:pointer;
+      border-bottom:1px solid var(--color-border-faint);transition:background .1s">
+      ${badge}
+      <span style="font-size:var(--text-xs);font-weight:700;font-family:monospace;color:var(--color-text-tertiary);flex-shrink:0">${escapeHtml(r.code)}</span>
+      <span style="font-size:var(--text-sm);font-weight:600;color:var(--color-text-strong)">${escapeHtml(r.name)}</span>
+    </div>`;
+  }).join('');
+}
+
+function pickMonitorCompany(code,name){
+  _monitorSelectedCode=code;
+  const inp=document.getElementById('monitor-search');
+  if(inp)inp.value=name;
+  const dd=document.getElementById('monitor-dropdown');
+  if(dd)dd.style.display='none';
+}
+
+function monitorSearchKeyDown(e){
+  const dd=document.getElementById('monitor-dropdown');
+  if(e.key==='Escape'){if(dd)dd.style.display='none';_monitorDdIdx=-1;return;}
+  if(e.key==='Enter'){addMonitorCompany();return;}
+  if(!dd||dd.style.display==='none')return;
+  const items=[...dd.querySelectorAll('[data-mdd]')];
+  if(!items.length)return;
+  if(e.key==='ArrowDown'){e.preventDefault();_monitorDdIdx=Math.min(_monitorDdIdx+1,items.length-1);}
+  else if(e.key==='ArrowUp'){e.preventDefault();_monitorDdIdx=Math.max(_monitorDdIdx-1,0);}
+  items.forEach((el,i)=>el.style.background=i===_monitorDdIdx?'var(--color-bg-subtle)':'');
+  if(e.key==='Enter'&&_monitorDdIdx>=0)items[_monitorDdIdx].click();
+}
+
 // ── 기업 추가/삭제 ────────────────────────
 async function addMonitorCompany(){
   const input=document.getElementById('monitor-search');
-  const query=(input?.value||'').trim();
-  if(!query)return;
+  const val=(input?.value||'').trim();
+  if(!val)return;
   if(monitorCompanies.length>=20){showMonitorErr('최대 20개까지 추가할 수 있습니다.');return;}
+  const dd=document.getElementById('monitor-dropdown');
+  if(dd)dd.style.display='none';
+
   const btn=document.getElementById('monitor-add-btn');
   if(btn){btn.disabled=true;btn.textContent='검색 중...';}
   showMonitorErr('');
+
+  // stockCode 결정: 드롭다운 선택 > 6자리 직접입력 > Naver 검색
+  let stockCode=_monitorSelectedCode||'';
+  if(!stockCode&&/^\d{6}$/.test(val))stockCode=val;
+  if(!stockCode){
+    // 직접 텍스트 입력 → Naver 검색으로 stock code 획득
+    try{
+      const res=await fetch(SUPA_URL,{method:'POST',headers:_sh,body:JSON.stringify({action:'naver-search',query:val})});
+      const data=await res.json();
+      const kr=(data?.items||[]).find(it=>(it.nationCode||'').toUpperCase()==='KOR');
+      if(kr)stockCode=kr.code;
+    }catch(e){}
+    if(!stockCode){
+      showMonitorErr('기업을 찾을 수 없습니다. 회사명을 더 정확히 입력하거나 6자리 종목코드를 사용하세요.');
+      if(btn){btn.disabled=false;btn.textContent='추가';}
+      return;
+    }
+  }
+
   try{
-    const r=await fetch(DART_PROXY_URL,{method:'POST',headers:_apiHeaders(),body:JSON.stringify({action:'dart-corp-search',query})});
+    const r=await fetch(DART_PROXY_URL,{method:'POST',headers:_apiHeaders(),
+      body:JSON.stringify({action:'dart-corp-search',query:stockCode})});
     const d=await r.json();
-    if(d.status==='000'&&d.corp&&d.corp.length){
-      const corp=d.corp[0];
-      if(monitorCompanies.find(c=>c.corp_code===corp.corp_code)){showMonitorErr('이미 추가된 기업입니다.');return;}
-      const co={corp_code:corp.corp_code,corp_name:corp.corp_name,stock_code:corp.stock_code||'',
-        market:corp.corp_cls==='Y'?'KOSPI':corp.corp_cls==='K'?'KOSDAQ':'기타',
+    if(d.status==='000'){
+      if(monitorCompanies.find(c=>c.corp_code===d.corp_code)){
+        showMonitorErr('이미 추가된 기업입니다.');
+        if(btn){btn.disabled=false;btn.textContent='추가';}
+        return;
+      }
+      const co={corp_code:d.corp_code,corp_name:d.corp_name,stock_code:d.stock_code||stockCode,
+        market:d.corp_cls==='Y'?'KOSPI':d.corp_cls==='K'?'KOSDAQ':'기타',
         alert:false,lastCheckedAt:null,memos:[],addedAt:new Date().toISOString()};
       monitorCompanies.push(co);
       localStorage.setItem('monitor_co',JSON.stringify(monitorCompanies));
       _syncToCloud();
       if(input)input.value='';
+      _monitorSelectedCode='';
       const cards=document.getElementById('monitor-cards');
       if(cards){
         const el=_createCardEl(co);
@@ -3780,8 +3906,9 @@ async function addMonitorCompany(){
       }
       loadCompanyData(co.corp_code);
     }else{
-      const msg={dart_key_required:'DART API 키를 먼저 등록해주세요.',auth_required:'로그인이 필요합니다.'};
-      showMonitorErr(msg[d.error]||'기업을 찾을 수 없습니다. 종목코드 또는 회사명을 확인해주세요.');
+      const msg={dart_key_required:'DART API 키를 먼저 등록해주세요.',auth_required:'로그인이 필요합니다.',
+        use_stock_code:'6자리 종목코드를 입력해주세요.'};
+      showMonitorErr(msg[d.error]||`기업 조회 실패: ${d.error||d.message||'다시 시도해주세요'}`);
     }
   }catch(e){showMonitorErr('검색 중 오류가 발생했습니다.');}
   if(btn){btn.disabled=false;btn.textContent='추가';}

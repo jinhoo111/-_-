@@ -27,12 +27,26 @@ serve(async (req: Request) => {
     );
 
     const authHeader = req.headers.get("Authorization") || "";
-    const jwt = authHeader.replace("Bearer ", "");
+    const jwt = authHeader.replace("Bearer ", "").trim();
 
+    // Supabase 공식 권장 패턴: anon key + user JWT 로 사용자 검증
     const getUser = async () => {
-      if (!jwt) return null;
-      const { data: { user } } = await supabase.auth.getUser(jwt);
-      return user || null;
+      if (!jwt || jwt === Deno.env.get("SUPABASE_ANON_KEY")) return null;
+      try {
+        const userClient = createClient(
+          Deno.env.get("SUPABASE_URL")!,
+          Deno.env.get("SUPABASE_ANON_KEY")!,
+          {
+            global: { headers: { Authorization: `Bearer ${jwt}` } },
+            auth: { autoRefreshToken: false, persistSession: false },
+          },
+        );
+        const { data: { user }, error } = await userClient.auth.getUser();
+        if (error || !user) return null;
+        return user;
+      } catch {
+        return null;
+      }
     };
 
     // 기본 프로필 (기존 컬럼 — 항상 존재)
@@ -137,10 +151,37 @@ serve(async (req: Request) => {
       if (!user) return err("auth_required", 401);
       const { key } = body;
       if (!key || typeof key !== "string" || key.length < 10) return err("invalid_key");
-      const testRes = await fetch(`${DART_BASE}/company.json?crtfc_key=${key}&corp_name=삼성전자`);
-      const testData = await testRes.json();
-      if (testData.status === "020") return err("dart_key_invalid");
-      await supabase.from("user_profiles").update({ dart_api_key: key }).eq("user_id", user.id);
+
+      // DART API 유효성 검증
+      let dartStatus = "";
+      try {
+        const testRes = await fetch(
+          `${DART_BASE}/company.json?crtfc_key=${encodeURIComponent(key)}&corp_name=%EC%82%BC%EC%84%B1%EC%A0%84%EC%9E%90`,
+          { headers: { "User-Agent": "Mozilla/5.0" } },
+        );
+        const testData = await testRes.json();
+        dartStatus = testData.status || "";
+      } catch (fetchErr: any) {
+        return err(`dart_api_unreachable: ${fetchErr.message}`, 502);
+      }
+
+      // "000" = 정상, 그 외 모두 키 오류
+      if (dartStatus !== "000") {
+        const msg: Record<string, string> = {
+          "010": "dart_key_unregistered",
+          "011": "dart_key_unregistered",
+          "020": "dart_key_invalid",
+          "100": "dart_field_error",
+        };
+        return err(msg[dartStatus] || `dart_error_${dartStatus}`);
+      }
+
+      const { error: dbErr } = await supabase
+        .from("user_profiles")
+        .update({ dart_api_key: key })
+        .eq("user_id", user.id);
+      if (dbErr) return err(`db_error: ${dbErr.message}`, 500);
+
       return ok({ ok: true, masked: "···" + key.slice(-4) });
     }
 
