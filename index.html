@@ -1545,26 +1545,40 @@ _sb.auth.onAuthStateChange(async(event,session)=>{
 });
 
 // Supabase Edge Function 헬퍼 (키 저장 / 프록시 호출)
+// Finnhub → market-data (소스 직접 제어) / 그 외 → proxy-api
 async function storeApiKey(service,key){
+  if(service==='finnhub'){
+    const r=await fetch(DART_PROXY_URL,{method:'POST',headers:_apiHeaders(),body:JSON.stringify({action:'store-fh-key',key})});
+    if(r.status===401)return{ok:false,_unauthorized:true};
+    return r.json();
+  }
   const r=await fetch(SUPA_URL,{method:'POST',headers:_apiHeaders(),body:JSON.stringify({action:'store-key',service,key})});
   if(r.status===401)return{ok:false,_unauthorized:true};
   return r.json();
 }
 async function proxyApiCall(service,path,params={}){
-  // 승인된 기업 사용자의 Finnhub 호출 → 관리자 키로 market-data 통해 프록시
-  if(service==='finnhub'&&_userType==='business'&&_bizApproved){
+  if(service==='finnhub'){
+    const action=(_userType==='business'&&_bizApproved)?'finnhub-proxy':'fh-call';
     const r=await fetch(DART_PROXY_URL,{method:'POST',headers:_apiHeaders(),
-      body:JSON.stringify({action:'finnhub-proxy',path,params})});
-    if(r.status===401){const d=await r.json();throw new Error(d.error||'fh_auth');}
-    if(!r.ok)throw new Error('proxy_error:'+r.status);
-    return r.json();
+      body:JSON.stringify({action,path,params})});
+    const d=await r.json().catch(()=>({}));
+    if(!r.ok){
+      if(d.error==='fh_key_required'||d.error==='auth_required'||d.error==='fh_auth')throw new Error('fh_auth');
+      throw new Error('proxy_error:'+r.status);
+    }
+    if(d.error==='finnhub_error')throw new Error('proxy_error:finnhub_'+d.status);
+    return d;
   }
   const r=await fetch(SUPA_URL,{method:'POST',headers:_apiHeaders(),body:JSON.stringify({action:'call',service,path,params})});
-  if(r.status===401){const d=await r.json();throw new Error(d.error||'fh_auth');}
+  if(r.status===401){const d=await r.json().catch(()=>({}));throw new Error(d.error||'fh_auth');}
   if(!r.ok)throw new Error('proxy_error:'+r.status);
   return r.json();
 }
 function _deleteApiKeyOnServer(service){
+  if(service==='finnhub'){
+    fetch(DART_PROXY_URL,{method:'POST',headers:_apiHeaders(),body:JSON.stringify({action:'delete-fh-key'})}).catch(()=>{});
+    return;
+  }
   fetch(SUPA_URL,{method:'POST',headers:_apiHeaders(),body:JSON.stringify({action:'delete-key',service})}).catch(()=>{});
 }
 async function _restoreApiKeyState(){
@@ -1600,7 +1614,9 @@ async function _restoreApiKeyState(){
   }
 
   const[fhRes,ckRes,dartRes]=await Promise.all([
-    fetch(SUPA_URL,{method:'POST',headers:h,body:JSON.stringify({action:'key-exists',service:'finnhub'})}).then(r=>r.json()).catch(()=>({})),
+    // Finnhub: market-data 우선, proxy-api 폴백 (이전 사용자 키 호환)
+    fetch(DART_PROXY_URL,{method:'POST',headers:h,body:JSON.stringify({action:'fh-key-exists'})}).then(r=>r.json()).catch(()=>({}))
+      .then(d=>d.exists?d:fetch(SUPA_URL,{method:'POST',headers:h,body:JSON.stringify({action:'key-exists',service:'finnhub'})}).then(r=>r.json()).catch(()=>({}))),
     fetch(SUPA_URL,{method:'POST',headers:h,body:JSON.stringify({action:'key-exists',service:'googleai'})}).then(r=>r.json()).catch(()=>({})),
     fetch(DART_PROXY_URL,{method:'POST',headers:h,body:JSON.stringify({action:'dart-key-exists'})}).then(r=>r.json()).catch(()=>({}))
   ]);
