@@ -818,12 +818,9 @@ input:focus-visible,textarea:focus-visible{outline:2px solid var(--color-info);o
   </div>
   <div id="memo-compose-area" style="border-bottom:1px solid var(--color-border-default);padding-bottom:.875rem;margin-bottom:.875rem">
     <div class="tag-btns" id="tag-btns">
-      <button class="tbtn sel" onclick="selTag('general',this)" style="background:var(--color-info-bg);color:var(--color-info);border-color:var(--color-info)">일반</button>
+      <button class="tbtn sel" onclick="selTag('general',this)" style="background:var(--color-info-bg);color:var(--color-info);border-color:var(--color-info)">메모</button>
       <button class="tbtn" onclick="selTag('buy',this)">매수</button>
       <button class="tbtn" onclick="selTag('sell',this)">매도</button>
-      <button class="tbtn" onclick="selTag('macro',this)">매크로</button>
-      <button class="tbtn" onclick="selTag('review',this)">복기</button>
-      <button class="tbtn" onclick="selTag('idea',this)">아이디어</button>
     </div>
     <!-- 매수 폼 -->
     <div id="memo-buy-form" style="display:none;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:8px">
@@ -853,12 +850,9 @@ input:focus-visible,textarea:focus-visible{outline:2px solid var(--color-info);o
     <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
       <div id="archive-tag-filter" style="display:flex;gap:6px;flex-wrap:wrap;flex:1">
         <button class="tbtn sel" onclick="setArchiveFilter('all',this)" style="background:var(--color-bg-overlay);color:var(--color-text-primary)">전체</button>
-        <button class="tbtn" onclick="setArchiveFilter('general',this)">일반</button>
+        <button class="tbtn" onclick="setArchiveFilter('general',this)">메모</button>
         <button class="tbtn" onclick="setArchiveFilter('buy',this)">매수</button>
         <button class="tbtn" onclick="setArchiveFilter('sell',this)">매도</button>
-        <button class="tbtn" onclick="setArchiveFilter('macro',this)">매크로</button>
-        <button class="tbtn" onclick="setArchiveFilter('review',this)">복기</button>
-        <button class="tbtn" onclick="setArchiveFilter('idea',this)">아이디어</button>
       </div>
       <div class="archive-view-toggle">
         <button class="av-btn on" id="avbtn-card"     onclick="setArchiveView('card')"     title="카드 뷰">☰ 카드</button>
@@ -1366,12 +1360,9 @@ let cashUSD=parseFloat(localStorage.getItem('cash_usd'))||0;
 
 // ─ 메모 태그 설정 객체
 const TAG={
-  general:{bg:'var(--color-info-bg)',c:'var(--color-info)',l:'일반'},
+  general:{bg:'var(--color-info-bg)',c:'var(--color-info)',l:'메모'},
   buy:{bg:'var(--color-success-bg)',c:'var(--color-success-text)',l:'매수'},
-  sell:{bg:'var(--color-error-bg)',c:'var(--color-error-text)',l:'매도'},
-  macro:{bg:'var(--color-warning-bg)',c:'var(--color-warning-text)',l:'매크로'},
-  review:{bg:'var(--color-accent-bg-soft)',c:'var(--color-accent-dark)',l:'복기'},
-  idea:{bg:'var(--color-bg-muted)',c:'var(--color-text-warm)',l:'아이디어'}
+  sell:{bg:'var(--color-error-bg)',c:'var(--color-error-text)',l:'매도'}
 };
 
 // ─ 로컬스토리지에서 데이터 로드
@@ -2225,7 +2216,7 @@ function renderMemos(){
             <button type="button" onclick="toggleMemoNotify(${m.id})" style="font-size:var(--text-sm);padding:2px 7px;border:1px solid ${m.notify?'var(--color-success)':'var(--color-border-input)'};border-radius:5px;background:${m.notify?'var(--color-success-bg-light)':'var(--color-bg-surface)'};cursor:pointer;color:${m.notify?'var(--color-success)':'var(--color-text-tertiary)'}">${m.notify?'알림 ON':'알림 OFF'}</button>
             ${_philoBtns(m.id)}
             <button type="button" onclick="editMemo(${m.id})" style="font-size:var(--text-sm);padding:2px 7px;border:1px solid var(--color-border-input);border-radius:5px;background:var(--color-bg-surface);cursor:pointer;color:var(--color-text-secondary)">편집</button>
-            <button type="button" onclick="completeMemo(${m.id})" style="font-size:var(--text-sm);padding:2px 7px;border:1px solid var(--color-accent-border-soft);border-radius:5px;background:var(--color-accent-subtle);cursor:pointer;color:var(--color-accent-indigo)">완료</button>
+            <button type="button" onclick="completeMemo(${m.id})" style="font-size:var(--text-sm);padding:2px 7px;border:1px solid var(--color-accent-border-soft);border-radius:5px;background:var(--color-accent-subtle);cursor:pointer;color:var(--color-accent-indigo)">아카이브 저장</button>
             <button type="button" onclick="deleteMemo(${m.id})" style="font-size:var(--text-sm);padding:2px 7px;border:1px solid var(--color-error-border);border-radius:5px;background:var(--color-bg-surface);cursor:pointer;color:var(--color-error)">삭제</button>
           </div>
         </div>
@@ -2252,8 +2243,14 @@ function addToPhilosophy(sourceId,type){
   const src=memos.find(m=>m.id===sourceId)||memoArchive.find(m=>m.id===sourceId);
   if(!src)return;
   const existing=investPhilosophy.find(p=>p.sourceId===sourceId);
-  if(existing){existing.type=type;}
-  else{investPhilosophy.push({id:Date.now(),text:src.text,type,sourceId,createdAt:new Date().toISOString()});}
+  if(existing&&existing.type===type){
+    // 같은 버튼 재클릭 → 선택 해제
+    investPhilosophy=investPhilosophy.filter(p=>p.sourceId!==sourceId);
+  } else if(existing){
+    existing.type=type;
+  } else {
+    investPhilosophy.push({id:Date.now(),text:src.text,type,sourceId,createdAt:new Date().toISOString()});
+  }
   localStorage.setItem('pf_phil',JSON.stringify(investPhilosophy));
   _syncToCloud();
   renderMemos();
