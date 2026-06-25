@@ -454,6 +454,132 @@ input:focus-visible,textarea:focus-visible{outline:2px solid var(--color-info);o
   #ticker-search{width:100%!important}
   .ticker-search-wrap{width:100%}
 }
+
+/* ═══════════════════════════════════════════
+   기업 계정 심사 대기 화면
+   ═══════════════════════════════════════════ */
+.biz-pending-overlay{position:fixed;inset:0;background:var(--color-bg-base);z-index:900;display:flex;align-items:center;justify-content:center;padding:1.5rem}
+.biz-pending-overlay.hidden{display:none}
+.biz-pending-box{background:var(--color-bg-surface);border:1px solid var(--color-border);border-radius:var(--radius-xl);padding:2.5rem 2rem;max-width:460px;width:100%;text-align:center}
+.biz-pending-icon{font-size:2.75rem;margin-bottom:1rem}
+.biz-pending-badge{display:inline-flex;align-items:center;gap:6px;background:var(--color-warning-bg);color:var(--color-warning-text);border:1px solid #e8c040;border-radius:20px;padding:6px 14px;font-size:var(--text-sm);font-weight:600;margin-bottom:1rem}
+.biz-pending-title{font-size:var(--text-xl);font-weight:700;margin-bottom:.75rem}
+.biz-pending-desc{font-size:var(--text-sm);color:var(--color-text-secondary);line-height:1.75;margin-bottom:1.5rem}
+.biz-pending-desc a{color:var(--color-info)}
+.biz-pending-info{background:var(--color-bg-muted);border-radius:var(--radius-md);padding:1rem;font-size:var(--text-sm);color:var(--color-text-secondary);margin-bottom:1.5rem;text-align:left;line-height:1.7}
+.biz-pending-email{font-size:var(--text-sm);color:var(--color-text-tertiary);margin-top:.75rem}
+
+/* ═══════════════════════════════════════════
+   기업 모니터링 페이지
+   ═══════════════════════════════════════════ */
+.biz-only{display:none!important}
+body.biz-mode .biz-only{display:inline-flex!important}
+body.biz-mode .personal-only{display:none!important}
+
+/* Setup Banner */
+.monitor-setup-banner{background:var(--color-warning-bg);border:1px solid #e8c040;border-radius:var(--radius-lg);padding:1.25rem 1.5rem;margin-bottom:1rem}
+.monitor-setup-title{font-weight:700;font-size:var(--text-md);color:var(--color-text-primary);margin-bottom:.5rem}
+.monitor-setup-desc{font-size:var(--text-sm);color:var(--color-text-secondary);line-height:1.65}
+.monitor-setup-desc a{color:var(--color-info)}
+.monitor-key-input{flex:1;min-width:180px;padding:7px 10px;border:1px solid var(--color-border-input);border-radius:var(--radius-md);font-family:inherit;font-size:var(--text-sm);background:var(--color-bg-surface)}
+
+/* Top bar */
+.monitor-topbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:1rem}
+.monitor-search-wrap{display:flex;gap:8px;flex:1;min-width:200px}
+.monitor-search-input{flex:1;padding:7px 10px;border:1px solid var(--color-border-input);border-radius:var(--radius-md);font-family:inherit;font-size:var(--text-sm);background:var(--color-bg-surface)}
+.monitor-controls{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.monitor-view-toggle{display:flex;border:1px solid var(--color-border);border-radius:var(--radius-md);overflow:hidden}
+.mv-btn{padding:6px 12px;font-size:var(--text-sm);border:none;background:var(--color-bg-muted);color:var(--color-text-secondary);cursor:pointer;font-family:inherit;transition:background .15s}
+.mv-btn.on{background:var(--color-info);color:#fff}
+.monitor-key-info{font-size:var(--text-xs);color:var(--color-text-tertiary);display:flex;align-items:center;gap:6px}
+.mc-text-btn{background:none;border:none;color:var(--color-info);font-size:var(--text-xs);cursor:pointer;padding:0;font-family:inherit;text-decoration:underline}
+.monitor-err-msg{padding:8px 12px;background:var(--color-error-bg);color:var(--color-error-text);border-radius:var(--radius-md);font-size:var(--text-sm);margin-bottom:.75rem}
+.monitor-empty{text-align:center;color:var(--color-text-tertiary);padding:3rem 1rem;font-size:var(--text-sm);line-height:1.8}
+
+/* Company Card */
+.monitor-card{background:var(--color-bg-surface);border:1px solid var(--color-border);border-radius:var(--radius-lg);padding:1.25rem;margin-bottom:1rem}
+.mc-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:.75rem;gap:8px}
+.mc-title-group{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.mc-corp-name{font-weight:700;font-size:var(--text-md)}
+.mc-stock-code{font-size:var(--text-sm);color:var(--color-text-tertiary);font-family:monospace}
+.mc-market{font-size:var(--text-xs);padding:2px 7px;border-radius:20px;background:var(--color-bg-overlay);color:var(--color-text-secondary)}
+.mc-header-actions{display:flex;gap:6px;align-items:center;flex-shrink:0}
+.mc-alert-btn{background:none;border:1px solid var(--color-border);border-radius:var(--radius-sm);padding:4px 8px;cursor:pointer;font-size:var(--text-sm);opacity:.45;font-family:inherit;transition:opacity .15s}
+.mc-alert-btn.active{opacity:1;background:var(--color-warning-bg);border-color:#e8c040}
+.mc-refresh-btn,.mc-delete-btn{background:none;border:1px solid var(--color-border);border-radius:var(--radius-sm);padding:4px 9px;cursor:pointer;font-size:var(--text-sm);font-family:inherit;color:var(--color-text-secondary)}
+.mc-delete-btn:hover{border-color:var(--color-error);color:var(--color-error)}
+.mc-price-row{display:flex;align-items:baseline;gap:10px;margin-bottom:.875rem}
+.mc-price{font-size:var(--text-xl);font-weight:700}
+.mc-change{font-size:var(--text-sm);font-weight:600}
+.mc-change.up,.mc-chg-up{color:var(--color-error-text)}
+.mc-change.down,.mc-chg-down{color:var(--color-info)}
+.mc-price-loading{color:var(--color-text-tertiary);font-size:var(--text-sm)}
+.mc-section{margin-top:.875rem;padding-top:.875rem;border-top:1px solid var(--color-border-faint)}
+.mc-section-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:.5rem}
+.mc-section-title{font-size:var(--text-sm);font-weight:600;color:var(--color-text-secondary)}
+.mc-dart-link{font-size:var(--text-xs);color:var(--color-info);text-decoration:none}
+.mc-dart-link:hover{text-decoration:underline}
+.mc-expandable{cursor:pointer;user-select:none}
+.mc-expandable:hover .mc-section-title{color:var(--color-text-primary)}
+.mc-expand-icon{font-size:var(--text-xs);color:var(--color-text-tertiary)}
+.mc-filter-bar{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:.5rem}
+.mc-filter-btn{padding:3px 9px;font-size:var(--text-xs);border:1px solid var(--color-border);border-radius:20px;background:none;cursor:pointer;font-family:inherit;color:var(--color-text-secondary)}
+.mc-filter-btn.on{background:var(--color-info);border-color:var(--color-info);color:#fff}
+.mc-disclosure-row{display:flex;align-items:center;gap:6px;padding:5px 0;font-size:var(--text-sm);border-bottom:1px solid var(--color-border-faint)}
+.mc-disclosure-row:last-child{border-bottom:none}
+.mc-disc-date{color:var(--color-text-tertiary);font-size:var(--text-xs);min-width:36px;flex-shrink:0}
+.mc-disc-type-badge{font-size:9px;padding:1px 5px;border-radius:4px;font-weight:700;flex-shrink:0;background:var(--color-bg-overlay);color:var(--color-text-secondary)}
+.mc-disc-title{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mc-disc-memo-btn{background:none;border:1px solid var(--color-border);border-radius:var(--radius-sm);padding:2px 7px;font-size:var(--text-xs);cursor:pointer;font-family:inherit;color:var(--color-text-secondary);flex-shrink:0}
+.mc-disc-link{font-size:var(--text-xs);color:var(--color-info);text-decoration:none;flex-shrink:0}
+.mc-loading{color:var(--color-text-tertiary);font-size:var(--text-sm);padding:.5rem 0}
+.mc-empty-state{color:var(--color-text-tertiary);font-size:var(--text-sm);padding:.375rem 0}
+.mc-holdings-label{font-size:var(--text-xs);color:var(--color-text-tertiary);margin-bottom:.5rem;font-style:italic}
+.mc-holdings-table{font-size:var(--text-sm)}
+.mc-ht-header{display:grid;grid-template-columns:2fr 1.5fr 1fr 1fr;gap:8px;padding:5px 6px;background:var(--color-bg-muted);border-radius:var(--radius-sm);font-weight:600;color:var(--color-text-secondary);font-size:var(--text-xs);margin-bottom:4px}
+.mc-ht-row{display:grid;grid-template-columns:2fr 1.5fr 1fr 1fr;gap:8px;padding:6px 6px;border-bottom:1px solid var(--color-border-faint);font-size:var(--text-sm)}
+.mc-change-row{display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--color-border-faint)}
+.mc-change-row.new .mc-change-detail{color:var(--color-success-text)}
+.mc-change-row.increase .mc-change-detail{color:var(--color-error-text)}
+.mc-change-row.decrease .mc-change-detail{color:var(--color-info)}
+.mc-change-row.exit .mc-change-detail{color:var(--color-text-tertiary)}
+.mc-change-name{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:var(--text-sm)}
+.mc-change-detail{font-size:var(--text-xs);font-weight:600;flex-shrink:0}
+.mc-change-memo-btn{background:none;border:1px solid var(--color-border);border-radius:var(--radius-sm);padding:2px 7px;font-size:var(--text-xs);cursor:pointer;font-family:inherit;color:var(--color-text-secondary);flex-shrink:0}
+.mc-memo-add-btn{background:none;border:1px solid var(--color-info);border-radius:var(--radius-sm);padding:3px 9px;font-size:var(--text-xs);color:var(--color-info);cursor:pointer;font-family:inherit}
+.mc-memo-form{margin-bottom:.5rem}
+.mc-memo-form textarea{width:100%;box-sizing:border-box;padding:7px 9px;border:1px solid var(--color-border-input);border-radius:var(--radius-md);font-family:inherit;font-size:var(--text-sm);resize:vertical;min-height:56px;background:var(--color-bg-surface);color:var(--color-text-primary)}
+.mc-memo-form-actions{display:flex;gap:6px;margin-top:6px}
+.mc-memo-form-actions button{padding:5px 12px;font-size:var(--text-sm);border:1px solid var(--color-border);border-radius:var(--radius-sm);cursor:pointer;font-family:inherit;background:none;color:var(--color-text-secondary)}
+.mc-memo-form-actions button:first-child{background:var(--color-info);border-color:var(--color-info);color:#fff}
+.mc-memo-item{padding:8px 0;border-bottom:1px solid var(--color-border-faint)}
+.mc-memo-item:last-child{border-bottom:none}
+.mc-memo-text{font-size:var(--text-sm);white-space:pre-wrap;margin-bottom:4px;line-height:1.55}
+.mc-memo-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.mc-memo-time{font-size:var(--text-xs);color:var(--color-text-tertiary)}
+.mc-memo-src{font-size:var(--text-xs);color:var(--color-warning-text);background:var(--color-warning-bg);padding:1px 5px;border-radius:4px}
+.mc-memo-journal-btn,.mc-memo-del-btn{background:none;border:none;font-size:var(--text-xs);cursor:pointer;font-family:inherit;padding:0;color:var(--color-info)}
+.mc-memo-del-btn{color:var(--color-text-tertiary)}
+.mc-memo-del-btn:hover{color:var(--color-error)}
+.mc-memos-list{min-height:20px}
+
+/* Comparison Table */
+.monitor-compare-table{width:100%;border-collapse:collapse;font-size:var(--text-sm)}
+.monitor-compare-table th{text-align:left;padding:8px 10px;border-bottom:2px solid var(--color-border);font-size:var(--text-xs);color:var(--color-text-secondary);white-space:nowrap;cursor:pointer;user-select:none}
+.monitor-compare-table th:hover{color:var(--color-text-primary)}
+.monitor-compare-table td{padding:8px 10px;border-bottom:1px solid var(--color-border-faint);vertical-align:middle}
+.monitor-compare-table tbody tr:hover td{background:var(--color-bg-subtle);cursor:pointer}
+.mc-corp-name-sm{font-weight:600;display:block}
+.mc-stock-code-sm{font-size:var(--text-xs);color:var(--color-text-tertiary)}
+.mc-disc-cell{max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--color-text-secondary)}
+.mc-change-badge{background:var(--color-warning-bg);color:var(--color-warning-text);font-size:var(--text-xs);padding:2px 6px;border-radius:20px}
+
+@media(max-width:768px){
+  .mc-ht-header,.mc-ht-row{grid-template-columns:2fr 1.5fr 1fr}
+  .mc-ht-header span:last-child,.mc-ht-row span:last-child{display:none}
+  .monitor-compare-table td:nth-child(4),.monitor-compare-table th:nth-child(4){display:none}
+  .mc-header-actions{flex-direction:column;align-items:flex-end;gap:4px}
+}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 </head>
@@ -463,8 +589,9 @@ input:focus-visible,textarea:focus-visible{outline:2px solid var(--color-info);o
 <nav class="nav">
   <div class="nav-logo">📊 투자 허브</div>
   <div class="nav-tabs">
+    <button class="nav-tab biz-only" onclick="goPage('monitor',this)">기업 모니터링</button>
     <button class="nav-tab on"  onclick="goPage('portfolio',this)">투자 종목 관리</button>
-    <button class="nav-tab"     onclick="goPage('indices',this)">지수·환율</button>
+    <button class="nav-tab personal-only" onclick="goPage('indices',this)">지수·환율</button>
     <button class="nav-tab"     onclick="goPage('news',this)">뉴스</button>
     <button class="nav-tab"     onclick="goPage('research',this)">리서치·규제</button>
     <button class="nav-tab"     onclick="goPage('memo',this)">투자 일지</button>
@@ -865,11 +992,74 @@ input:focus-visible,textarea:focus-visible{outline:2px solid var(--color-info);o
 </div>
 
 
+<!-- ══════════════════════════════════════════
+     PAGE 6: 기업 모니터링
+═══════════════════════════════════════════ -->
+<div id="page-monitor" class="page">
+
+  <!-- DART API 키 등록 배너 (미등록 시 표시) -->
+  <div id="monitor-setup-banner" style="display:none">
+    <div class="monitor-setup-banner">
+      <div class="monitor-setup-title">🔒 DART API 키 등록 필요</div>
+      <div class="monitor-setup-desc">
+        기업 모니터링 기능은 각 사용자가 직접 발급받은 DART Open API 키를 사용합니다.<br>
+        API 키는 서버에만 저장되며 클라이언트에 노출되지 않습니다.<br>
+        <a href="https://opendart.fss.or.kr/intro/main.do" target="_blank" rel="noopener">DART OpenAPI 무료 신청 →</a> (즉시 발급)
+      </div>
+      <div style="display:flex;gap:8px;align-items:flex-start;flex-direction:column;margin-top:14px">
+        <div style="display:flex;gap:8px;width:100%;max-width:500px">
+          <input type="text" id="dart-key-input" placeholder="발급받은 API 키 입력" class="monitor-key-input"/>
+          <button id="dart-key-save-btn" onclick="saveDartKey()" class="btn" style="flex-shrink:0;white-space:nowrap">등록</button>
+        </div>
+        <label style="display:flex;gap:8px;align-items:flex-start;font-size:var(--text-sm);color:var(--color-text-secondary);cursor:pointer;max-width:500px">
+          <input type="checkbox" id="dart-terms-check" style="margin-top:2px;flex-shrink:0">
+          <span>DART API 이용약관을 확인하였으며, 본인 명의 키에 대한 약관 준수 의무가 본인에게 있음을 동의합니다.</span>
+        </label>
+        <div id="dart-key-err" style="color:var(--color-error);font-size:var(--text-sm)"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 메인 컨텐츠 (DART 키 등록 후 표시) -->
+  <div id="monitor-main" style="display:none">
+    <div class="monitor-topbar">
+      <div class="monitor-search-wrap">
+        <input type="text" id="monitor-search" placeholder="종목코드(6자리) 또는 회사명 검색" class="monitor-search-input"
+               onkeydown="if(event.key==='Enter')addMonitorCompany()"/>
+        <button id="monitor-add-btn" onclick="addMonitorCompany()" class="btn" style="flex-shrink:0;white-space:nowrap">추가</button>
+      </div>
+      <div class="monitor-controls">
+        <div class="monitor-view-toggle">
+          <button class="mv-btn on" id="mvbtn-card"  onclick="setMonitorView('card')">☰ 카드</button>
+          <button class="mv-btn"    id="mvbtn-table" onclick="setMonitorView('table')">⊞ 비교</button>
+        </div>
+        <div class="monitor-key-info">
+          DART 키: <span id="monitor-dart-key-label">····</span>
+          <button onclick="deleteDartKeyFn()" class="mc-text-btn">변경</button>
+        </div>
+      </div>
+    </div>
+    <div id="monitor-err" class="monitor-err-msg" style="display:none"></div>
+
+    <!-- 카드 뷰 -->
+    <div id="monitor-card-view">
+      <div id="monitor-cards"></div>
+    </div>
+
+    <!-- 비교 테이블 뷰 -->
+    <div id="monitor-table-view" style="display:none">
+      <div id="monitor-table"></div>
+    </div>
+  </div>
+
+</div>
+
 <!-- ══════════ SCRIPT ══════════ -->
 <script>
 // ★ Supabase 설정
 const SUPA_BASE='https://yijkwuiqnviapztqskak.supabase.co';
 const SUPA_URL=SUPA_BASE+'/functions/v1/proxy-api';
+const DART_PROXY_URL=SUPA_BASE+'/functions/v1/market-data';
 const SUPA_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inlpamt3dWlxbnZpYXB6dHFza2FrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE1ODIwMzAsImV4cCI6MjA5NzE1ODAzMH0.n2CuPFPqQeCvZ0-pH-eNqdvuSJrWAH3nOIEt7dBFs_M';
 const _sh={'Content-Type':'application/json','apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY};
 function _apiHeaders(){const t=_currentSession?.access_token||SUPA_KEY;return{'Content-Type':'application/json','apikey':SUPA_KEY,'Authorization':'Bearer '+t};}
@@ -1091,19 +1281,26 @@ async function obSubmit(){
   btn.disabled=true;btn.textContent='저장 중...';
   const{data:{user}}=await _sb.auth.getUser();
   if(!user){btn.disabled=false;btn.textContent='시작하기 🚀';return;}
+  const isBiz=_ob.type==='business';
   const{error}=await _sb.from('user_profiles').upsert({
     user_id:user.id,
     user_type:_ob.type,
-    age_range:_ob.type==='personal'?_ob.age:null,
-    business_type:_ob.type==='business'?_ob.biz:null,
+    age_range:!isBiz?_ob.age:null,
+    business_type:isBiz?_ob.biz:null,
     purposes:_ob.purposes,
     marketing_email:_ob.marketing,
     onboarding_done:true,
+    business_approved:!isBiz, // 기업: false(심사대기), 개인: true(즉시승인)
     updated_at:new Date().toISOString()
   });
   btn.disabled=false;btn.textContent='시작하기 🚀';
   if(error){console.error('onboarding save error',error);return;}
   document.getElementById('ob-overlay').classList.add('hidden');
+  if(isBiz){
+    // 기업 계정 → 심사 대기 화면 표시
+    document.getElementById('biz-pending-overlay').classList.remove('hidden');
+    return;
+  }
   await _loadFromCloud(user);
 }
 
@@ -1230,6 +1427,10 @@ async function _loadFromCloud(user){
     investPhilosophy=data.invest_philosophy;
     localStorage.setItem('pf_phil',JSON.stringify(investPhilosophy));
   }
+  if(Array.isArray(data.monitor_companies)){
+    monitorCompanies=data.monitor_companies;
+    localStorage.setItem('monitor_co',JSON.stringify(monitorCompanies));
+  }
   // UI 재렌더링
   renderStocks();renderMemos();updateCashDisplay();updateMasterNotifyBtn();
   // 로그인 시 서버 저장 API 키 자동 복원
@@ -1250,6 +1451,7 @@ function _syncToCloud(immediate){
       quote_symbols:quoteSymbols,
       notify_master:notifyMaster,
       invest_philosophy:investPhilosophy,
+      monitor_companies:monitorCompanies,
       updated_at:new Date().toISOString()
     });
     if(error)console.warn('[sync] 클라우드 저장 실패:',error.message);
@@ -1265,10 +1467,16 @@ _sb.auth.onAuthStateChange(async(event,session)=>{
     _currentSession=session;
     _updateNavAuth(_currentUser);
     closeAuthModal();
-    // 온보딩 완료 여부 확인
-    const{data:prof}=await _sb.from('user_profiles').select('onboarding_done').eq('user_id',_currentUser.id).single();
+    const{data:prof}=await _sb.from('user_profiles').select('onboarding_done,user_type,business_approved').eq('user_id',_currentUser.id).single();
     if(!prof||!prof.onboarding_done){_showOnboarding();}
-    else{await _loadFromCloud(_currentUser);}
+    else if(prof.user_type==='business'&&!prof.business_approved){
+      document.getElementById('biz-pending-overlay').classList.remove('hidden');
+    }else{
+      _userType=prof.user_type||'personal';
+      _bizApproved=!!(prof.user_type==='business'&&prof.business_approved);
+      applyUserTypeUI(_userType);
+      await _loadFromCloud(_currentUser);
+    }
   }else if(event==='SIGNED_OUT'){
     _currentUser=null;
     _currentSession=null;
@@ -1282,6 +1490,14 @@ async function storeApiKey(service,key){
   return r.json();
 }
 async function proxyApiCall(service,path,params={}){
+  // 승인된 기업 사용자의 Finnhub 호출 → 관리자 키로 market-data 통해 프록시
+  if(service==='finnhub'&&_userType==='business'&&_bizApproved){
+    const r=await fetch(DART_PROXY_URL,{method:'POST',headers:_apiHeaders(),
+      body:JSON.stringify({action:'finnhub-proxy',path,params})});
+    if(r.status===401){const d=await r.json();throw new Error(d.error||'fh_auth');}
+    if(!r.ok)throw new Error('proxy_error:'+r.status);
+    return r.json();
+  }
   const r=await fetch(SUPA_URL,{method:'POST',headers:_apiHeaders(),body:JSON.stringify({action:'call',service,path,params})});
   if(r.status===401){const d=await r.json();throw new Error(d.error||'fh_auth');}
   if(!r.ok)throw new Error('proxy_error:'+r.status);
@@ -1293,10 +1509,44 @@ function _deleteApiKeyOnServer(service){
 async function _restoreApiKeyState(){
   if(!_currentSession)return;
   const h=_apiHeaders();
-  const[fhRes,ckRes]=await Promise.all([
+
+  // 승인된 기업 사용자 → 관리자 키 자동 적용 (개인 키 등록 불필요)
+  if(_userType==='business'&&_bizApproved){
+    const bizRes=await fetch(DART_PROXY_URL,{method:'POST',headers:h,
+      body:JSON.stringify({action:'biz-keys-ready'})}).then(r=>r.json()).catch(()=>({}));
+    if(bizRes.dart){
+      dartKeyStored=true;
+      const lbl=document.getElementById('monitor-dart-key-label');
+      if(lbl)lbl.textContent='관리자 키';
+    }
+    if(bizRes.finnhub){
+      FKEY='***';
+      setKeyStatus('live','관리자 키 사용 중 · 실시간 활성');
+      const inp=document.getElementById('api-key-input');if(inp)inp.value='관리자 제공';
+      const cb=document.getElementById('clear-btn');if(cb)cb.style.display='none';
+      if(document.getElementById('page-news')?.classList.contains('on')){loadMarketNews();refreshQuotes();}
+    }
+    // GoogleAI 키만 개별 확인
+    const ckRes=await fetch(SUPA_URL,{method:'POST',headers:h,
+      body:JSON.stringify({action:'key-exists',service:'googleai'})}).then(r=>r.json()).catch(()=>({}));
+    if(ckRes.exists){
+      CKEY='***';localStorage.setItem('ck_stored','1');
+      const dot=document.getElementById('pn-ai-dot');if(dot)dot.style.display='inline-block';
+      const row=document.getElementById('pn-key-row');if(row)row.style.display='none';
+    }
+    return;
+  }
+
+  const[fhRes,ckRes,dartRes]=await Promise.all([
     fetch(SUPA_URL,{method:'POST',headers:h,body:JSON.stringify({action:'key-exists',service:'finnhub'})}).then(r=>r.json()).catch(()=>({})),
-    fetch(SUPA_URL,{method:'POST',headers:h,body:JSON.stringify({action:'key-exists',service:'googleai'})}).then(r=>r.json()).catch(()=>({}))
+    fetch(SUPA_URL,{method:'POST',headers:h,body:JSON.stringify({action:'key-exists',service:'googleai'})}).then(r=>r.json()).catch(()=>({})),
+    fetch(DART_PROXY_URL,{method:'POST',headers:h,body:JSON.stringify({action:'dart-key-exists'})}).then(r=>r.json()).catch(()=>({}))
   ]);
+  if(dartRes.exists){
+    dartKeyStored=true;
+    const lbl=document.getElementById('monitor-dart-key-label');
+    if(lbl)lbl.textContent=dartRes.masked||'····';
+  }
   if(fhRes.exists){
     FKEY='***';
     localStorage.setItem('fhkey_stored','1');
@@ -1334,6 +1584,8 @@ let investPhilosophy=[];
 try{investPhilosophy=JSON.parse(localStorage.getItem('pf_phil')||'[]')}catch(e){}
 let stocks=[],memos=[],memoArchive=[],memoView='active',selTagV='general',memoEditTag='general',archiveTagFilter='all',archiveViewMode='card',FKEY='',newsCat='general',quoteSymbols=['NVDA','AAPL','TSLA','MSFT'],stkFilter='all',stkMarket='all',stkStyle='all',stkSort='',stkSortDir='desc',fxRate=1400;
 let notifyMaster=localStorage.getItem('pf_notify_master')==='true';
+let monitorCompanies=[],monitorView='card',dartKeyStored=false,_userType='personal',_bizApproved=false,_monitorPollTimer=null,_monitorCache={};
+try{monitorCompanies=JSON.parse(localStorage.getItem('monitor_co')||'[]')}catch(e){}
 const IDX_DEFAULT={kr:true,us:true,vix:true,futures:false,crypto:false,fx:false,commodities:false};
 const IDX_LINK_MAP={
   '^KS11':'https://finance.yahoo.com/quote/%5EKS11/','KOSPI':'https://finance.yahoo.com/quote/%5EKS11/',
@@ -1362,7 +1614,8 @@ let cashUSD=parseFloat(localStorage.getItem('cash_usd'))||0;
 const TAG={
   general:{bg:'var(--color-info-bg)',c:'var(--color-info)',l:'메모'},
   buy:{bg:'var(--color-success-bg)',c:'var(--color-success-text)',l:'매수'},
-  sell:{bg:'var(--color-error-bg)',c:'var(--color-error-text)',l:'매도'}
+  sell:{bg:'var(--color-error-bg)',c:'var(--color-error-text)',l:'매도'},
+  monitor:{bg:'var(--color-warning-bg)',c:'var(--color-warning-text)',l:'기업모니터'}
 };
 
 // ─ 로컬스토리지에서 데이터 로드
@@ -2675,6 +2928,7 @@ function goPage(name,btn){
   btn.classList.add('on');
   document.getElementById('page-'+name).classList.add('on');
   localStorage.setItem('cur_page',name);
+  if(name==='monitor')initMonitorPage();
   if(name==='indices')loadAllIndices();
   if(name==='news')initNewsUI();
   if(name==='research'){
@@ -3278,6 +3532,629 @@ async function checkAndAutoFetch(){
 
 // ═══════════════════════════════════════════════════════════════
 
+// ════════════════════════════════════════
+// 기업 모니터링
+// ════════════════════════════════════════
+
+function applyUserTypeUI(type){
+  _userType=type;
+  if(type==='business') document.body.classList.add('biz-mode');
+  else document.body.classList.remove('biz-mode');
+}
+
+// ── DART 키 등록 ──────────────────────────
+async function saveDartKey(){
+  const input=document.getElementById('dart-key-input');
+  const termsCheck=document.getElementById('dart-terms-check');
+  const errEl=document.getElementById('dart-key-err');
+  const btn=document.getElementById('dart-key-save-btn');
+  const key=(input?.value||'').trim();
+  if(!key){if(errEl)errEl.textContent='API 키를 입력해주세요.';return;}
+  if(!termsCheck?.checked){if(errEl)errEl.textContent='이용약관에 동의해주세요.';return;}
+  if(!_currentSession){if(errEl)errEl.textContent='로그인이 필요합니다.';return;}
+  if(btn){btn.disabled=true;btn.textContent='검증 중...';}
+  if(errEl)errEl.textContent='';
+  try{
+    const r=await fetch(DART_PROXY_URL,{method:'POST',headers:_apiHeaders(),body:JSON.stringify({action:'store-dart-key',key})});
+    const d=await r.json();
+    if(d.ok){
+      dartKeyStored=true;
+      const lbl=document.getElementById('monitor-dart-key-label');
+      if(lbl)lbl.textContent=d.masked||'····';
+      document.getElementById('monitor-setup-banner').style.display='none';
+      document.getElementById('monitor-main').style.display='';
+      renderMonitorCompanies();
+      startMonitorPolling();
+      requestNotifyPermission();
+    }else{
+      const msg={dart_key_invalid:'유효하지 않은 API 키입니다. DART OpenAPI 키를 확인해주세요.',rate_limit_exceeded:'일일 호출 한도 초과'};
+      if(errEl)errEl.textContent=msg[d.error]||('저장 실패: '+(d.error||'다시 시도해주세요'));
+    }
+  }catch(e){if(errEl)errEl.textContent='서버 오류가 발생했습니다.';}
+  if(btn){btn.disabled=false;btn.textContent='등록';}
+}
+
+async function deleteDartKeyFn(){
+  if(!confirm('DART API 키를 삭제하시겠습니까?\n기업 모니터링 기능을 사용할 수 없게 됩니다.'))return;
+  await fetch(DART_PROXY_URL,{method:'POST',headers:_apiHeaders(),body:JSON.stringify({action:'delete-dart-key'})}).catch(()=>{});
+  dartKeyStored=false;
+  if(_monitorPollTimer){clearInterval(_monitorPollTimer);_monitorPollTimer=null;}
+  document.getElementById('monitor-setup-banner').style.display='';
+  document.getElementById('monitor-main').style.display='none';
+  const input=document.getElementById('dart-key-input');
+  if(input)input.value='';
+  const chk=document.getElementById('dart-terms-check');
+  if(chk)chk.checked=false;
+}
+
+// ── 알림 ──────────────────────────────────
+async function requestNotifyPermission(){
+  if('Notification' in window&&Notification.permission==='default')await Notification.requestPermission();
+}
+function _fireNotify(corpName,title){
+  if('Notification' in window&&Notification.permission==='granted'){
+    new Notification(corpName+' 새 공시',{body:title});
+  }
+}
+
+// ── Polling ──────────────────────────────
+function startMonitorPolling(){
+  if(_monitorPollTimer)clearInterval(_monitorPollTimer);
+  _monitorPollTimer=setInterval(_pollMonitor,30*60*1000);
+}
+async function _pollMonitor(){
+  for(const co of monitorCompanies){
+    if(!co.alert)continue;
+    try{
+      const list=await _fetchDartDisclosures(co.corp_code);
+      if(!list.length)continue;
+      const lastChecked=co.lastCheckedAt?new Date(co.lastCheckedAt):null;
+      const newestStr=list[0].rcept_dt||'';
+      const newest=new Date(newestStr.replace(/(\d{4})(\d{2})(\d{2})/,'$1-$2-$3'));
+      if(lastChecked&&newest>lastChecked)_fireNotify(co.corp_name,list[0].report_nm||'');
+      co.lastCheckedAt=new Date().toISOString();
+    }catch(e){}
+  }
+  localStorage.setItem('monitor_co',JSON.stringify(monitorCompanies));
+  _syncToCloud();
+}
+
+// ── initMonitorPage ───────────────────────
+function initMonitorPage(){
+  const banner=document.getElementById('monitor-setup-banner');
+  const main=document.getElementById('monitor-main');
+  if(!dartKeyStored){
+    if(banner)banner.style.display='';
+    if(main)main.style.display='none';
+    return;
+  }
+  if(banner)banner.style.display='none';
+  if(main)main.style.display='';
+  renderMonitorCompanies();
+  if(!_monitorPollTimer)startMonitorPolling();
+  requestNotifyPermission();
+}
+
+// ── 기업 추가/삭제 ────────────────────────
+async function addMonitorCompany(){
+  const input=document.getElementById('monitor-search');
+  const query=(input?.value||'').trim();
+  if(!query)return;
+  if(monitorCompanies.length>=20){showMonitorErr('최대 20개까지 추가할 수 있습니다.');return;}
+  const btn=document.getElementById('monitor-add-btn');
+  if(btn){btn.disabled=true;btn.textContent='검색 중...';}
+  showMonitorErr('');
+  try{
+    const r=await fetch(DART_PROXY_URL,{method:'POST',headers:_apiHeaders(),body:JSON.stringify({action:'dart-corp-search',query})});
+    const d=await r.json();
+    if(d.status==='000'&&d.corp&&d.corp.length){
+      const corp=d.corp[0];
+      if(monitorCompanies.find(c=>c.corp_code===corp.corp_code)){showMonitorErr('이미 추가된 기업입니다.');return;}
+      const co={corp_code:corp.corp_code,corp_name:corp.corp_name,stock_code:corp.stock_code||'',
+        market:corp.corp_cls==='Y'?'KOSPI':corp.corp_cls==='K'?'KOSDAQ':'기타',
+        alert:false,lastCheckedAt:null,memos:[],addedAt:new Date().toISOString()};
+      monitorCompanies.push(co);
+      localStorage.setItem('monitor_co',JSON.stringify(monitorCompanies));
+      _syncToCloud();
+      if(input)input.value='';
+      const cards=document.getElementById('monitor-cards');
+      if(cards){
+        const el=_createCardEl(co);
+        if(cards.querySelector('.monitor-empty'))cards.innerHTML='';
+        cards.appendChild(el);
+      }
+      loadCompanyData(co.corp_code);
+    }else{
+      const msg={dart_key_required:'DART API 키를 먼저 등록해주세요.',auth_required:'로그인이 필요합니다.'};
+      showMonitorErr(msg[d.error]||'기업을 찾을 수 없습니다. 종목코드 또는 회사명을 확인해주세요.');
+    }
+  }catch(e){showMonitorErr('검색 중 오류가 발생했습니다.');}
+  if(btn){btn.disabled=false;btn.textContent='추가';}
+}
+
+function removeMonitorCompany(corpCode){
+  if(!confirm('이 기업을 모니터링 목록에서 삭제하시겠습니까?'))return;
+  monitorCompanies=monitorCompanies.filter(c=>c.corp_code!==corpCode);
+  delete _monitorCache[corpCode];
+  localStorage.setItem('monitor_co',JSON.stringify(monitorCompanies));
+  _syncToCloud();
+  const card=document.getElementById('mc-'+corpCode);
+  if(card)card.remove();
+  const cards=document.getElementById('monitor-cards');
+  if(cards&&!cards.children.length)cards.innerHTML='<div class="monitor-empty">모니터링할 기업을 추가해주세요.<br>최대 20개까지 추가할 수 있습니다.</div>';
+  if(monitorView==='table')renderMonitorTable();
+}
+
+function showMonitorErr(msg){
+  const el=document.getElementById('monitor-err');
+  if(!el)return;
+  el.textContent=msg;
+  el.style.display=msg?'':'none';
+}
+
+// ── 데이터 로드 ───────────────────────────
+async function loadCompanyData(corpCode){
+  const co=monitorCompanies.find(c=>c.corp_code===corpCode);
+  if(!co)return;
+  _monitorCache[corpCode]=_monitorCache[corpCode]||{};
+  const[priceRes,discRes]=await Promise.allSettled([
+    _fetchCompanyPrice(co.stock_code),
+    _fetchDartDisclosures(corpCode)
+  ]);
+  if(priceRes.status==='fulfilled')_monitorCache[corpCode].price=priceRes.value;
+  if(discRes.status==='fulfilled'){
+    _monitorCache[corpCode].disclosures=discRes.value;
+    _monitorCache[corpCode].disclosureFilter='all';
+  }
+  _monitorCache[corpCode].loaded=true;
+  _renderCardContent(corpCode);
+  if(monitorView==='table')renderMonitorTable();
+}
+
+async function _fetchCompanyPrice(stockCode){
+  if(!stockCode)return null;
+  try{
+    const r=await fetch(DART_PROXY_URL,{method:'POST',headers:_apiHeaders(),body:JSON.stringify({action:'dart-stock-price',stockCode})});
+    const d=await r.json();
+    const meta=d?.chart?.result?.[0]?.meta;
+    if(!meta)return null;
+    const change=meta.regularMarketPrice-meta.previousClose;
+    return{price:meta.regularMarketPrice,change,changePct:(change/meta.previousClose*100).toFixed(2)};
+  }catch(e){return null;}
+}
+
+async function _fetchDartDisclosures(corpCode){
+  const now=new Date();
+  const end=now.toISOString().slice(0,10).replace(/-/g,'');
+  const start=new Date(now-30*24*60*60*1000).toISOString().slice(0,10).replace(/-/g,'');
+  const r=await fetch(DART_PROXY_URL,{method:'POST',headers:_apiHeaders(),
+    body:JSON.stringify({action:'dart-disclosures',corpCode,startDate:start,endDate:end,pageCount:10})});
+  const d=await r.json();
+  return Array.isArray(d.list)?d.list:[];
+}
+
+async function loadHoldings(corpCode){
+  const year=new Date().getFullYear()-1;
+  try{
+    const r=await fetch(DART_PROXY_URL,{method:'POST',headers:_apiHeaders(),body:JSON.stringify({action:'dart-holdings',corpCode,year:String(year)})});
+    const d=await r.json();
+    _monitorCache[corpCode]=_monitorCache[corpCode]||{};
+    _monitorCache[corpCode].holdings=Array.isArray(d.list)?d.list:[];
+    _monitorCache[corpCode].holdingsYear=year;
+    _renderHoldingsBody(corpCode);
+  }catch(e){
+    const body=document.getElementById('mc-holdings-body-'+corpCode);
+    if(body)body.innerHTML='<div class="mc-empty-state">보유 현황 조회 실패</div>';
+  }
+}
+
+async function loadHoldingChanges(corpCode){
+  const curr=new Date().getFullYear()-1;
+  const prev=curr-1;
+  try{
+    const[cRes,pRes]=await Promise.all([
+      fetch(DART_PROXY_URL,{method:'POST',headers:_apiHeaders(),body:JSON.stringify({action:'dart-holdings',corpCode,year:String(curr)})}).then(r=>r.json()),
+      fetch(DART_PROXY_URL,{method:'POST',headers:_apiHeaders(),body:JSON.stringify({action:'dart-holdings',corpCode,year:String(prev)})}).then(r=>r.json())
+    ]);
+    const changes=_computeChanges(Array.isArray(cRes.list)?cRes.list:[],Array.isArray(pRes.list)?pRes.list:[]);
+    _monitorCache[corpCode]=_monitorCache[corpCode]||{};
+    _monitorCache[corpCode].holdingChanges=changes;
+    _renderChangesBody(corpCode);
+  }catch(e){
+    const body=document.getElementById('mc-changes-body-'+corpCode);
+    if(body)body.innerHTML='<div class="mc-empty-state">변동 이력 조회 실패</div>';
+  }
+}
+
+function _computeChanges(curr,prev){
+  const out=[];
+  const prevMap={};prev.forEach(p=>prevMap[p.inv_prm]=p);
+  const currMap={};curr.forEach(c=>{
+    currMap[c.inv_prm]=c;
+    const p=prevMap[c.inv_prm];
+    if(!p){out.push({name:c.inv_prm,type:'new',detail:'▲ 신규 편입'});return;}
+    const cq=parseInt((c.trmend_posn_stock_qty||'0').replace(/,/g,''));
+    const pq=parseInt((p.trmend_posn_stock_qty||'0').replace(/,/g,''));
+    if(cq>pq)out.push({name:c.inv_prm,type:'increase',detail:`▲ ${(cq-pq).toLocaleString()}주 증가`});
+    else if(cq<pq)out.push({name:c.inv_prm,type:'decrease',detail:`▼ ${(pq-cq).toLocaleString()}주 감소`});
+  });
+  prev.forEach(p=>{if(!currMap[p.inv_prm])out.push({name:p.inv_prm,type:'exit',detail:'✕ 보유 종료'});});
+  return out;
+}
+
+// ── 렌더링 ────────────────────────────────
+function renderMonitorCompanies(){
+  const container=document.getElementById('monitor-cards');
+  if(!container)return;
+  if(!monitorCompanies.length){
+    container.innerHTML='<div class="monitor-empty">모니터링할 기업을 추가해주세요.<br>최대 20개까지 추가할 수 있습니다.</div>';
+    return;
+  }
+  container.innerHTML='';
+  monitorCompanies.forEach(co=>{
+    const el=_createCardEl(co);
+    container.appendChild(el);
+    if(!_monitorCache[co.corp_code]?.loaded)loadCompanyData(co.corp_code);
+  });
+}
+
+function _createCardEl(co){
+  const div=document.createElement('div');
+  div.className='monitor-card';div.id='mc-'+co.corp_code;
+  div.innerHTML=_buildCardHeaderHTML(co);
+  return div;
+}
+
+function _buildCardHeaderHTML(co){
+  const cache=_monitorCache[co.corp_code]||{};
+  const p=cache.price;
+  const priceHtml=p
+    ?`<span class="mc-price">${Math.round(p.price).toLocaleString()}원</span><span class="mc-change ${parseFloat(p.change)>=0?'up':'down'}">${parseFloat(p.change)>=0?'+':''}${Math.round(p.change).toLocaleString()}원 (${parseFloat(p.change)>=0?'+':''}${p.changePct}%)</span>`
+    :`<span class="mc-price-loading">가격 조회 중...</span>`;
+  const discs=cache.disclosures||[];
+  const filter=cache.disclosureFilter||'all';
+  const ftypes=[{k:'all',l:'전체'},{k:'A',l:'정기보고서'},{k:'B',l:'주요사항'},{k:'C',l:'지분공시'},{k:'D',l:'기타'}];
+  const filterHtml=ftypes.map(f=>`<button class="mc-filter-btn${filter===f.k?' on':''}" onclick="setDisclosureFilter('${co.corp_code}','${f.k}')">${f.l}</button>`).join('');
+  const filtered=filter==='all'?discs.slice(0,5):discs.filter(d=>_discType(d)===filter).slice(0,5);
+  const discHtml=cache.loaded
+    ?(filtered.length?filtered.map(d=>{
+        const dt=(d.rcept_dt||'').replace(/(\d{4})(\d{2})(\d{2})/,'$2/$3');
+        const tn=_discTypeLabel(_discType(d));
+        const title=escapeHtml(_jsStr(d.report_nm||''));
+        return`<div class="mc-disclosure-row">
+          <span class="mc-disc-date">${dt}</span>
+          <span class="mc-disc-type-badge">${tn}</span>
+          <span class="mc-disc-title">${escapeHtml(d.report_nm||'')}</span>
+          <button class="mc-disc-memo-btn" onclick="openDisclosureMemo('${co.corp_code}','${title}','${d.rcept_dt||''}')">메모</button>
+          <a class="mc-disc-link" href="https://dart.fss.or.kr/dsaf001/main.do?rcpNo=${d.rcept_no||''}" target="_blank" rel="noopener">↗</a>
+        </div>`;
+      }).join(''):'<div class="mc-empty-state">최근 30일 공시가 없습니다.</div>')
+    :'<div class="mc-loading">공시 로딩 중...</div>';
+  const memosHtml=(co.memos||[]).map(m=>`
+    <div class="mc-memo-item" id="mmi-${co.corp_code}-${m.id}">
+      <div class="mc-memo-text">${escapeHtml(m.text)}</div>
+      <div class="mc-memo-actions">
+        <span class="mc-memo-time">${_fmtMonDate(m.time)}</span>
+        ${m.source?`<span class="mc-memo-src" title="${escapeHtml(m.source.disclosure_title||'')}">📋 공시 연계</span>`:''}
+        <button class="mc-memo-journal-btn" onclick="addMemoToJournal('${co.corp_code}',${m.id})">일지에 추가</button>
+        <button class="mc-memo-del-btn" onclick="deleteMonitorMemo('${co.corp_code}',${m.id})">삭제</button>
+      </div>
+    </div>`).join('')||'<div class="mc-empty-state">팀 메모가 없습니다.</div>';
+  return`
+    <div class="mc-header">
+      <div class="mc-title-group">
+        <span class="mc-corp-name">${escapeHtml(co.corp_name)}</span>
+        <span class="mc-stock-code">${escapeHtml(co.stock_code)}</span>
+        <span class="mc-market">${escapeHtml(co.market)}</span>
+      </div>
+      <div class="mc-header-actions">
+        <button class="mc-alert-btn${co.alert?' active':''}" onclick="toggleMonitorAlert('${co.corp_code}')" title="${co.alert?'알림 ON':'알림 OFF'}">🔔</button>
+        <button class="mc-refresh-btn" onclick="refreshCompanyData('${co.corp_code}')">↻</button>
+        <button class="mc-delete-btn" onclick="removeMonitorCompany('${co.corp_code}')">삭제</button>
+      </div>
+    </div>
+    <div class="mc-price-row">${priceHtml}</div>
+    <div class="mc-section">
+      <div class="mc-section-header">
+        <span class="mc-section-title">📋 최근 공시</span>
+        <a class="mc-dart-link" href="https://dart.fss.or.kr/dsaf001/main.do?corp=${co.corp_code}" target="_blank" rel="noopener">DART 전체보기 ↗</a>
+      </div>
+      <div class="mc-filter-bar">${filterHtml}</div>
+      <div id="mc-disc-${co.corp_code}">${discHtml}</div>
+    </div>
+    <div class="mc-section">
+      <div class="mc-section-header mc-expandable" onclick="toggleHoldingsSection('${co.corp_code}')">
+        <span class="mc-section-title">📦 보유 주식 현황</span>
+        <span class="mc-expand-icon" id="mc-hi-${co.corp_code}">▶</span>
+      </div>
+      <div id="mc-holdings-body-${co.corp_code}" style="display:none"></div>
+    </div>
+    <div class="mc-section">
+      <div class="mc-section-header mc-expandable" onclick="toggleChangesSection('${co.corp_code}')">
+        <span class="mc-section-title">📈 보유 변동 이력 <span style="font-size:var(--text-xs);font-weight:400;color:var(--color-text-tertiary)">(연간 보고서 비교 추정)</span></span>
+        <span class="mc-expand-icon" id="mc-ci-${co.corp_code}">▶</span>
+      </div>
+      <div id="mc-changes-body-${co.corp_code}" style="display:none"></div>
+    </div>
+    <div class="mc-section">
+      <div class="mc-section-header">
+        <span class="mc-section-title">📝 팀 메모</span>
+        <button class="mc-memo-add-btn" onclick="openInlineMemoForm('${co.corp_code}')">+ 메모 추가</button>
+      </div>
+      <div id="mc-memo-form-${co.corp_code}" class="mc-memo-form" style="display:none">
+        <textarea id="mc-memo-input-${co.corp_code}" placeholder="메모를 입력하세요..." rows="2"></textarea>
+        <div class="mc-memo-form-actions">
+          <button onclick="saveMonitorMemo('${co.corp_code}')">저장</button>
+          <button onclick="closeInlineMemoForm('${co.corp_code}')">취소</button>
+        </div>
+      </div>
+      <div id="mc-memos-${co.corp_code}" class="mc-memos-list">${memosHtml}</div>
+    </div>`;
+}
+
+function _renderCardContent(corpCode){
+  const card=document.getElementById('mc-'+corpCode);
+  if(!card)return;
+  const co=monitorCompanies.find(c=>c.corp_code===corpCode);
+  if(!co)return;
+  card.innerHTML=_buildCardHeaderHTML(co);
+}
+
+function _discType(d){
+  const t=d.pblntf_ty||'';
+  if(t==='A'||/사업보고|분기보고|반기보고/.test(d.report_nm||''))return'A';
+  if(t==='B'||/주요사항/.test(d.report_nm||''))return'B';
+  if(t==='C'||/대량보유|지분/.test(d.report_nm||''))return'C';
+  return'D';
+}
+function _discTypeLabel(t){return{A:'정기',B:'주요',C:'지분',D:'기타'}[t]||'기타';}
+function _fmtMonDate(iso){if(!iso)return'';const d=new Date(iso);return`${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;}
+
+function setDisclosureFilter(corpCode,key){
+  _monitorCache[corpCode]=_monitorCache[corpCode]||{};
+  _monitorCache[corpCode].disclosureFilter=key;
+  const disc=document.getElementById('mc-disc-'+corpCode);
+  if(!disc)return;
+  const cache=_monitorCache[corpCode];
+  const discs=cache.disclosures||[];
+  const filtered=key==='all'?discs.slice(0,5):discs.filter(d=>_discType(d)===key).slice(0,5);
+  disc.innerHTML=filtered.length?filtered.map(d=>{
+    const dt=(d.rcept_dt||'').replace(/(\d{4})(\d{2})(\d{2})/,'$2/$3');
+    const title=escapeHtml(_jsStr(d.report_nm||''));
+    return`<div class="mc-disclosure-row">
+      <span class="mc-disc-date">${dt}</span>
+      <span class="mc-disc-type-badge">${_discTypeLabel(_discType(d))}</span>
+      <span class="mc-disc-title">${escapeHtml(d.report_nm||'')}</span>
+      <button class="mc-disc-memo-btn" onclick="openDisclosureMemo('${corpCode}','${title}','${d.rcept_dt||''}')">메모</button>
+      <a class="mc-disc-link" href="https://dart.fss.or.kr/dsaf001/main.do?rcpNo=${d.rcept_no||''}" target="_blank" rel="noopener">↗</a>
+    </div>`;
+  }).join(''):'<div class="mc-empty-state">해당 유형의 공시가 없습니다.</div>';
+  // 필터 버튼 활성화 표시
+  document.querySelectorAll(`#mc-${corpCode} .mc-filter-btn`).forEach(b=>{
+    b.classList.toggle('on',b.textContent==={all:'전체',A:'정기보고서',B:'주요사항',C:'지분공시',D:'기타'}[key]);
+  });
+}
+
+function toggleMonitorAlert(corpCode){
+  const co=monitorCompanies.find(c=>c.corp_code===corpCode);
+  if(!co)return;
+  co.alert=!co.alert;
+  if(co.alert)requestNotifyPermission();
+  localStorage.setItem('monitor_co',JSON.stringify(monitorCompanies));
+  _syncToCloud();
+  const btn=document.querySelector(`#mc-${corpCode} .mc-alert-btn`);
+  if(btn){btn.classList.toggle('active',co.alert);btn.title=co.alert?'알림 ON':'알림 OFF';}
+}
+
+async function refreshCompanyData(corpCode){
+  const btn=document.querySelector(`#mc-${corpCode} .mc-refresh-btn`);
+  if(btn){btn.textContent='...';btn.disabled=true;}
+  _monitorCache[corpCode]=_monitorCache[corpCode]||{};
+  _monitorCache[corpCode].loaded=false;
+  await loadCompanyData(corpCode);
+  if(btn){btn.textContent='↻';btn.disabled=false;}
+}
+
+function toggleHoldingsSection(corpCode){
+  const body=document.getElementById('mc-holdings-body-'+corpCode);
+  const icon=document.getElementById('mc-hi-'+corpCode);
+  if(!body)return;
+  const open=body.style.display!=='none';
+  body.style.display=open?'none':'';
+  if(icon)icon.textContent=open?'▶':'▼';
+  if(!open&&!_monitorCache[corpCode]?.holdings){
+    body.innerHTML='<div class="mc-loading">보유 현황 로딩 중...</div>';
+    loadHoldings(corpCode);
+  }
+}
+
+function toggleChangesSection(corpCode){
+  const body=document.getElementById('mc-changes-body-'+corpCode);
+  const icon=document.getElementById('mc-ci-'+corpCode);
+  if(!body)return;
+  const open=body.style.display!=='none';
+  body.style.display=open?'none':'';
+  if(icon)icon.textContent=open?'▶':'▼';
+  if(!open&&!_monitorCache[corpCode]?.holdingChanges){
+    body.innerHTML='<div class="mc-loading">변동 이력 로딩 중...</div>';
+    loadHoldingChanges(corpCode);
+  }
+}
+
+function _renderHoldingsBody(corpCode){
+  const body=document.getElementById('mc-holdings-body-'+corpCode);
+  if(!body||body.style.display==='none')return;
+  const holdings=_monitorCache[corpCode]?.holdings||[];
+  const year=_monitorCache[corpCode]?.holdingsYear||'';
+  if(!holdings.length){body.innerHTML=`<div class="mc-empty-state">${year}년 사업보고서 타법인 출자현황이 없습니다.</div>`;return;}
+  body.innerHTML=`
+    <div class="mc-holdings-label">출처: ${year}년 사업보고서 타법인 출자현황</div>
+    <div class="mc-holdings-table">
+      <div class="mc-ht-header"><span>투자기업</span><span>보유주식수</span><span>취득원가(억)</span><span>장부가(억)</span></div>
+      ${holdings.map(h=>`<div class="mc-ht-row">
+        <span>${escapeHtml(h.inv_prm||'-')}</span>
+        <span>${(h.trmend_posn_stock_qty||'-').toLocaleString()}</span>
+        <span>${h.acqs_mth2||'-'}</span>
+        <span>${h.bsv_acqs_amount||'-'}</span>
+      </div>`).join('')}
+    </div>`;
+}
+
+function _renderChangesBody(corpCode){
+  const body=document.getElementById('mc-changes-body-'+corpCode);
+  if(!body||body.style.display==='none')return;
+  const changes=_monitorCache[corpCode]?.holdingChanges||[];
+  if(!changes.length){body.innerHTML='<div class="mc-empty-state">전년 대비 보유 변동이 없습니다.</div>';return;}
+  body.innerHTML=changes.map(c=>`
+    <div class="mc-change-row ${c.type}">
+      <span class="mc-change-name">${escapeHtml(c.name)}</span>
+      <span class="mc-change-detail">${c.detail}</span>
+      <button class="mc-change-memo-btn" onclick="openDisclosureMemo('${corpCode}','${escapeHtml(_jsStr(c.name+' '+c.detail))}','')">메모</button>
+    </div>`).join('');
+}
+
+// ── 비교 테이블 뷰 ────────────────────────
+function setMonitorView(view){
+  monitorView=view;
+  document.getElementById('mvbtn-card').classList.toggle('on',view==='card');
+  document.getElementById('mvbtn-table').classList.toggle('on',view==='table');
+  document.getElementById('monitor-card-view').style.display=view==='card'?'':'none';
+  document.getElementById('monitor-table-view').style.display=view==='table'?'':'none';
+  if(view==='table')renderMonitorTable();
+}
+
+function renderMonitorTable(){
+  const container=document.getElementById('monitor-table');
+  if(!container)return;
+  if(!monitorCompanies.length){container.innerHTML='<div class="monitor-empty">모니터링할 기업을 추가해주세요.</div>';return;}
+  const rows=monitorCompanies.map(co=>{
+    const cache=_monitorCache[co.corp_code]||{};
+    const p=cache.price;
+    const discs=cache.disclosures||[];
+    const changes=cache.holdingChanges||[];
+    const recent=discs[0];
+    const pCell=p?Math.round(p.price).toLocaleString():'—';
+    const chgCell=p?`<span class="${parseFloat(p.change)>=0?'mc-chg-up':'mc-chg-down'}">${parseFloat(p.change)>=0?'+':''}${p.changePct}%</span>`:'—';
+    const dCell=recent?`${(recent.rcept_dt||'').replace(/(\d{4})(\d{2})(\d{2})/,'$2/$3')} ${(recent.report_nm||'').slice(0,14)}`:'—';
+    return`<tr onclick="goToCard('${co.corp_code}')">
+      <td><span class="mc-corp-name-sm">${escapeHtml(co.corp_name)}</span><span class="mc-stock-code-sm">${co.stock_code}</span></td>
+      <td>${pCell}</td><td>${chgCell}</td>
+      <td class="mc-disc-cell">${dCell}</td>
+      <td>${discs.length}건</td>
+      <td>${changes.length?`<span class="mc-change-badge">${changes.length}건</span>`:'—'}</td>
+    </tr>`;
+  }).join('');
+  container.innerHTML=`<table class="monitor-compare-table">
+    <thead><tr>
+      <th>기업</th><th>현재가 (원)</th><th>등락률</th>
+      <th>최근 공시</th><th>공시 (30일)</th><th>보유변동</th>
+    </tr></thead>
+    <tbody>${rows}</tbody>
+  </table>`;
+}
+
+function goToCard(corpCode){
+  setMonitorView('card');
+  setTimeout(()=>{
+    const card=document.getElementById('mc-'+corpCode);
+    if(card)card.scrollIntoView({behavior:'smooth',block:'start'});
+  },50);
+}
+
+// ── 메모 ─────────────────────────────────
+function openInlineMemoForm(corpCode){
+  const form=document.getElementById('mc-memo-form-'+corpCode);
+  const input=document.getElementById('mc-memo-input-'+corpCode);
+  if(form){form.style.display='';if(input)input.focus();}
+}
+
+function closeInlineMemoForm(corpCode){
+  const form=document.getElementById('mc-memo-form-'+corpCode);
+  const input=document.getElementById('mc-memo-input-'+corpCode);
+  if(form)form.style.display='none';
+  if(input){input.value='';delete input.dataset.source;}
+}
+
+function openDisclosureMemo(corpCode,titleEncoded,date){
+  openInlineMemoForm(corpCode);
+  const input=document.getElementById('mc-memo-input-'+corpCode);
+  if(!input)return;
+  const title=decodeURIComponent(titleEncoded);
+  const dateStr=date?date.replace(/(\d{4})(\d{2})(\d{2})/,'$2/$3'):'';
+  input.value=(dateStr?`[${dateStr}] `+title:title)+'\n';
+  input.dataset.source=JSON.stringify({disclosure_title:title,disclosure_date:date});
+  input.focus();
+}
+
+function saveMonitorMemo(corpCode){
+  const input=document.getElementById('mc-memo-input-'+corpCode);
+  const text=(input?.value||'').trim();
+  if(!text)return;
+  const co=monitorCompanies.find(c=>c.corp_code===corpCode);
+  if(!co)return;
+  const source=input.dataset.source?JSON.parse(input.dataset.source):null;
+  const memo={id:Date.now(),text,time:new Date().toISOString(),source};
+  co.memos=co.memos||[];
+  co.memos.unshift(memo);
+  localStorage.setItem('monitor_co',JSON.stringify(monitorCompanies));
+  _syncToCloud();
+  closeInlineMemoForm(corpCode);
+  // 메모 목록 갱신
+  const memosList=document.getElementById('mc-memos-'+corpCode);
+  if(memosList){
+    const empty=memosList.querySelector('.mc-empty-state');
+    if(empty)empty.remove();
+    const div=document.createElement('div');
+    div.className='mc-memo-item';div.id=`mmi-${corpCode}-${memo.id}`;
+    div.innerHTML=`
+      <div class="mc-memo-text">${escapeHtml(text)}</div>
+      <div class="mc-memo-actions">
+        <span class="mc-memo-time">${_fmtMonDate(memo.time)}</span>
+        ${source?`<span class="mc-memo-src" title="${escapeHtml(source.disclosure_title||'')}">📋 공시 연계</span>`:''}
+        <button class="mc-memo-journal-btn" onclick="addMemoToJournal('${corpCode}',${memo.id})">일지에 추가</button>
+        <button class="mc-memo-del-btn" onclick="deleteMonitorMemo('${corpCode}',${memo.id})">삭제</button>
+      </div>`;
+    memosList.prepend(div);
+  }
+}
+
+function deleteMonitorMemo(corpCode,memoId){
+  const co=monitorCompanies.find(c=>c.corp_code===corpCode);
+  if(!co)return;
+  co.memos=(co.memos||[]).filter(m=>m.id!==memoId);
+  localStorage.setItem('monitor_co',JSON.stringify(monitorCompanies));
+  _syncToCloud();
+  const el=document.getElementById(`mmi-${corpCode}-${memoId}`);
+  if(el)el.remove();
+  const memosList=document.getElementById('mc-memos-'+corpCode);
+  if(memosList&&!memosList.querySelector('.mc-memo-item'))
+    memosList.innerHTML='<div class="mc-empty-state">팀 메모가 없습니다.</div>';
+}
+
+function addMemoToJournal(corpCode,memoId){
+  const co=monitorCompanies.find(c=>c.corp_code===corpCode);
+  if(!co)return;
+  const memo=(co.memos||[]).find(m=>m.id===memoId);
+  if(!memo)return;
+  memos.unshift({
+    id:Date.now(),
+    text:`[${co.corp_name}] ${memo.text}`,
+    tag:'monitor',
+    time:new Date().toISOString(),
+    important:false,
+    source:{type:'monitor',corp_name:co.corp_name,corp_code:co.corp_code,...(memo.source||{})}
+  });
+  localStorage.setItem('pf_m',JSON.stringify(memos));
+  _syncToCloud();
+  renderMemos();
+  const btn=document.querySelector(`#mmi-${corpCode}-${memoId} .mc-memo-journal-btn`);
+  if(btn){
+    const orig=btn.textContent;
+    btn.textContent='✓ 추가됨';btn.disabled=true;
+    setTimeout(()=>{if(btn){btn.textContent=orig;btn.disabled=false;}},2000);
+  }
+}
+
 // ─ 초기화
 updateCashDisplay();
 renderStocks();renderMemos();renderSites();updateFxRate();updateSampleNotice();updateMasterNotifyBtn();resetMemoDateTime();
@@ -3291,9 +4168,16 @@ setInterval(checkAndAutoFetch,60000);
     _currentUser=session.user;
     _currentSession=session;
     _updateNavAuth(_currentUser);
-    const{data:prof}=await _sb.from('user_profiles').select('onboarding_done').eq('user_id',_currentUser.id).single();
+    const{data:prof}=await _sb.from('user_profiles').select('onboarding_done,user_type,business_approved').eq('user_id',_currentUser.id).single();
     if(!prof||!prof.onboarding_done){_showOnboarding();}
-    else{await _loadFromCloud(_currentUser);}
+    else if(prof.user_type==='business'&&!prof.business_approved){
+      document.getElementById('biz-pending-overlay').classList.remove('hidden');
+    }else{
+      _userType=prof.user_type||'personal';
+      _bizApproved=!!(prof.user_type==='business'&&prof.business_approved);
+      applyUserTypeUI(_userType);
+      await _loadFromCloud(_currentUser);
+    }
   }
   if(CKEY){
     document.getElementById('pn-ai-dot').style.display='inline-block';
@@ -3304,14 +4188,41 @@ setInterval(checkAndAutoFetch,60000);
     }
   }
   loadPortfolioNews();
-  // 마지막 방문 페이지 복원 — Auth 확인 완료 후 실행하여 API 오류 방지
+  // 마지막 방문 페이지 복원 (기업 사용자는 monitor 기본)
   const saved=localStorage.getItem('cur_page');
-  if(saved&&saved!=='portfolio'){
+  if(_userType==='business'&&(!saved||saved==='portfolio')){
+    const monBtn=document.querySelector('.nav-tab[onclick*="\'monitor\'"]');
+    if(monBtn)goPage('monitor',monBtn);
+  }else if(saved&&saved!=='portfolio'){
     const btn=[...document.querySelectorAll('.nav-tab')].find(b=>b.getAttribute('onclick')?.includes(`'${saved}'`));
     if(btn)goPage(saved,btn);
   }
 })();
 </script>
+
+<!-- ══ 기업 계정 심사 대기 화면 ══ -->
+<div class="biz-pending-overlay hidden" id="biz-pending-overlay">
+  <div class="biz-pending-box">
+    <div class="biz-pending-icon">⏳</div>
+    <div class="biz-pending-badge">심사 중</div>
+    <div class="biz-pending-title">기업 계정 승인 대기 중입니다</div>
+    <div class="biz-pending-desc">
+      기업 계정은 운영팀 검토 후 활성화됩니다.<br>
+      영업일 기준 <strong>1~2일 내</strong> 가입하신 이메일로 안내드립니다.
+    </div>
+    <div class="biz-pending-info">
+      <strong>승인 후 이용 가능한 기능</strong><br>
+      · 기업 모니터링 (공시·보유주식·변동 이력)<br>
+      · 공시 알림 (30분 간격 자동 감지)<br>
+      · 경쟁사 비교 테이블<br>
+      · 팀 메모 ↔ 투자 일지 연계
+    </div>
+    <div class="biz-pending-email">문의: <a href="mailto:wlsgn1878@naver.com" style="color:var(--color-info)">wlsgn1878@naver.com</a></div>
+    <div style="margin-top:1.5rem">
+      <button onclick="signOutUser()" style="background:none;border:1px solid var(--color-border);border-radius:var(--radius-md);padding:8px 20px;font-size:var(--text-sm);cursor:pointer;font-family:inherit;color:var(--color-text-secondary)">로그아웃</button>
+    </div>
+  </div>
+</div>
 
 <!-- ══ 로그인/회원가입 모달 ══ -->
 <div class="auth-overlay hidden" id="auth-overlay" onclick="if(event.target===this)closeAuthModal()">
