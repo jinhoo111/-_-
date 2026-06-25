@@ -1546,16 +1546,20 @@ _sb.auth.onAuthStateChange(async(event,session)=>{
 
 // Supabase Edge Function 헬퍼 (키 저장 / 프록시 호출)
 async function storeApiKey(service,key){
+  // Finnhub → market-data (fh-key column in user_profiles, server-side validation)
+  if(service==='finnhub'){
+    const r=await fetch(DART_PROXY_URL,{method:'POST',headers:_apiHeaders(),body:JSON.stringify({action:'store-fh-key',key})});
+    return r.json();
+  }
   const r=await fetch(SUPA_URL,{method:'POST',headers:_apiHeaders(),body:JSON.stringify({action:'store-key',service,key})});
   return r.json();
 }
 async function proxyApiCall(service,path,params={}){
-  // 승인된 기업 사용자의 Finnhub 호출 → 관리자 키로 market-data 통해 프록시
-  if(service==='finnhub'&&_userType==='business'&&_bizApproved){
+  // Finnhub (personal + biz both): market-data fh-call (handles key routing internally)
+  if(service==='finnhub'){
     const r=await fetch(DART_PROXY_URL,{method:'POST',headers:_apiHeaders(),
-      body:JSON.stringify({action:'finnhub-proxy',path,params})});
-    if(r.status===401){const d=await r.json();throw new Error(d.error||'fh_auth');}
-    if(!r.ok)throw new Error('proxy_error:'+r.status);
+      body:JSON.stringify({action:'fh-call',path,params})});
+    if(!r.ok){const d=await r.json().catch(()=>({}));throw new Error(d.error||'proxy_error:'+r.status);}
     return r.json();
   }
   const r=await fetch(SUPA_URL,{method:'POST',headers:_apiHeaders(),body:JSON.stringify({action:'call',service,path,params})});
@@ -1564,6 +1568,10 @@ async function proxyApiCall(service,path,params={}){
   return r.json();
 }
 function _deleteApiKeyOnServer(service){
+  if(service==='finnhub'){
+    fetch(DART_PROXY_URL,{method:'POST',headers:_apiHeaders(),body:JSON.stringify({action:'delete-fh-key'})}).catch(()=>{});
+    return;
+  }
   fetch(SUPA_URL,{method:'POST',headers:_apiHeaders(),body:JSON.stringify({action:'delete-key',service})}).catch(()=>{});
 }
 async function _restoreApiKeyState(){
@@ -1599,7 +1607,7 @@ async function _restoreApiKeyState(){
   }
 
   const[fhRes,ckRes,dartRes]=await Promise.all([
-    fetch(SUPA_URL,{method:'POST',headers:h,body:JSON.stringify({action:'key-exists',service:'finnhub'})}).then(r=>r.json()).catch(()=>({})),
+    fetch(DART_PROXY_URL,{method:'POST',headers:h,body:JSON.stringify({action:'fh-key-exists'})}).then(r=>r.json()).catch(()=>({})),
     fetch(SUPA_URL,{method:'POST',headers:h,body:JSON.stringify({action:'key-exists',service:'googleai'})}).then(r=>r.json()).catch(()=>({})),
     fetch(DART_PROXY_URL,{method:'POST',headers:h,body:JSON.stringify({action:'dart-key-exists'})}).then(r=>r.json()).catch(()=>({}))
   ]);
@@ -1614,8 +1622,12 @@ async function _restoreApiKeyState(){
     const inp=document.getElementById('api-key-input');if(inp)inp.value='••••••••••••••••';
     const cb=document.getElementById('clear-btn');if(cb)cb.style.display='flex';
     setKeyStatus('live','연결됨 · 실시간 활성');
-    // 뉴스 탭이 현재 열려 있으면 자동 갱신 (로그인 후 뉴스 탭 활성 케이스)
     if(document.getElementById('page-news')?.classList.contains('on')){loadMarketNews();refreshQuotes();}
+  }else if(localStorage.getItem('fhkey_stored')){
+    // 이전 proxy-api 저장 키 → market-data로 마이그레이션 필요: localStorage 정리 후 재입력 유도
+    localStorage.removeItem('fhkey_stored');
+    FKEY='';
+    setKeyStatus('wait','Finnhub API 키를 다시 연결해주세요 (시스템 업그레이드)');
   }
   if(ckRes.exists){
     CKEY='***';
@@ -2281,15 +2293,16 @@ function initNewsUI(){
 
 async function connectAPI(){
   const val=document.getElementById('api-key-input').value.trim();if(!val||val.startsWith('•')){setKeyStatus('err','API 키를 입력해주세요');return;}
+  if(!_currentSession){setKeyStatus('err','로그인 후 API 키를 저장할 수 있습니다');return;}
   const btn=document.getElementById('connect-btn');btn.disabled=true;btn.textContent='확인 중...';
   try{
-    // 1단계: 키 유효성 직접 검증 (1회)
-    const r=await fetch(`https://finnhub.io/api/v1/news?category=general&token=${val}`);
-    if(!r.ok)throw new Error('invalid_key');
-    const d=await r.json();if(!Array.isArray(d))throw new Error('invalid_key');
-    // 2단계: 유효한 키를 서버에 암호화 저장
+    // 서버 단일 검증 + 저장 (market-data store-fh-key가 Finnhub 직접 검증)
     const res=await storeApiKey('finnhub',val);
-    if(!res.ok)throw new Error('store_failed');
+    if(res.error){
+      const errMap={fh_key_invalid:'API 키가 잘못됐습니다',auth_required:'로그인 후 API 키를 저장할 수 있습니다',invalid_key:'API 키 형식이 올바르지 않습니다'};
+      throw new Error(errMap[res.error]||('서버 오류: '+res.error));
+    }
+    if(!res.ok)throw new Error('서버 저장 실패 · 잠시 후 재시도');
     FKEY='***';
     localStorage.setItem('fhkey_stored','1');
     localStorage.removeItem('fhkey');
@@ -2298,10 +2311,7 @@ async function connectAPI(){
     setKeyStatus('live','연결됨 · 실시간 활성');
     renderPortfolioChips();loadMarketNews();refreshQuotes();
   }catch(e){
-    const msg=e.message==='store_failed'
-      ?(_currentSession?'서버 저장 실패 · 잠시 후 재시도':'로그인 후 API 키를 저장할 수 있습니다')
-      :'API 키가 잘못됐습니다';
-    setKeyStatus('err',msg);
+    setKeyStatus('err',e.message||'오류가 발생했습니다');
   }
   btn.disabled=false;btn.textContent='연결';
 }

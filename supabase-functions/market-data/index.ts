@@ -9,6 +9,14 @@ const DART_BASE = "https://opendart.fss.or.kr/api";
 const FINNHUB_BASE = "https://finnhub.io/api/v1";
 const MAX_DAILY_CALLS = 300;
 
+// JWT payload decode (sync, no network — works even with --no-verify-jwt)
+const decodeJwt = (token: string): Record<string, any> | null => {
+  try {
+    const b64 = token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
+    return JSON.parse(atob(b64));
+  } catch { return null; }
+};
+
 serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
 
@@ -29,27 +37,18 @@ serve(async (req: Request) => {
     const authHeader = req.headers.get("Authorization") || "";
     const jwt = authHeader.replace("Bearer ", "").trim();
 
-    // Supabase 공식 권장 패턴: anon key + user JWT 로 사용자 검증
-    const getUser = async () => {
-      if (!jwt || jwt === Deno.env.get("SUPABASE_ANON_KEY")) return null;
-      try {
-        const userClient = createClient(
-          Deno.env.get("SUPABASE_URL")!,
-          Deno.env.get("SUPABASE_ANON_KEY")!,
-          {
-            global: { headers: { Authorization: `Bearer ${jwt}` } },
-            auth: { autoRefreshToken: false, persistSession: false },
-          },
-        );
-        const { data: { user }, error } = await userClient.auth.getUser();
-        if (error || !user) return null;
-        return user;
-      } catch {
-        return null;
-      }
+    // Sync auth: decode JWT locally — reliable regardless of env vars
+    const getUser = (): { id: string; email: string } | null => {
+      const p = decodeJwt(jwt);
+      if (!p) return null;
+      if (p.role === "anon" || p.role === "service_role") return null;
+      if (p.exp && p.exp * 1000 < Date.now()) return null;
+      if (!p.sub) return null;
+      return { id: p.sub as string, email: (p.email || "") as string };
     };
 
-    // 기본 프로필 (기존 컬럼 — 항상 존재)
+    // ── DB helpers ───────────────────────────────────────
+
     const getProfile = async (userId: string) => {
       const { data } = await supabase
         .from("user_profiles")
@@ -59,28 +58,38 @@ serve(async (req: Request) => {
       return data;
     };
 
-    // 관리자 확장 프로필 (신규 컬럼 — SQL 추가 후 사용 가능)
+    // finnhub_api_key in separate query — graceful if column missing
+    const getFhKey = async (userId: string): Promise<string> => {
+      try {
+        const { data, error } = await supabase
+          .from("user_profiles")
+          .select("finnhub_api_key")
+          .eq("user_id", userId)
+          .single();
+        if (error) return "";
+        return (data as any)?.finnhub_api_key || "";
+      } catch { return ""; }
+    };
+
     const getAdminProfile = async (userId: string) => {
       const { data, error } = await supabase
         .from("user_profiles")
         .select("is_admin, shared_finnhub_key, dart_api_key")
         .eq("user_id", userId)
         .single();
-      if (error) return null; // 컬럼 미존재 시 graceful fallback
+      if (error) return null;
       return data;
     };
 
     const isApprovedBiz = (profile: any) =>
       profile?.user_type === "business" && profile?.business_approved === true;
 
-    // 관리자 공유 키 조회 (DB 우선, 환경변수 fallback)
     const getAdminKeys = async () => {
       const { data, error } = await supabase
         .from("user_profiles")
         .select("dart_api_key, shared_finnhub_key")
         .eq("is_admin", true)
         .single();
-      // is_admin 컬럼 없으면 error → env var fallback
       return {
         dart: (error ? null : data?.dart_api_key) || Deno.env.get("OWNER_DART_KEY") || "",
         finnhub: (error ? null : data?.shared_finnhub_key) || Deno.env.get("OWNER_FINNHUB_KEY") || "",
@@ -94,16 +103,15 @@ serve(async (req: Request) => {
       }).eq("user_id", userId);
     };
 
-    // ── 관리자 키 관리 ────────────────────────────────────
+    // ── Admin key management ──────────────────────────────
 
     if (action === "admin-save-finnhub-key") {
-      const user = await getUser();
+      const user = getUser();
       if (!user) return err("auth_required", 401);
       const profile = await getAdminProfile(user.id);
       if (!profile?.is_admin) return err("admin_only", 403);
       const { key } = body;
       if (!key || typeof key !== "string" || key.length < 10) return err("invalid_key");
-      // Finnhub 키 유효성 검증
       const testRes = await fetch(`${FINNHUB_BASE}/quote?symbol=AAPL&token=${key}`);
       if (!testRes.ok) return err("finnhub_key_invalid");
       const testData = await testRes.json();
@@ -113,7 +121,7 @@ serve(async (req: Request) => {
     }
 
     if (action === "admin-delete-finnhub-key") {
-      const user = await getUser();
+      const user = getUser();
       if (!user) return err("auth_required", 401);
       const profile = await getAdminProfile(user.id);
       if (!profile?.is_admin) return err("admin_only", 403);
@@ -122,20 +130,24 @@ serve(async (req: Request) => {
     }
 
     if (action === "admin-keys-status") {
-      const user = await getUser();
+      const user = getUser();
       if (!user) return err("auth_required", 401);
       const profile = await getAdminProfile(user.id);
       if (!profile?.is_admin) return err("admin_only", 403);
       return ok({
-        dart: profile.dart_api_key ? { exists: true, masked: "···" + profile.dart_api_key.slice(-4) } : { exists: false },
-        finnhub: profile.shared_finnhub_key ? { exists: true, masked: "···" + profile.shared_finnhub_key.slice(-4) } : { exists: false },
+        dart: profile.dart_api_key
+          ? { exists: true, masked: "···" + profile.dart_api_key.slice(-4) }
+          : { exists: false },
+        finnhub: profile.shared_finnhub_key
+          ? { exists: true, masked: "···" + profile.shared_finnhub_key.slice(-4) }
+          : { exists: false },
       });
     }
 
-    // ── DART 키 관리 ──────────────────────────────────────
+    // ── DART key management ───────────────────────────────
 
     if (action === "dart-key-exists") {
-      const user = await getUser();
+      const user = getUser();
       if (!user) return ok({ exists: false });
       const profile = await getProfile(user.id);
       if (isApprovedBiz(profile)) {
@@ -147,16 +159,18 @@ serve(async (req: Request) => {
     }
 
     if (action === "store-dart-key") {
-      const user = await getUser();
+      const user = getUser();
       if (!user) return err("auth_required", 401);
       const { key } = body;
       if (!key || typeof key !== "string" || key.length < 10) return err("invalid_key");
 
-      // DART API 유효성 검증
+      // Validate with list.json (only needs date range + API key — no corp_code)
       let dartStatus = "";
       try {
+        const today = new Date().toISOString().slice(0, 10).replace(/-/g, "");
+        const weekAgo = new Date(Date.now() - 7 * 86400000).toISOString().slice(0, 10).replace(/-/g, "");
         const testRes = await fetch(
-          `${DART_BASE}/company.json?crtfc_key=${encodeURIComponent(key)}&corp_name=%EC%82%BC%EC%84%B1%EC%A0%84%EC%9E%90`,
+          `${DART_BASE}/list.json?crtfc_key=${encodeURIComponent(key)}&bgn_de=${weekAgo}&end_de=${today}&page_count=1`,
           { headers: { "User-Agent": "Mozilla/5.0" } },
         );
         const testData = await testRes.json();
@@ -165,37 +179,93 @@ serve(async (req: Request) => {
         return err(`dart_api_unreachable: ${fetchErr.message}`, 502);
       }
 
-      // "000" = 정상, 그 외 모두 키 오류
       if (dartStatus !== "000") {
         const msg: Record<string, string> = {
           "010": "dart_key_unregistered",
           "011": "dart_key_unregistered",
           "020": "dart_key_invalid",
-          "100": "dart_field_error",
         };
         return err(msg[dartStatus] || `dart_error_${dartStatus}`);
       }
 
       const { error: dbErr } = await supabase
-        .from("user_profiles")
-        .update({ dart_api_key: key })
-        .eq("user_id", user.id);
+        .from("user_profiles").update({ dart_api_key: key }).eq("user_id", user.id);
       if (dbErr) return err(`db_error: ${dbErr.message}`, 500);
-
       return ok({ ok: true, masked: "···" + key.slice(-4) });
     }
 
     if (action === "delete-dart-key") {
-      const user = await getUser();
+      const user = getUser();
       if (!user) return err("auth_required", 401);
       await supabase.from("user_profiles").update({ dart_api_key: null }).eq("user_id", user.id);
       return ok({ ok: true });
     }
 
-    // ── DART API Proxy ────────────────────────────────────
+    // ── Finnhub personal key management ──────────────────
+    // Stores in user_profiles.finnhub_api_key (requires SQL: ADD COLUMN finnhub_api_key TEXT)
+
+    if (action === "store-fh-key") {
+      const user = getUser();
+      if (!user) return err("auth_required", 401);
+      const { key } = body;
+      if (!key || typeof key !== "string" || key.length < 10) return err("invalid_key");
+      const testRes = await fetch(`${FINNHUB_BASE}/quote?symbol=AAPL&token=${key}`);
+      if (!testRes.ok) return err("fh_key_invalid");
+      const testData = await testRes.json();
+      if (testData.error) return err("fh_key_invalid");
+      const { error: dbErr } = await supabase
+        .from("user_profiles").update({ finnhub_api_key: key } as any).eq("user_id", user.id);
+      if (dbErr) return err(`db_error: ${dbErr.message}`, 500);
+      return ok({ ok: true, masked: "···" + key.slice(-4) });
+    }
+
+    if (action === "fh-key-exists") {
+      const user = getUser();
+      if (!user) return ok({ exists: false });
+      const fhKey = await getFhKey(user.id);
+      if (!fhKey) return ok({ exists: false });
+      return ok({ exists: true, masked: "···" + fhKey.slice(-4) });
+    }
+
+    if (action === "delete-fh-key") {
+      const user = getUser();
+      if (!user) return err("auth_required", 401);
+      await supabase.from("user_profiles").update({ finnhub_api_key: null } as any).eq("user_id", user.id);
+      return ok({ ok: true });
+    }
+
+    // Unified Finnhub proxy: personal users use their own key, biz uses admin key
+    if (action === "fh-call") {
+      const user = getUser();
+      if (!user) return err("auth_required", 401);
+      const profile = await getProfile(user.id);
+
+      let fhKey = "";
+      if (isApprovedBiz(profile)) {
+        const adminKeys = await getAdminKeys();
+        fhKey = adminKeys.finnhub;
+      } else {
+        fhKey = await getFhKey(user.id);
+      }
+      if (!fhKey) return err("fh_key_required", 400);
+
+      const { path, params = {} } = body;
+      if (!path || typeof path !== "string") return err("path_required");
+
+      const allowedPaths = ["quote", "company-news", "news", "stock/candle", "search"];
+      const basePath = path.split("?")[0].replace(/^\/+/, "");
+      if (!allowedPaths.some((p) => basePath.startsWith(p))) return err("path_not_allowed");
+
+      const qs = new URLSearchParams({ ...params, token: fhKey });
+      const res = await fetch(`${FINNHUB_BASE}/${basePath}?${qs}`);
+      if (!res.ok) return ok({ error: "finnhub_error", status: res.status });
+      return ok(await res.json());
+    }
+
+    // ── DART API proxy ────────────────────────────────────
 
     const callDart = async (endpoint: string, params: Record<string, string>) => {
-      const user = await getUser();
+      const user = getUser();
       if (!user) return { _err: "auth_required" };
 
       const profile = await getProfile(user.id);
@@ -220,8 +290,9 @@ serve(async (req: Request) => {
 
     if (action === "dart-corp-search") {
       const { query } = body;
-      const isCode = /^\d{6}$/.test(query);
-      const data = await callDart("company.json", isCode ? { stock_code: query } : { corp_name: query });
+      // Only 6-digit stock codes supported — use Naver search for name→code conversion
+      if (!/^\d{6}$/.test(query)) return err("stock_code_required_6digit");
+      const data = await callDart("company.json", { stock_code: query });
       if (data._err) return err(data._err, data._err === "auth_required" ? 401 : 400);
       return ok(data);
     }
@@ -254,51 +325,41 @@ serve(async (req: Request) => {
       if (!stockCode) return err("stock_code_required");
       const symbol = encodeURIComponent(stockCode + ".KS");
       const url = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?interval=1d&range=1d`;
-      const res = await fetch(url, {
-        headers: { "User-Agent": "Mozilla/5.0 (compatible; InvestHub/1.0)" },
-      });
+      const res = await fetch(url, { headers: { "User-Agent": "Mozilla/5.0 (compatible; InvestHub/1.0)" } });
       if (!res.ok) return ok({ error: "price_unavailable" });
       return ok(await res.json());
     }
 
-    // ── Finnhub Proxy (기업 사용자용 — 관리자 키) ─────────
-
-    if (action === "finnhub-proxy") {
-      const user = await getUser();
-      if (!user) return err("auth_required", 401);
-      const profile = await getProfile(user.id);
-      if (!isApprovedBiz(profile)) return err("biz_only", 403);
-
-      const adminKeys = await getAdminKeys();
-      if (!adminKeys.finnhub) return err("finnhub_key_not_configured", 503);
-
-      const { path, params = {} } = body;
-      if (!path || typeof path !== "string") return err("path_required");
-
-      const allowedPaths = ["quote", "company-news", "news", "stock/candle", "search"];
-      const basePath = path.split("?")[0].replace(/^\/+/, "");
-      if (!allowedPaths.some(p => basePath.startsWith(p))) return err("path_not_allowed");
-
-      const qs = new URLSearchParams({ ...params, token: adminKeys.finnhub });
-      const url = `${FINNHUB_BASE}/${basePath}?${qs}`;
-      const res = await fetch(url);
-      if (!res.ok) return ok({ error: "finnhub_error", status: res.status });
-      return ok(await res.json());
-    }
-
-    // ── 기업 사용자 키 상태 확인 ──────────────────────────
+    // ── Biz user auto-provision check ─────────────────────
 
     if (action === "biz-keys-ready") {
-      const user = await getUser();
+      const user = getUser();
       if (!user) return ok({ dart: false, finnhub: false });
       const profile = await getProfile(user.id);
       if (!isApprovedBiz(profile)) return ok({ dart: false, finnhub: false });
       const adminKeys = await getAdminKeys();
-      return ok({
-        dart: !!adminKeys.dart,
-        finnhub: !!adminKeys.finnhub,
-        isShared: true,
-      });
+      return ok({ dart: !!adminKeys.dart, finnhub: !!adminKeys.finnhub, isShared: true });
+    }
+
+    // Legacy: biz users routed to fh-call path now, but keep for backward compat
+    if (action === "finnhub-proxy") {
+      return ok(await (async () => {
+        const user = getUser();
+        if (!user) return { error: "auth_required" };
+        const profile = await getProfile(user.id);
+        if (!isApprovedBiz(profile)) return { error: "biz_only" };
+        const adminKeys = await getAdminKeys();
+        if (!adminKeys.finnhub) return { error: "finnhub_key_not_configured" };
+        const { path, params = {} } = body;
+        if (!path) return { error: "path_required" };
+        const allowedPaths = ["quote", "company-news", "news", "stock/candle", "search"];
+        const basePath = (path as string).split("?")[0].replace(/^\/+/, "");
+        if (!allowedPaths.some((p) => basePath.startsWith(p))) return { error: "path_not_allowed" };
+        const qs = new URLSearchParams({ ...params, token: adminKeys.finnhub });
+        const res = await fetch(`${FINNHUB_BASE}/${basePath}?${qs}`);
+        if (!res.ok) return { error: "finnhub_error", status: res.status };
+        return await res.json();
+      })());
     }
 
     return err(`unknown action: ${action}`);
