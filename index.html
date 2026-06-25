@@ -1558,12 +1558,20 @@ async function storeApiKey(service,key){
 }
 async function proxyApiCall(service,path,params={}){
   if(service==='finnhub'){
-    const action=(_userType==='business'&&_bizApproved)?'finnhub-proxy':'fh-call';
+    const isBiz=(_userType==='business'&&_bizApproved);
+    const action=isBiz?'finnhub-proxy':'fh-call';
     const r=await fetch(DART_PROXY_URL,{method:'POST',headers:_apiHeaders(),
       body:JSON.stringify({action,path,params})});
     const d=await r.json().catch(()=>({}));
     if(!r.ok){
-      if(d.error==='fh_key_required'||d.error==='auth_required'||d.error==='fh_auth')throw new Error('fh_auth');
+      if(d.error==='auth_required')throw new Error('fh_auth');
+      if(d.error==='fh_key_required'&&!isBiz){
+        // 기존 proxy-api 저장 키 폴백
+        const r2=await fetch(SUPA_URL,{method:'POST',headers:_apiHeaders(),
+          body:JSON.stringify({action:'call',service:'finnhub',path,params})}).catch(()=>null);
+        if(r2&&r2.ok)return r2.json();
+        throw new Error('fh_auth');
+      }
       throw new Error('proxy_error:'+r.status);
     }
     if(d.error==='finnhub_error')throw new Error('proxy_error:finnhub_'+d.status);
