@@ -1547,6 +1547,7 @@ _sb.auth.onAuthStateChange(async(event,session)=>{
 // Supabase Edge Function 헬퍼 (키 저장 / 프록시 호출)
 async function storeApiKey(service,key){
   const r=await fetch(SUPA_URL,{method:'POST',headers:_apiHeaders(),body:JSON.stringify({action:'store-key',service,key})});
+  if(r.status===401)return{ok:false,_unauthorized:true};
   return r.json();
 }
 async function proxyApiCall(service,path,params={}){
@@ -2281,14 +2282,18 @@ function initNewsUI(){
 async function connectAPI(){
   const val=document.getElementById('api-key-input').value.trim();if(!val||val.startsWith('•')){setKeyStatus('err','API 키를 입력해주세요');return;}
   const btn=document.getElementById('connect-btn');btn.disabled=true;btn.textContent='확인 중...';
+  // 최신 세션 확보
+  try{const{data:{session}}=await _sb.auth.getSession();if(session)_currentSession=session;}catch(e){}
+  if(!_currentSession){setKeyStatus('err','로그인 후 API 키를 저장할 수 있습니다');btn.disabled=false;btn.textContent='연결';return;}
   try{
-    // 1단계: 키 유효성 직접 검증 (1회)
+    // 1단계: 키 유효성 직접 검증
     const r=await fetch(`https://finnhub.io/api/v1/news?category=general&token=${val}`);
     if(!r.ok)throw new Error('invalid_key');
     const d=await r.json();if(!Array.isArray(d))throw new Error('invalid_key');
     // 2단계: 유효한 키를 서버에 저장
     const res=await storeApiKey('finnhub',val);
-    if(!res.ok)throw new Error('store_failed');
+    if(res._unauthorized)throw new Error('auth_required');
+    if(!res.ok)throw new Error('store_failed:'+(res.error||''));
     FKEY='***';
     localStorage.setItem('fhkey_stored','1');
     localStorage.removeItem('fhkey');
@@ -2297,9 +2302,10 @@ async function connectAPI(){
     setKeyStatus('live','연결됨 · 실시간 활성');
     renderPortfolioChips();loadMarketNews();refreshQuotes();
   }catch(e){
-    const msg=e.message==='store_failed'
-      ?(_currentSession?'서버 저장 실패 · 잠시 후 재시도':'로그인 후 API 키를 저장할 수 있습니다')
-      :'API 키가 잘못됐습니다';
+    const msg=e.message==='invalid_key'?'API 키가 잘못됐습니다':
+              e.message==='auth_required'?'로그인이 만료됐습니다. 다시 로그인해주세요':
+              e.message.startsWith('store_failed:')?'서버 저장 실패: '+(e.message.split(':')[1]||'잠시 후 재시도')
+              :'오류: '+e.message;
     setKeyStatus('err',msg);
   }
   btn.disabled=false;btn.textContent='연결';
@@ -2754,6 +2760,18 @@ const MARKET_EVENTS=[
   {date:'2025-10-15',type:'macro',title:'미국 CPI'},
   {date:'2025-11-12',type:'macro',title:'미국 CPI'},
   {date:'2025-12-10',type:'macro',title:'미국 CPI'},
+  {date:'2026-01-14',type:'macro',title:'미국 CPI'},
+  {date:'2026-02-11',type:'macro',title:'미국 CPI'},
+  {date:'2026-03-11',type:'macro',title:'미국 CPI'},
+  {date:'2026-04-10',type:'macro',title:'미국 CPI'},
+  {date:'2026-05-13',type:'macro',title:'미국 CPI'},
+  {date:'2026-06-10',type:'macro',title:'미국 CPI'},
+  {date:'2026-07-15',type:'macro',title:'미국 CPI'},
+  {date:'2026-08-12',type:'macro',title:'미국 CPI'},
+  {date:'2026-09-09',type:'macro',title:'미국 CPI'},
+  {date:'2026-10-14',type:'macro',title:'미국 CPI'},
+  {date:'2026-11-11',type:'macro',title:'미국 CPI'},
+  {date:'2026-12-09',type:'macro',title:'미국 CPI'},
 ];
 
 const EV_STYLE={
