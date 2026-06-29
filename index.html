@@ -4188,8 +4188,13 @@ async function _fetchCompanyPrice(stockCode){
     const d=await r.json();
     const meta=d?.chart?.result?.[0]?.meta;
     if(!meta)return null;
-    const change=meta.regularMarketPrice-meta.previousClose;
-    return{price:meta.regularMarketPrice,change,changePct:(change/meta.previousClose*100).toFixed(2)};
+    const price=meta.regularMarketPrice;
+    // Yahoo는 range=1d일 때 previousClose가 비고 chartPreviousClose에 전일종가가 들어옴
+    const prev=meta.previousClose||meta.chartPreviousClose;
+    if(price==null)return null;
+    if(!prev)return{price,change:0,changePct:'0.00'};
+    const change=price-prev;
+    return{price,change,changePct:(change/prev*100).toFixed(2)};
   }catch(e){return null;}
 }
 
@@ -4201,13 +4206,31 @@ async function _fetchDartDisclosures(corpCode){
   return Array.isArray(d.list)?d.list:[];
 }
 
+// DART 금액/수량 문자열("17,693,000")을 숫자로
+const _dartNum=s=>parseInt(String(s==null?'':s).replace(/[^0-9-]/g,''))||0;
+// 타법인 출자현황 유효행만 (placeholder '-' 제거)
+const _validHoldings=list=>(Array.isArray(list)?list:[]).filter(h=>h.inv_prm&&h.inv_prm!=='-');
+
+// 타법인 출자현황은 '사업보고서(11011)'에만 온전히 들어있음(분기보고서는 대부분 빈값).
+// 최신 사업보고서가 아직 없을 수 있어 최근 2개 연도까지 폴백.
+async function _fetchHoldingsYear(corpCode,year){
+  const d=await callDartDirect('otrCprInvstmntSttus.json',{corp_code:corpCode,bsns_year:String(year),reprt_code:'11011'});
+  return _validHoldings(d.list);
+}
+
 async function loadHoldings(corpCode){
-  const year=new Date().getFullYear()-1;
+  _monitorCache[corpCode]=_monitorCache[corpCode]||{};
+  const ty=new Date().getFullYear();
   try{
-    const d=await callDartDirect('otrCprInvstmntSttus.json',{corp_code:corpCode,bsns_year:String(year),reprt_code:'11014'});
-    _monitorCache[corpCode]=_monitorCache[corpCode]||{};
-    _monitorCache[corpCode].holdings=Array.isArray(d.list)?d.list:[];
-    _monitorCache[corpCode].holdingsYear=year;
+    let list=[],usedYear=0;
+    for(let y=ty-1;y>=ty-2;y--){
+      list=await _fetchHoldingsYear(corpCode,y);
+      if(list.length){usedYear=y;break;}
+    }
+    // 장부가 큰 순으로 정렬
+    list.sort((a,b)=>_dartNum(b.trmend_blce_acntbk_amount)-_dartNum(a.trmend_blce_acntbk_amount));
+    _monitorCache[corpCode].holdings=list;
+    _monitorCache[corpCode].holdingsYear=usedYear||ty-1;
     _renderHoldingsBody(corpCode);
   }catch(e){
     const body=document.getElementById('mc-holdings-body-'+corpCode);
@@ -4216,16 +4239,20 @@ async function loadHoldings(corpCode){
 }
 
 async function loadHoldingChanges(corpCode){
-  const curr=new Date().getFullYear()-1;
-  const prev=curr-1;
+  _monitorCache[corpCode]=_monitorCache[corpCode]||{};
+  const ty=new Date().getFullYear();
   try{
-    const[cRes,pRes]=await Promise.all([
-      callDartDirect('otrCprInvstmntSttus.json',{corp_code:corpCode,bsns_year:String(curr),reprt_code:'11014'}),
-      callDartDirect('otrCprInvstmntSttus.json',{corp_code:corpCode,bsns_year:String(prev),reprt_code:'11014'})
-    ]);
-    const changes=_computeChanges(Array.isArray(cRes.list)?cRes.list:[],Array.isArray(pRes.list)?pRes.list:[]);
-    _monitorCache[corpCode]=_monitorCache[corpCode]||{};
+    // 데이터가 있는 가장 최근 연도(curr)를 찾고, 그 직전 연도(prev)와 비교
+    let curr=[],cy=0;
+    for(let y=ty-1;y>=ty-2;y--){
+      curr=await _fetchHoldingsYear(corpCode,y);
+      if(curr.length){cy=y;break;}
+    }
+    let prev=[];
+    if(cy)prev=await _fetchHoldingsYear(corpCode,cy-1);
+    const changes=_computeChanges(curr,prev);
     _monitorCache[corpCode].holdingChanges=changes;
+    _monitorCache[corpCode].changesYears=cy?`${cy-1}→${cy}`:'';
     _renderChangesBody(corpCode);
   }catch(e){
     const body=document.getElementById('mc-changes-body-'+corpCode);
@@ -4240,8 +4267,8 @@ function _computeChanges(curr,prev){
     currMap[c.inv_prm]=c;
     const p=prevMap[c.inv_prm];
     if(!p){out.push({name:c.inv_prm,type:'new',detail:'▲ 신규 편입'});return;}
-    const cq=parseInt((c.trmend_posn_stock_qty||'0').replace(/,/g,''));
-    const pq=parseInt((p.trmend_posn_stock_qty||'0').replace(/,/g,''));
+    const cq=_dartNum(c.trmend_blce_qy);
+    const pq=_dartNum(p.trmend_blce_qy);
     if(cq>pq)out.push({name:c.inv_prm,type:'increase',detail:`▲ ${(cq-pq).toLocaleString()}주 증가`});
     else if(cq<pq)out.push({name:c.inv_prm,type:'decrease',detail:`▼ ${(pq-cq).toLocaleString()}주 감소`});
   });
@@ -4451,28 +4478,33 @@ function toggleChangesSection(corpCode){
 function _renderHoldingsBody(corpCode){
   const body=document.getElementById('mc-holdings-body-'+corpCode);
   if(!body||body.style.display==='none')return;
-  const holdings=_monitorCache[corpCode]?.holdings||[];
+  const all=_monitorCache[corpCode]?.holdings||[];
   const year=_monitorCache[corpCode]?.holdingsYear||'';
-  if(!holdings.length){body.innerHTML=`<div class="mc-empty-state">${year}년 사업보고서 타법인 출자현황이 없습니다.</div>`;return;}
+  if(!all.length){body.innerHTML=`<div class="mc-empty-state">${year}년 사업보고서 기준 타법인 출자현황이 없습니다.</div>`;return;}
+  // 원 → 억 (10억 이상 정수, 미만 소수1자리)
+  const eok=s=>{const n=_dartNum(s);if(!n)return '-';const e=n/1e8;return e>=10?Math.round(e).toLocaleString():e.toFixed(1);};
+  const holdings=all.slice(0,30);
+  const more=all.length-holdings.length;
   body.innerHTML=`
-    <div class="mc-holdings-label">출처: ${year}년 사업보고서 타법인 출자현황</div>
+    <div class="mc-holdings-label">출처: ${year}년 사업보고서 타법인 출자현황 · 장부가 순</div>
     <div class="mc-holdings-table">
       <div class="mc-ht-header"><span>투자기업</span><span>보유주식수</span><span>취득원가(억)</span><span>장부가(억)</span></div>
       ${holdings.map(h=>`<div class="mc-ht-row">
         <span>${escapeHtml(h.inv_prm||'-')}</span>
-        <span>${(h.trmend_posn_stock_qty||'-').toLocaleString()}</span>
-        <span>${h.acqs_mth2||'-'}</span>
-        <span>${h.bsv_acqs_amount||'-'}</span>
+        <span>${_dartNum(h.trmend_blce_qy).toLocaleString()}</span>
+        <span>${eok(h.frst_acqs_amount)}</span>
+        <span>${eok(h.trmend_blce_acntbk_amount)}</span>
       </div>`).join('')}
-    </div>`;
+    </div>${more>0?`<div class="mc-holdings-label">외 ${more}개 더 (장부가 하위 생략)</div>`:''}`;
 }
 
 function _renderChangesBody(corpCode){
   const body=document.getElementById('mc-changes-body-'+corpCode);
   if(!body||body.style.display==='none')return;
   const changes=_monitorCache[corpCode]?.holdingChanges||[];
-  if(!changes.length){body.innerHTML='<div class="mc-empty-state">전년 대비 보유 변동이 없습니다.</div>';return;}
-  body.innerHTML=changes.map(c=>`
+  const yrs=_monitorCache[corpCode]?.changesYears||'';
+  if(!changes.length){body.innerHTML=`<div class="mc-empty-state">${yrs?yrs+' ':''}사업보고서 간 보유 변동이 없습니다.</div>`;return;}
+  body.innerHTML=(yrs?`<div class="mc-holdings-label">${yrs} 사업보고서 비교</div>`:'')+changes.map(c=>`
     <div class="mc-change-row ${c.type}">
       <span class="mc-change-name">${escapeHtml(c.name)}</span>
       <span class="mc-change-detail">${c.detail}</span>
