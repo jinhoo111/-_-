@@ -10,12 +10,27 @@ const FINNHUB_BASE = "https://finnhub.io/api/v1";
 const MAX_DAILY_CALLS = 300;
 
 // opendart.fss.or.kr은 Deno(rustls) TLS와 호환 안 됨(HandshakeFailure).
-// 공개 CORS 프록시(allorigins) 경유로 우회 — allorigins는 표준 TLS라 Deno에서 접근 가능.
+// 공개 CORS 프록시 경유로 우회 — 프록시는 표준 TLS라 Deno에서 접근 가능.
+// 단일 프록시는 자주 다운되므로(allorigins 등) 여러 프록시를 동시에 경쟁시켜
+// 가장 먼저 성공한 응답을 채택. 모두 실패할 때만 throw.
+// proxy.cors.sh는 Origin 헤더가 없으면 거부하므로 서버측에서 직접 부여.
+// 주의: corsproxy.io는 서버측 요청을 403으로 차단(브라우저 전용)하므로 여기선 제외.
+//       cors.workers.dev/proxy.cors.sh가 서버(Deno)에서 동작 확인됨.
+const DART_PROXIES: ((u: string) => string)[] = [
+  (u) => "https://test.cors.workers.dev/?" + u,
+  (u) => "https://proxy.cors.sh/" + u,
+  (u) => "https://api.allorigins.win/raw?url=" + encodeURIComponent(u),
+];
 const fetchDartJson = async (url: string): Promise<any> => {
-  const proxied = "https://api.allorigins.win/raw?url=" + encodeURIComponent(url);
-  const res = await fetch(proxied, { signal: AbortSignal.timeout(12000) });
-  if (!res.ok) throw new Error("dart_proxy_" + res.status);
-  return res.json();
+  const headers = { "Origin": "https://opendart.fss.or.kr", "x-requested-with": "XMLHttpRequest" };
+  const attempts = DART_PROXIES.map(async (make) => {
+    const res = await fetch(make(url), { headers, signal: AbortSignal.timeout(10000) });
+    if (!res.ok) throw new Error("proxy_" + res.status);
+    const t = (await res.text()).trim();
+    if (!t.startsWith("{") && !t.startsWith("[")) throw new Error("proxy_bad_json");
+    return JSON.parse(t);
+  });
+  return await Promise.any(attempts);
 };
 
 // JWT payload decode (sync, no network — works even with --no-verify-jwt)
@@ -350,7 +365,7 @@ serve(async (req: Request) => {
       const data = await callDart("otrCprInvstmntSttus.json", {
         corp_code: corpCode,
         bsns_year: year,
-        reprt_code: "11014",
+        reprt_code: "11011", // 사업보고서(타법인 출자현황이 온전히 담김). 11014(3분기보고서)는 대부분 빈값
       });
       if (data._err) return err(data._err, data._err === "auth_required" ? 401 : 400);
       return ok(data);

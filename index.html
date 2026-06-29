@@ -1683,21 +1683,32 @@ async function _loadFhKey(){
 }
 // DART API 호출.
 // DART는 (1) Deno 서버 TLS 비호환, (2) 브라우저 직접호출 시 CORS 차단 → 둘 다 불가.
-// 해결: 공개 프록시(allorigins) 경유. 개인 키는 브라우저에서, 기업(관리자 공용)키는 서버에서 처리.
+// 해결: 공개 CORS 프록시 경유. 개인 키는 브라우저에서, 기업(관리자 공용)키는 서버에서 처리.
+// 단일 프록시는 자주 다운되므로(allorigins 등) 여러 프록시를 동시에 경쟁시켜
+// 가장 먼저 성공한 응답을 채택(Promise.any). 모두 실패할 때만 에러.
+const DART_PROXIES=[
+  u=>'https://corsproxy.io/?url='+encodeURIComponent(u),
+  u=>'https://proxy.cors.sh/'+u,
+  u=>'https://api.allorigins.win/raw?url='+encodeURIComponent(u),
+];
+async function _dartProxyRace(dartUrl,ms=8000){
+  const parse=async res=>{
+    if(!res.ok)throw new Error('proxy_http_'+res.status);
+    const t=(await res.text()).trim();
+    if(!t.startsWith('{')&&!t.startsWith('['))throw new Error('proxy_bad_json');
+    return JSON.parse(t);
+  };
+  const attempts=DART_PROXIES.map(make=>fetch(make(dartUrl)).then(parse));
+  return Promise.race([
+    Promise.any(attempts).catch(()=>{throw new Error('dart_all_proxies_failed');}),
+    new Promise((_,rej)=>setTimeout(()=>rej(new Error('dart_timeout')),ms))
+  ]);
+}
 async function callDartDirect(endpoint,params){
   if(_dartKey){
     const qs=new URLSearchParams({crtfc_key:_dartKey,...params});
     const dartUrl=`https://opendart.fss.or.kr/api/${endpoint}?${qs}`;
-    const proxied='https://api.allorigins.win/raw?url='+encodeURIComponent(dartUrl);
-    let lastErr;
-    for(let i=0;i<2;i++){
-      try{
-        const res=await fetch(proxied);
-        if(!res.ok)throw new Error('dart_http_'+res.status);
-        return JSON.parse(await res.text());
-      }catch(e){lastErr=e;}
-    }
-    throw lastErr||new Error('dart_proxy_failed');
+    return _dartProxyRace(dartUrl);
   }
   // 폴백: 서버 경유 (기업 사용자 = 관리자 키 서버 보관, 또는 _dartKey 미로드 시)
   const r=await fetch(DART_PROXY_URL,{method:'POST',headers:_apiHeaders(),
