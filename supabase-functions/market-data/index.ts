@@ -203,6 +203,21 @@ serve(async (req: Request) => {
       return ok({ ok: true });
     }
 
+    if (action === "get-dart-key") {
+      const user = getUser();
+      if (!user) return err("auth_required", 401);
+      const profile = await getProfile(user.id);
+      let dartKey = "";
+      if (isApprovedBiz(profile)) {
+        const adminKeys = await getAdminKeys();
+        dartKey = adminKeys.dart || profile?.dart_api_key || "";
+      } else {
+        dartKey = profile?.dart_api_key || "";
+      }
+      if (!dartKey) return err("dart_key_required");
+      return ok({ key: dartKey });
+    }
+
     // ── Finnhub personal key management ──────────────────
     // Stores in user_profiles.finnhub_api_key (requires SQL: ADD COLUMN finnhub_api_key TEXT)
 
@@ -217,7 +232,8 @@ serve(async (req: Request) => {
       if (testData.error) return err("fh_key_invalid");
       const { error: dbErr } = await supabase
         .from("user_profiles")
-        .upsert({ user_id: user.id, finnhub_api_key: key } as any, { onConflict: "user_id" });
+        .update({ finnhub_api_key: key } as any)
+        .eq("user_id", user.id);
       if (dbErr) return err(`db_error: ${dbErr.message}`, 500);
       return ok({ ok: true, masked: "···" + key.slice(-4) });
     }
@@ -235,6 +251,21 @@ serve(async (req: Request) => {
       if (!user) return err("auth_required", 401);
       await supabase.from("user_profiles").update({ finnhub_api_key: null } as any).eq("user_id", user.id);
       return ok({ ok: true });
+    }
+
+    if (action === "get-fh-key") {
+      const user = getUser();
+      if (!user) return err("auth_required", 401);
+      const profile = await getProfile(user.id);
+      let fhKey = "";
+      if (isApprovedBiz(profile)) {
+        const adminKeys = await getAdminKeys();
+        fhKey = adminKeys.finnhub || "";
+      } else {
+        fhKey = await getFhKey(user.id);
+      }
+      if (!fhKey) return err("fh_key_required");
+      return ok({ key: fhKey });
     }
 
     // Unified Finnhub proxy: personal users use their own key, biz uses admin key

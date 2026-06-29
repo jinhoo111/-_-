@@ -1558,6 +1558,18 @@ async function storeApiKey(service,key){
 }
 async function proxyApiCall(service,path,params={}){
   if(service==='finnhub'){
+    // 브라우저 직접 호출 (서버 TLS 문제 우회, 레이턴시 감소)
+    if(_fhKey){
+      const qs=new URLSearchParams({...params,token:_fhKey});
+      const r=await fetch(`https://finnhub.io/api/v1/${path}?${qs}`);
+      if(!r.ok){
+        if(r.status===401||r.status===403)throw new Error('fh_auth');
+        if(r.status===429)throw new Error('proxy_error:finnhub_429');
+        throw new Error('proxy_error:finnhub_'+r.status);
+      }
+      return r.json();
+    }
+    // 폴백: 서버 프록시 (키 아직 로드 안 됐거나 서버 키 사용)
     const isBiz=(_userType==='business'&&_bizApproved);
     const action=isBiz?'finnhub-proxy':'fh-call';
     const r=await fetch(DART_PROXY_URL,{method:'POST',headers:_apiHeaders(),
@@ -1566,7 +1578,6 @@ async function proxyApiCall(service,path,params={}){
     if(!r.ok){
       if(d.error==='auth_required')throw new Error('fh_auth');
       if(d.error==='fh_key_required'&&!isBiz){
-        // 기존 proxy-api 저장 키 폴백
         const r2=await fetch(SUPA_URL,{method:'POST',headers:_apiHeaders(),
           body:JSON.stringify({action:'call',service:'finnhub',path,params})}).catch(()=>null);
         if(r2&&r2.ok)return r2.json();
@@ -1602,12 +1613,14 @@ async function _restoreApiKeyState(){
       dartKeyStored=true;
       const lbl=document.getElementById('monitor-dart-key-label');
       if(lbl)lbl.textContent='관리자 키';
+      _loadDartKey().catch(()=>{});
     }
     if(bizRes.finnhub){
       FKEY='***';
       setKeyStatus('live','관리자 키 사용 중 · 실시간 활성');
       const inp=document.getElementById('api-key-input');if(inp)inp.value='관리자 제공';
       const cb=document.getElementById('clear-btn');if(cb)cb.style.display='none';
+      _loadFhKey().catch(()=>{});
       if(document.getElementById('page-news')?.classList.contains('on')){loadMarketNews();refreshQuotes();}
     }
     // GoogleAI 키만 개별 확인
@@ -1632,6 +1645,7 @@ async function _restoreApiKeyState(){
     dartKeyStored=true;
     const lbl=document.getElementById('monitor-dart-key-label');
     if(lbl)lbl.textContent=dartRes.masked||'····';
+    _loadDartKey().catch(()=>{});
   }
   if(fhRes.exists){
     FKEY='***';
@@ -1639,6 +1653,7 @@ async function _restoreApiKeyState(){
     const inp=document.getElementById('api-key-input');if(inp)inp.value='••••••••••••••••';
     const cb=document.getElementById('clear-btn');if(cb)cb.style.display='flex';
     setKeyStatus('live','연결됨 · 실시간 활성');
+    _loadFhKey().catch(()=>{});
     if(document.getElementById('page-news')?.classList.contains('on')){loadMarketNews();refreshQuotes();}
   }
   if(ckRes.exists){
@@ -1647,6 +1662,32 @@ async function _restoreApiKeyState(){
     const dot=document.getElementById('pn-ai-dot');if(dot)dot.style.display='inline-block';
     const row=document.getElementById('pn-key-row');if(row)row.style.display='none';
   }
+}
+
+// 서버에서 실제 DART/Finnhub 키를 가져와 메모리에 캐시 (브라우저 직접 호출용)
+async function _loadDartKey(){
+  try{
+    const r=await fetch(DART_PROXY_URL,{method:'POST',headers:_apiHeaders(),body:JSON.stringify({action:'get-dart-key'})});
+    if(!r.ok)return;
+    const d=await r.json();
+    if(d.key)_dartKey=d.key;
+  }catch(e){}
+}
+async function _loadFhKey(){
+  try{
+    const r=await fetch(DART_PROXY_URL,{method:'POST',headers:_apiHeaders(),body:JSON.stringify({action:'get-fh-key'})});
+    if(!r.ok)return;
+    const d=await r.json();
+    if(d.key)_fhKey=d.key;
+  }catch(e){}
+}
+// DART API를 브라우저에서 직접 호출 (Deno TLS 문제 우회)
+async function callDartDirect(endpoint,params){
+  if(!_dartKey)throw new Error('dart_key_required');
+  const qs=new URLSearchParams({crtfc_key:_dartKey,...params});
+  const res=await fetch(`https://opendart.fss.or.kr/api/${endpoint}?${qs}`);
+  if(!res.ok)throw new Error(`dart_http_${res.status}`);
+  return res.json();
 }
 
 // ─ 글로벌 설정 및 변수 초기화
@@ -1670,6 +1711,7 @@ try{investPhilosophy=JSON.parse(localStorage.getItem('pf_phil')||'[]')}catch(e){
 let stocks=[],memos=[],memoArchive=[],memoView='active',selTagV='general',memoEditTag='general',archiveTagFilter='all',archiveViewMode='card',FKEY='',newsCat='general',quoteSymbols=['NVDA','AAPL','TSLA','MSFT'],stkFilter='all',stkMarket='all',stkStyle='all',stkSort='',stkSortDir='desc',fxRate=1400;
 let notifyMaster=localStorage.getItem('pf_notify_master')==='true';
 let monitorCompanies=[],monitorView='card',dartKeyStored=false,_userType='personal',_bizApproved=false,_isAdmin=false,_monitorPollTimer=null,_monitorCache={};
+let _dartKey='',_fhKey='';
 try{monitorCompanies=JSON.parse(localStorage.getItem('monitor_co')||'[]')}catch(e){}
 const IDX_DEFAULT={kr:true,us:true,vix:true,futures:false,crypto:false,fx:false,commodities:false};
 const IDX_LINK_MAP={
@@ -2319,6 +2361,7 @@ async function connectAPI(){
     if(res._unauthorized)throw new Error('auth_required');
     if(!res.ok)throw new Error('store_failed:'+(res.error||''));
     FKEY='***';
+    _fhKey=val;
     localStorage.setItem('fhkey_stored','1');
     localStorage.removeItem('fhkey');
     document.getElementById('api-key-input').value='••••••••••••••••';
@@ -2337,6 +2380,7 @@ async function connectAPI(){
 
 function clearKey(){
   FKEY='';
+  _fhKey='';
   localStorage.removeItem('fhkey_stored');
   localStorage.removeItem('fhkey');
   document.getElementById('api-key-input').value='';
@@ -3774,6 +3818,7 @@ async function saveDartKey(){
     }
     if(d.ok){
       dartKeyStored=true;
+      _loadDartKey().catch(()=>{});
       const lbl=document.getElementById('monitor-dart-key-label');
       if(lbl)lbl.textContent=d.masked||'····';
       if(d.warning==='dart_validation_skipped'&&errEl)errEl.style.color='var(--color-warning)';
@@ -3796,6 +3841,7 @@ async function deleteDartKeyFn(){
   if(!confirm('DART API 키를 삭제하시겠습니까?\n삭제 후 샘플 미리보기로 전환됩니다.'))return;
   await fetch(DART_PROXY_URL,{method:'POST',headers:_apiHeaders(),body:JSON.stringify({action:'delete-dart-key'})}).catch(()=>{});
   dartKeyStored=false;
+  _dartKey='';
   if(_monitorPollTimer){clearInterval(_monitorPollTimer);_monitorPollTimer=null;}
   document.getElementById('monitor-setup-banner').style.display='';
   const input=document.getElementById('dart-key-input');
@@ -4017,9 +4063,7 @@ async function addMonitorCompany(){
   }
 
   try{
-    const r=await fetch(DART_PROXY_URL,{method:'POST',headers:_apiHeaders(),
-      body:JSON.stringify({action:'dart-corp-search',query:stockCode})});
-    const d=await r.json();
+    const d=await callDartDirect('company.json',{stock_code:stockCode});
     if(d.status==='000'){
       if(monitorCompanies.find(c=>c.corp_code===d.corp_code)){
         showMonitorErr('이미 추가된 기업입니다.');
@@ -4042,11 +4086,13 @@ async function addMonitorCompany(){
       }
       loadCompanyData(co.corp_code);
     }else{
-      const msg={dart_key_required:'DART API 키를 먼저 등록해주세요.',auth_required:'로그인이 필요합니다.',
-        use_stock_code:'6자리 종목코드를 입력해주세요.'};
-      showMonitorErr(msg[d.error]||`기업 조회 실패: ${d.error||d.message||'다시 시도해주세요'}`);
+      const dartStatusMsg={'010':'등록되지 않은 DART API 키입니다.','011':'등록되지 않은 DART API 키입니다.','013':'DART API 키 인증에 실패했습니다.','020':'DART API 일일 호출 한도를 초과했습니다.','OCK':'올바른 종목코드를 입력해주세요.'};
+      showMonitorErr(dartStatusMsg[d.status]||`기업 조회 실패: ${d.message||d.status||'다시 시도해주세요'}`);
     }
-  }catch(e){showMonitorErr('검색 중 오류가 발생했습니다.');}
+  }catch(e){
+    if(e.message==='dart_key_required')showMonitorErr('DART API 키를 먼저 등록해주세요. (키가 로드 중이면 잠시 후 다시 시도하세요)');
+    else showMonitorErr('검색 중 오류가 발생했습니다.');
+  }
   if(btn){btn.disabled=false;btn.textContent='추가';}
 }
 
@@ -4105,17 +4151,14 @@ async function _fetchDartDisclosures(corpCode){
   const now=new Date();
   const end=now.toISOString().slice(0,10).replace(/-/g,'');
   const start=new Date(now-30*24*60*60*1000).toISOString().slice(0,10).replace(/-/g,'');
-  const r=await fetch(DART_PROXY_URL,{method:'POST',headers:_apiHeaders(),
-    body:JSON.stringify({action:'dart-disclosures',corpCode,startDate:start,endDate:end,pageCount:10})});
-  const d=await r.json();
+  const d=await callDartDirect('list.json',{corp_code:corpCode,bgn_de:start,end_de:end,page_count:'10'});
   return Array.isArray(d.list)?d.list:[];
 }
 
 async function loadHoldings(corpCode){
   const year=new Date().getFullYear()-1;
   try{
-    const r=await fetch(DART_PROXY_URL,{method:'POST',headers:_apiHeaders(),body:JSON.stringify({action:'dart-holdings',corpCode,year:String(year)})});
-    const d=await r.json();
+    const d=await callDartDirect('otrCprInvstmntSttus.json',{corp_code:corpCode,bsns_year:String(year),reprt_code:'11014'});
     _monitorCache[corpCode]=_monitorCache[corpCode]||{};
     _monitorCache[corpCode].holdings=Array.isArray(d.list)?d.list:[];
     _monitorCache[corpCode].holdingsYear=year;
@@ -4131,8 +4174,8 @@ async function loadHoldingChanges(corpCode){
   const prev=curr-1;
   try{
     const[cRes,pRes]=await Promise.all([
-      fetch(DART_PROXY_URL,{method:'POST',headers:_apiHeaders(),body:JSON.stringify({action:'dart-holdings',corpCode,year:String(curr)})}).then(r=>r.json()),
-      fetch(DART_PROXY_URL,{method:'POST',headers:_apiHeaders(),body:JSON.stringify({action:'dart-holdings',corpCode,year:String(prev)})}).then(r=>r.json())
+      callDartDirect('otrCprInvstmntSttus.json',{corp_code:corpCode,bsns_year:String(curr),reprt_code:'11014'}),
+      callDartDirect('otrCprInvstmntSttus.json',{corp_code:corpCode,bsns_year:String(prev),reprt_code:'11014'})
     ]);
     const changes=_computeChanges(Array.isArray(cRes.list)?cRes.list:[],Array.isArray(pRes.list)?pRes.list:[]);
     _monitorCache[corpCode]=_monitorCache[corpCode]||{};
