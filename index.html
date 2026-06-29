@@ -1681,13 +1681,46 @@ async function _loadFhKey(){
     if(d.key)_fhKey=d.key;
   }catch(e){}
 }
-// DART API를 브라우저에서 직접 호출 (Deno TLS 문제 우회)
+// DART API 호출.
+// DART는 (1) Deno 서버 TLS 비호환, (2) 브라우저 직접호출 시 CORS 차단 → 둘 다 불가.
+// 해결: 공개 프록시(allorigins) 경유. 개인 키는 브라우저에서, 기업(관리자 공용)키는 서버에서 처리.
 async function callDartDirect(endpoint,params){
-  if(!_dartKey)throw new Error('dart_key_required');
-  const qs=new URLSearchParams({crtfc_key:_dartKey,...params});
-  const res=await fetch(`https://opendart.fss.or.kr/api/${endpoint}?${qs}`);
-  if(!res.ok)throw new Error(`dart_http_${res.status}`);
-  return res.json();
+  if(_dartKey){
+    const qs=new URLSearchParams({crtfc_key:_dartKey,...params});
+    const dartUrl=`https://opendart.fss.or.kr/api/${endpoint}?${qs}`;
+    const proxied='https://api.allorigins.win/raw?url='+encodeURIComponent(dartUrl);
+    let lastErr;
+    for(let i=0;i<2;i++){
+      try{
+        const res=await fetch(proxied);
+        if(!res.ok)throw new Error('dart_http_'+res.status);
+        return JSON.parse(await res.text());
+      }catch(e){lastErr=e;}
+    }
+    throw lastErr||new Error('dart_proxy_failed');
+  }
+  // 폴백: 서버 경유 (기업 사용자 = 관리자 키 서버 보관, 또는 _dartKey 미로드 시)
+  const r=await fetch(DART_PROXY_URL,{method:'POST',headers:_apiHeaders(),
+    body:JSON.stringify({action:'dart-proxy',endpoint,params})});
+  const d=await r.json().catch(()=>({}));
+  if(!r.ok)throw new Error(d.error||('dart_http_'+r.status));
+  return d;
+}
+
+// 종목코드(6자리) → DART 고유번호(corp_code) 매핑.
+// DART company.json은 corp_code만 받으므로 이 변환이 필수.
+// corp_map.json = { "005930": ["00126380","삼성전자"], ... } (상장사 ~4천개, GitHub Pages에서 로드)
+let _corpMap=null,_corpMapLoading=null;
+async function _loadCorpMap(){
+  if(_corpMap)return _corpMap;
+  if(_corpMapLoading)return _corpMapLoading;
+  _corpMapLoading=fetch('corp_map.json').then(r=>{if(!r.ok)throw new Error('corp_map_http_'+r.status);return r.json();})
+    .then(m=>{_corpMap=m;return m;}).catch(e=>{_corpMapLoading=null;throw e;});
+  return _corpMapLoading;
+}
+async function stockCodeToCorp(stockCode){
+  const map=await _loadCorpMap();
+  return map[stockCode]||null; // [corp_code, corp_name] | null
 }
 
 // ─ 글로벌 설정 및 변수 초기화
@@ -4063,15 +4096,31 @@ async function addMonitorCompany(){
   }
 
   try{
-    const d=await callDartDirect('company.json',{stock_code:stockCode});
-    if(d.status==='000'){
-      if(monitorCompanies.find(c=>c.corp_code===d.corp_code)){
-        showMonitorErr('이미 추가된 기업입니다.');
-        if(btn){btn.disabled=false;btn.textContent='추가';}
-        return;
-      }
-      const co={corp_code:d.corp_code,corp_name:d.corp_name,stock_code:d.stock_code||stockCode,
-        market:d.corp_cls==='Y'?'KOSPI':d.corp_cls==='K'?'KOSDAQ':'기타',
+    // 종목코드 → 고유번호(corp_code) 변환 (DART는 corp_code로만 조회 가능)
+    let mapped;
+    try{mapped=await stockCodeToCorp(stockCode);}
+    catch(e){
+      showMonitorErr('기업 목록을 불러오지 못했습니다. 새로고침 후 다시 시도해주세요.');
+      if(btn){btn.disabled=false;btn.textContent='추가';}
+      return;
+    }
+    if(!mapped){
+      showMonitorErr('상장 종목이 아니거나 목록에 없는 종목코드입니다. 6자리 종목코드를 확인해주세요.');
+      if(btn){btn.disabled=false;btn.textContent='추가';}
+      return;
+    }
+    const corpCode=mapped[0];
+    if(monitorCompanies.find(c=>c.corp_code===corpCode)){
+      showMonitorErr('이미 추가된 기업입니다.');
+      if(btn){btn.disabled=false;btn.textContent='추가';}
+      return;
+    }
+    // corp_code로 기업개황 조회 (시장구분 등). 실패해도 매핑 정보로 추가는 진행.
+    let d={};
+    try{d=await callDartDirect('company.json',{corp_code:corpCode});}catch(e){d={};}
+    {
+      const co={corp_code:corpCode,corp_name:d.corp_name||mapped[1],stock_code:d.stock_code||stockCode,
+        market:d.corp_cls==='Y'?'KOSPI':d.corp_cls==='K'?'KOSDAQ':d.corp_cls==='N'?'KONEX':'기타',
         alert:false,lastCheckedAt:null,memos:[],addedAt:new Date().toISOString()};
       monitorCompanies.push(co);
       localStorage.setItem('monitor_co',JSON.stringify(monitorCompanies));
@@ -4085,9 +4134,6 @@ async function addMonitorCompany(){
         cards.appendChild(el);
       }
       loadCompanyData(co.corp_code);
-    }else{
-      const dartStatusMsg={'010':'등록되지 않은 DART API 키입니다.','011':'등록되지 않은 DART API 키입니다.','013':'DART API 키 인증에 실패했습니다.','020':'DART API 일일 호출 한도를 초과했습니다.','OCK':'올바른 종목코드를 입력해주세요.'};
-      showMonitorErr(dartStatusMsg[d.status]||`기업 조회 실패: ${d.message||d.status||'다시 시도해주세요'}`);
     }
   }catch(e){
     if(e.message==='dart_key_required')showMonitorErr('DART API 키를 먼저 등록해주세요. (키가 로드 중이면 잠시 후 다시 시도하세요)');

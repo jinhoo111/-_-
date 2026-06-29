@@ -9,6 +9,15 @@ const DART_BASE = "https://opendart.fss.or.kr/api";
 const FINNHUB_BASE = "https://finnhub.io/api/v1";
 const MAX_DAILY_CALLS = 300;
 
+// opendart.fss.or.kr은 Deno(rustls) TLS와 호환 안 됨(HandshakeFailure).
+// 공개 CORS 프록시(allorigins) 경유로 우회 — allorigins는 표준 TLS라 Deno에서 접근 가능.
+const fetchDartJson = async (url: string): Promise<any> => {
+  const proxied = "https://api.allorigins.win/raw?url=" + encodeURIComponent(url);
+  const res = await fetch(proxied, { signal: AbortSignal.timeout(12000) });
+  if (!res.ok) throw new Error("dart_proxy_" + res.status);
+  return res.json();
+};
+
 // JWT payload decode (sync, no network — works even with --no-verify-jwt)
 const decodeJwt = (token: string): Record<string, any> | null => {
   try {
@@ -170,11 +179,9 @@ serve(async (req: Request) => {
       try {
         const today = new Date().toISOString().slice(0, 10).replace(/-/g, "");
         const weekAgo = new Date(Date.now() - 7 * 86400000).toISOString().slice(0, 10).replace(/-/g, "");
-        const testRes = await fetch(
+        const testData = await fetchDartJson(
           `${DART_BASE}/list.json?crtfc_key=${encodeURIComponent(key)}&bgn_de=${weekAgo}&end_de=${today}&page_count=1`,
-          { headers: { "User-Agent": "Mozilla/5.0" }, signal: AbortSignal.timeout(8000) },
         );
-        const testData = await testRes.json();
         dartStatus = testData.status || "";
       } catch (_fetchErr: any) {
         // DART API temporarily unreachable — save key anyway, validate on first real use
@@ -207,13 +214,9 @@ serve(async (req: Request) => {
       const user = getUser();
       if (!user) return err("auth_required", 401);
       const profile = await getProfile(user.id);
-      let dartKey = "";
-      if (isApprovedBiz(profile)) {
-        const adminKeys = await getAdminKeys();
-        dartKey = adminKeys.dart || profile?.dart_api_key || "";
-      } else {
-        dartKey = profile?.dart_api_key || "";
-      }
+      // 기업 사용자(관리자 공용 키)는 브라우저에 키를 내려주지 않음 → 서버 경유(dart-proxy)
+      if (isApprovedBiz(profile)) return err("biz_use_server");
+      const dartKey = profile?.dart_api_key || "";
       if (!dartKey) return err("dart_key_required");
       return ok({ key: dartKey });
     }
@@ -257,13 +260,9 @@ serve(async (req: Request) => {
       const user = getUser();
       if (!user) return err("auth_required", 401);
       const profile = await getProfile(user.id);
-      let fhKey = "";
-      if (isApprovedBiz(profile)) {
-        const adminKeys = await getAdminKeys();
-        fhKey = adminKeys.finnhub || "";
-      } else {
-        fhKey = await getFhKey(user.id);
-      }
+      // 기업 사용자(관리자 공용 키)는 브라우저에 키를 내려주지 않음 → 서버 경유(fh-call)
+      if (isApprovedBiz(profile)) return err("biz_use_server");
+      const fhKey = await getFhKey(user.id);
       if (!fhKey) return err("fh_key_required");
       return ok({ key: fhKey });
     }
@@ -318,8 +317,11 @@ serve(async (req: Request) => {
       if (!dartKey) return { _err: "dart_key_required" };
 
       const qs = new URLSearchParams({ crtfc_key: dartKey, ...params });
-      const res = await fetch(`${DART_BASE}/${endpoint}?${qs}`);
-      return await res.json();
+      try {
+        return await fetchDartJson(`${DART_BASE}/${endpoint}?${qs}`);
+      } catch (_e) {
+        return { _err: "dart_unreachable" };
+      }
     };
 
     if (action === "dart-corp-search") {
@@ -350,6 +352,16 @@ serve(async (req: Request) => {
         bsns_year: year,
         reprt_code: "11014",
       });
+      if (data._err) return err(data._err, data._err === "auth_required" ? 401 : 400);
+      return ok(data);
+    }
+
+    // 범용 DART 프록시: 브라우저가 _dartKey 없을 때(기업 사용자 등) 서버 경유로 호출
+    if (action === "dart-proxy") {
+      const { endpoint, params = {} } = body;
+      const ALLOWED = ["company.json", "list.json", "otrCprInvstmntSttus.json"];
+      if (!ALLOWED.includes(endpoint)) return err("endpoint_not_allowed");
+      const data = await callDart(endpoint, params as Record<string, string>);
       if (data._err) return err(data._err, data._err === "auth_required" ? 401 : 400);
       return ok(data);
     }
