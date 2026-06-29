@@ -291,7 +291,8 @@ serve(async (req: Request) => {
       let fhKey = "";
       if (isApprovedBiz(profile)) {
         const adminKeys = await getAdminKeys();
-        fhKey = adminKeys.finnhub;
+        // 관리자 공용 Finnhub 키 우선, 미설정 시 본인 개인 키로 폴백
+        fhKey = adminKeys.finnhub || await getFhKey(user.id);
       } else {
         fhKey = await getFhKey(user.id);
       }
@@ -425,7 +426,9 @@ serve(async (req: Request) => {
       const profile = await getProfile(user.id);
       if (!isApprovedBiz(profile)) return ok({ dart: false, finnhub: false });
       const adminKeys = await getAdminKeys();
-      return ok({ dart: !!adminKeys.dart, finnhub: !!adminKeys.finnhub, isShared: true });
+      // 관리자 공용 키 없으면 본인 개인 키 보유 여부로 판단(폴백 반영) → 상태표시 정확도
+      const fhReady = !!adminKeys.finnhub || !!(await getFhKey(user.id));
+      return ok({ dart: !!adminKeys.dart, finnhub: fhReady, isShared: !!adminKeys.finnhub });
     }
 
     // Legacy: biz users routed to fh-call path now, but keep for backward compat
@@ -436,13 +439,15 @@ serve(async (req: Request) => {
         const profile = await getProfile(user.id);
         if (!isApprovedBiz(profile)) return { error: "biz_only" };
         const adminKeys = await getAdminKeys();
-        if (!adminKeys.finnhub) return { error: "finnhub_key_not_configured" };
+        // 관리자 공용 Finnhub 키 우선, 미설정 시 본인 개인 키로 폴백
+        const fhKey = adminKeys.finnhub || await getFhKey(user.id);
+        if (!fhKey) return { error: "finnhub_key_not_configured" };
         const { path, params = {} } = body;
         if (!path) return { error: "path_required" };
         const allowedPaths = ["quote", "company-news", "news", "stock/candle", "search"];
         const basePath = (path as string).split("?")[0].replace(/^\/+/, "");
         if (!allowedPaths.some((p) => basePath.startsWith(p))) return { error: "path_not_allowed" };
-        const qs = new URLSearchParams({ ...params, token: adminKeys.finnhub });
+        const qs = new URLSearchParams({ ...params, token: fhKey });
         const res = await fetch(`${FINNHUB_BASE}/${basePath}?${qs}`);
         if (!res.ok) return { error: "finnhub_error", status: res.status };
         return await res.json();
