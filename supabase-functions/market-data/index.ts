@@ -166,20 +166,22 @@ serve(async (req: Request) => {
 
       // Validate with list.json (only needs date range + API key — no corp_code)
       let dartStatus = "";
+      let validationSkipped = false;
       try {
         const today = new Date().toISOString().slice(0, 10).replace(/-/g, "");
         const weekAgo = new Date(Date.now() - 7 * 86400000).toISOString().slice(0, 10).replace(/-/g, "");
         const testRes = await fetch(
           `${DART_BASE}/list.json?crtfc_key=${encodeURIComponent(key)}&bgn_de=${weekAgo}&end_de=${today}&page_count=1`,
-          { headers: { "User-Agent": "Mozilla/5.0" } },
+          { headers: { "User-Agent": "Mozilla/5.0" }, signal: AbortSignal.timeout(8000) },
         );
         const testData = await testRes.json();
         dartStatus = testData.status || "";
-      } catch (fetchErr: any) {
-        return err(`dart_api_unreachable: ${fetchErr.message}`, 502);
+      } catch (_fetchErr: any) {
+        // DART API temporarily unreachable — save key anyway, validate on first real use
+        validationSkipped = true;
       }
 
-      if (dartStatus !== "000") {
+      if (!validationSkipped && dartStatus !== "000") {
         const msg: Record<string, string> = {
           "010": "dart_key_unregistered",
           "011": "dart_key_unregistered",
@@ -191,7 +193,7 @@ serve(async (req: Request) => {
       const { error: dbErr } = await supabase
         .from("user_profiles").update({ dart_api_key: key }).eq("user_id", user.id);
       if (dbErr) return err(`db_error: ${dbErr.message}`, 500);
-      return ok({ ok: true, masked: "···" + key.slice(-4) });
+      return ok({ ok: true, masked: "···" + key.slice(-4), ...(validationSkipped ? { warning: "dart_validation_skipped" } : {}) });
     }
 
     if (action === "delete-dart-key") {
