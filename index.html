@@ -1157,11 +1157,12 @@ let _signupEmail='';
 // AUTH UI 제어
 // ════════════════════════════════════════
 function openAuthModal(){
-  document.getElementById('auth-overlay').classList.remove('hidden');
+  document.getElementById('auth-overlay')?.classList.remove('hidden');
   switchAuthTab('login');
 }
 function closeAuthModal(){
-  document.getElementById('auth-overlay').classList.add('hidden');
+  // init 중 auth 콜백이 마크업 파싱 전에 호출될 수 있어 null-guard (기존 콘솔 에러 제거)
+  document.getElementById('auth-overlay')?.classList.add('hidden');
 }
 function switchAuthTab(tab){
   ['login','signup','forgot','verify'].forEach(v=>{

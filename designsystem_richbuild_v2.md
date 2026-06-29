@@ -100,6 +100,17 @@
 | `--color-accent-border` | `#c4b5fd` |
 | `--color-accent-border-soft` | `#c7d2fe` |
 
+### Accent — Brand (토스풍 파랑 · 인터랙션 전용)
+> 가격 등락 색(빨강=상승/파랑=하락)과 **무관**. 버튼·탭·칩·포커스 등 인터랙션 강조에만 사용.
+
+| 토큰 | 값 | 용도 |
+|------|----|------|
+| `--color-accent-primary` | `#3182f6` | 주요 버튼(.btn-primary)·활성 탭/칩·포커스 |
+| `--color-accent-hover` | `#1b64da` | 주요 버튼 hover |
+| `--color-accent-bg` | `#e8f0fe` | 선택 카드 배경·포커스 링 |
+| `--color-accent-weak` | `#4593fc` | 보조 강조·hover 테두리 |
+| `--color-accent-on` | `#ffffff` | accent 위 텍스트 |
+
 ### Trade Type
 | 토큰 | 값 | 용도 |
 |------|----|------|
@@ -160,11 +171,25 @@
 |------|----|------|
 | `--radius-sm` | `4px` | 인라인 코드, 작은 뱃지 |
 | `--radius-md` | `6px` | 버튼 (edit row) |
-| `--radius-lg` | `8px` | 버튼 `.btn`, 입력창 |
-| `--radius-xl` | `10px` | 카드 소형 |
-| `--radius-2xl` | `12px` | 카드 대형 |
+| `--radius-lg` | `8px` | 입력창 |
+| `--radius-xl` | `10px` | 버튼 `.btn`, 카드 소형 |
+| `--radius-2xl` | `12px` | 카드 중형 (metric 등) |
+| `--radius-3xl` | `16px` | 카드 대형 (.card · 토스풍) |
 | `--radius-pill` | `20px` | 필터 버튼, 태그 |
 | `--radius-full` | `50%` | 상태 점 (dot-live 등) |
+
+---
+
+## 그림자 토큰 (토스풍 소프트 섀도우)
+
+| 토큰 | 값 | 용도 |
+|------|----|------|
+| `--shadow-card` | `0 1px 3px rgba(17,24,39,.06)` | 카드 기본 |
+| `--shadow-hover` | `0 4px 16px rgba(17,24,39,.09)` | 카드 hover |
+| `--shadow-pop` | `0 8px 28px rgba(17,24,39,.12)` | 팝오버·드롭다운 |
+| `--shadow-nav` | `0 -1px 0 rgba(17,24,39,.06)` | 하단 탭바 상단 경계 |
+
+> 다크모드는 동일 토큰을 더 진한 알파로 오버라이드.
 
 ---
 
@@ -192,6 +217,20 @@
 
 ---
 
+## 반응형 / 모바일 하단 탭바
+
+브레이크포인트: `768px`(태블릿 이하), `480px`(폰).
+
+- **하단 탭바 `.bottom-nav`**: 데스크톱 `display:none`, `≤768px`에서 `position:fixed;bottom:0` 노출.
+  항목 `.bn-item[data-page]`은 기존 `goPage()` 핸들러 재사용. 활성 동기화는 `goPage` 내
+  `.bn-item` 토글 1줄로 처리(상단탭/복원과 일치). iOS `env(safe-area-inset-bottom)` 대응.
+- **사용자 유형별 노출**: `.bn-biz`(기업 전용)·`.bn-personal`(개인 전용)을 `body.biz-mode`로 토글
+  (상단 `.biz-only/.personal-only` 패턴과 동일). 유형당 정확히 5개 노출.
+- `≤768px`에서 상단 `.nav-tabs` 숨김 + `body{padding-bottom}`로 본문 가림 방지.
+- `.metrics`: 데스크톱 6열 → 768px 3열 → 480px 2열(오버플로 방지).
+
+---
+
 ## 다크모드 준비
 
 `@media (prefers-color-scheme: dark)` 블록 정의됨 (현재 비활성화 아님 — 시스템 설정 따름).
@@ -214,3 +253,4 @@
 | 날짜 | 내용 |
 |------|------|
 | 2026-06-16 | 초안 — 72개 색상·10개 폰트사이즈 토큰화, 접근성 CSS, 다크모드 준비 |
+| 2026-06-29 | 토스 스타일 개편 — accent(파랑) 5종·shadow 4종·radius-3xl 토큰 추가, bg-base 쿨그레이(#f2f4f6), 카드 소프트 섀도우, 탭/칩/CTA 파랑 통일, 입력 포커스 링, **모바일 하단 탭바** 신설(반응형). 미정의 토큰 `--color-border`/`--color-bg-primary` 정의(검정 테두리·투명 드롭다운 버그 수정) |
