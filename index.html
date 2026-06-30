@@ -173,6 +173,20 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:va
 .auth-btn-ghost{background:transparent;color:var(--color-text-tertiary);font-size:var(--text-sm);margin-top:10px;text-decoration:underline;padding:4px}
 .auth-err{color:var(--color-error);font-size:var(--text-sm);margin-top:8px;text-align:center;min-height:18px}
 .auth-ok{color:var(--color-success);font-size:var(--text-sm);margin-top:8px;text-align:center;min-height:18px}
+/* 회원가입 UX 보강 */
+.auth-subtitle{font-size:var(--text-sm);color:var(--color-text-secondary);text-align:center;margin:-8px 0 18px;line-height:1.5}
+.auth-pw-wrap{position:relative}
+.auth-field .auth-pw-wrap input{padding-right:44px}
+.auth-pw-toggle{position:absolute;right:6px;top:50%;transform:translateY(-50%);background:transparent;border:none;cursor:pointer;font-size:15px;padding:6px;opacity:.4;line-height:1;transition:opacity .15s;font-family:inherit}
+.auth-pw-toggle:hover,.auth-pw-toggle.on{opacity:.9}
+.auth-hint{font-size:var(--text-xs);margin-top:5px;color:var(--color-text-tertiary);min-height:15px;line-height:1.45}
+.auth-hint.ok{color:var(--color-success-text)}
+.auth-hint.warn{color:var(--color-warning-text)}
+.auth-strength{display:flex;gap:4px;margin-top:8px}
+.auth-strength span{flex:1;height:4px;border-radius:2px;background:var(--color-border-default);transition:background .2s}
+.auth-switch-row{text-align:center;font-size:var(--text-sm);color:var(--color-text-tertiary);margin-top:14px}
+.auth-link{background:none;border:none;cursor:pointer;color:var(--color-accent-primary);font-weight:600;font-family:inherit;font-size:var(--text-sm);padding:0}
+.auth-link:hover{text-decoration:underline}
 
 /* ── EMAIL VERIFY SCREEN ── */
 .verify-box{text-align:center;padding:8px 0}
@@ -1160,6 +1174,7 @@ let _currentUser=null;
 let _currentSession=null;
 let _syncTimer=null;
 let _signupEmail='';
+let _cloudLoadedFor=null; // _loadFromCloud 중복 호출 방지(onAuthStateChange + init IIFE 동시 실행)
 
 // 프로필 로드(이중화): supabase-js 우선, 타임아웃/실패 시 순수 REST 폴백.
 // → 클라이언트 라이브러리 교착/장애에도 계정 유형(기업/관리자)이 personal로
@@ -1179,6 +1194,34 @@ async function _fetchProfileRow(){
     if(res.ok){const arr=await res.json();return Array.isArray(arr)?(arr[0]||null):null;}
   }catch(e){}
   return null;
+}
+
+// ── REST(PostgREST) 직접 호출 헬퍼 ─────────────────────────────
+// supabase-js는 이 배포 환경에서 init 교착(initializePromise 미완)으로 auth/from() 호출이
+// 영구 정지할 수 있다. 교착에 취약한 DB 입출력은 REST로 직접 처리해 회피한다.
+// (_fetchProfileRow가 이미 쓰는 검증된 전략과 동일.)
+async function _restSelectRow(path){
+  const res=await fetch(`${SUPA_BASE}/rest/v1/${path}`,{headers:_apiHeaders()});
+  if(!res.ok)throw new Error('rest_'+res.status);
+  const arr=await res.json();
+  return Array.isArray(arr)?(arr[0]||null):null;
+}
+async function _restUpsert(table,row){
+  try{
+    const res=await fetch(`${SUPA_BASE}/rest/v1/${table}`,{method:'POST',
+      headers:{..._apiHeaders(),'Prefer':'resolution=merge-duplicates,return=minimal'},
+      body:JSON.stringify(row)});
+    if(!res.ok)return{error:{message:'rest_'+res.status}};
+    return{error:null};
+  }catch(e){return{error:{message:String(e)}};}
+}
+// getSession()이 교착돼도 onAuthStateChange가 유지하는 _currentSession으로 폴백.
+async function _safeGetSession(ms=3000){
+  try{
+    const r=await Promise.race([_sb.auth.getSession(),new Promise(res=>setTimeout(()=>res(null),ms))]);
+    if(r&&r.data&&r.data.session)_currentSession=r.data.session;
+  }catch(e){}
+  return _currentSession;
 }
 
 // ════════════════════════════════════════
@@ -1209,6 +1252,8 @@ function switchAuthTab(tab){
   ['login-err','signup-err','forgot-err','forgot-ok','resend-ok'].forEach(id=>{
     const el=document.getElementById(id);if(el)el.textContent='';
   });
+  // 회원가입 실시간 안내 동기화
+  if(tab==='signup'&&typeof _signupOnInput==='function')_signupOnInput();
 }
 
 // ── 로그인
@@ -1252,6 +1297,53 @@ async function doSignUp(){
   _signupEmail=email;
   document.getElementById('verify-email-badge').textContent=email;
   switchAuthTab('verify');
+}
+
+// ── 회원가입 입력 보조 (표시 토글 / 실시간 안내)
+function _togglePw(inputId,btnId){
+  const inp=document.getElementById(inputId);const btn=document.getElementById(btnId);
+  if(!inp)return;
+  const show=inp.type==='password';
+  inp.type=show?'text':'password';
+  if(btn){btn.classList.toggle('on',show);btn.textContent=show?'숨김':'표시';}
+}
+function _pwStrength(pw){
+  let s=0;
+  if(pw.length>=8)s++;
+  if(/[A-Za-z]/.test(pw)&&/\d/.test(pw))s++;
+  if(pw.length>=12||/[^A-Za-z0-9]/.test(pw))s++;
+  return Math.min(s,3); // 0..3
+}
+function _signupOnInput(){
+  const email=(document.getElementById('signup-email')?.value||'').trim();
+  const pw=document.getElementById('signup-pw')?.value||'';
+  const pw2=document.getElementById('signup-pw2')?.value||'';
+  // 이메일
+  const eh=document.getElementById('signup-email-hint');
+  if(eh){
+    if(!email){eh.textContent='';eh.className='auth-hint';}
+    else if(/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){eh.textContent='✓ 사용 가능한 형식이에요.';eh.className='auth-hint ok';}
+    else{eh.textContent='이메일 형식을 확인해주세요.';eh.className='auth-hint warn';}
+  }
+  // 비밀번호 강도
+  const s=_pwStrength(pw);
+  const fill=['','var(--color-error-text)','var(--color-warning-text)','var(--color-success-text)'][s];
+  document.querySelectorAll('#signup-strength span').forEach((b,i)=>{
+    b.style.background=(pw&&i<s)?fill:'var(--color-border-default)';
+  });
+  const ph=document.getElementById('signup-pw-hint');
+  if(ph){
+    if(!pw){ph.textContent='8자 이상, 영문·숫자 조합을 권장해요.';ph.className='auth-hint';}
+    else if(pw.length<8){ph.textContent='최소 8자가 필요해요.';ph.className='auth-hint warn';}
+    else{ph.textContent=['','약해요 — 영문과 숫자를 섞어보세요.','적당해요.','안전해요 👍'][s];ph.className='auth-hint '+(s>=2?'ok':'warn');}
+  }
+  // 비밀번호 확인
+  const mh=document.getElementById('signup-match-hint');
+  if(mh){
+    if(!pw2){mh.textContent='';mh.className='auth-hint';}
+    else if(pw===pw2){mh.textContent='✓ 비밀번호가 일치해요.';mh.className='auth-hint ok';}
+    else{mh.textContent='비밀번호가 일치하지 않아요.';mh.className='auth-hint warn';}
+  }
 }
 
 // ── 비밀번호 찾기
@@ -1328,7 +1420,16 @@ function _obGoStep(n){
   ['ob-err-1','ob-err-2','ob-err-3'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent='';});
 }
 
+function _obResetPurposeUI(){
+  document.querySelectorAll('.ob-purpose-item').forEach(item=>{
+    item.classList.remove('sel');
+    const c=item.querySelector('input');if(c)c.checked=false;
+  });
+}
+
 function selectUserType(type){
+  // 유형이 바뀌면 직전 유형에서 고른 목적은 초기화(개인↔기업 목적 항목이 다름)
+  if(_ob.type&&_ob.type!==type){_ob.purposes=[];_obResetPurposeUI();}
   _ob.type=type;
   document.getElementById('ob-type-personal').classList.toggle('sel',type==='personal');
   document.getElementById('ob-type-business').classList.toggle('sel',type==='business');
@@ -1363,8 +1464,14 @@ function obNext(step){
   const err=document.getElementById('ob-err-'+step);
   if(step===1){
     if(!_ob.type){if(err)err.textContent='유형을 선택해주세요.';return;}
-    document.getElementById('ob-s2-personal').style.display=_ob.type==='personal'?'':'none';
-    document.getElementById('ob-s2-business').style.display=_ob.type==='business'?'':'none';
+    const isBiz=_ob.type==='business';
+    document.getElementById('ob-s2-personal').style.display=isBiz?'none':'';
+    document.getElementById('ob-s2-business').style.display=isBiz?'':'none';
+    // step3: 유형별 목적 항목 분기 + 안내 문구
+    document.getElementById('ob-s3-personal').style.display=isBiz?'none':'';
+    document.getElementById('ob-s3-business').style.display=isBiz?'':'none';
+    const s3t=document.getElementById('ob-s3-title');
+    if(s3t)s3t.textContent=isBiz?'기업 모니터링을 어떻게 활용하실 계획인가요?':'서비스 사용 목적을 알려주세요';
     _obGoStep(2);
   }else if(step===2){
     if(_ob.type==='personal'&&!_ob.age){if(err)err.textContent='연령대를 선택해주세요.';return;}
@@ -1380,10 +1487,11 @@ function obPrev(step){_obGoStep(step-1);}
 async function obSubmit(){
   const btn=document.querySelector('#ob-step-4 .ob-btn-next');
   btn.disabled=true;btn.textContent='저장 중...';
-  const{data:{user}}=await _sb.auth.getUser();
+  await _safeGetSession();
+  const user=_currentUser||(_currentSession&&_currentSession.user);
   if(!user){btn.disabled=false;btn.textContent='시작하기 🚀';return;}
   const isBiz=_ob.type==='business';
-  const{error}=await _sb.from('user_profiles').upsert({
+  const{error}=await _restUpsert('user_profiles',{
     user_id:user.id,
     user_type:_ob.type,
     age_range:!isBiz?_ob.age:null,
@@ -1415,7 +1523,7 @@ function openProfileModal(){
   el.classList.remove('hidden');
   if(_currentUser)document.getElementById('profile-email-display').textContent=_currentUser.email;
   // 현재 프로필 로드
-  _sb.from('user_profiles').select('*').eq('user_id',_currentUser.id).single().then(({data})=>{
+  _restSelectRow(`user_profiles?user_id=eq.${_currentUser.id}&select=*`).then((data)=>{
     if(!data)return;
     _profType=data.user_type||'personal';
     _profAge=data.age_range||'';
@@ -1435,7 +1543,7 @@ function openProfileModal(){
     });
     const mkEl=document.getElementById('prof-marketing');
     if(mkEl)mkEl.checked=!!data.marketing_email;
-  });
+  }).catch(()=>{});
   // 관리자 섹션
   const adminSec=document.getElementById('admin-keys-section');
   if(adminSec){
@@ -1512,7 +1620,7 @@ async function saveProfile(){
   const biz=document.getElementById('prof-biz-select').value;
   const purposes=['portfolio','news','reg','research','journal'].filter(p=>document.getElementById('prof-p-'+p)?.checked);
   const marketing=document.getElementById('prof-marketing').checked;
-  const{error}=await _sb.from('user_profiles').upsert({
+  const{error}=await _restUpsert('user_profiles',{
     user_id:_currentUser.id,
     user_type:_profType,
     age_range:_profType==='personal'?_profAge:null,
@@ -1531,8 +1639,13 @@ async function saveProfile(){
 // 데이터 동기화 (Cloud ↔ Local)
 // ════════════════════════════════════════
 async function _loadFromCloud(user){
-  const{data,error}=await _sb.from('user_data').select('*').eq('user_id',user.id).single();
-  if(error||!data){
+  if(!user)return;
+  if(_cloudLoadedFor===user.id)return; // 중복 로드 방지
+  _cloudLoadedFor=user.id;
+  let data=null;
+  try{ data=await _restSelectRow(`user_data?user_id=eq.${user.id}&select=*`); }
+  catch(e){ _cloudLoadedFor=null; return; } // 일시 오류 → 덮어쓰기 방지, 다음 기회에 재시도
+  if(!data){
     // 첫 로그인 — 샘플 데이터가 아닌 실제 데이터만 클라우드에 업로드
     if(!localStorage.getItem('pf_is_sample')){
       _syncToCloud(true);
@@ -1587,7 +1700,7 @@ function _syncToCloud(immediate){
   if(!_currentUser)return;
   clearTimeout(_syncTimer);
   const doSync=async()=>{
-    const{error}=await _sb.from('user_data').upsert({
+    const{error}=await _restUpsert('user_data',{
       user_id:_currentUser.id,
       stocks:stocks,
       memos:memos,
@@ -1631,6 +1744,7 @@ _sb.auth.onAuthStateChange(async(event,session)=>{
   }else if(event==='SIGNED_OUT'){
     _currentUser=null;
     _currentSession=null;
+    _cloudLoadedFor=null;
     _updateNavAuth(null);
   }
 });
@@ -1692,7 +1806,7 @@ function _deleteApiKeyOnServer(service){
   fetch(SUPA_URL,{method:'POST',headers:_apiHeaders(),body:JSON.stringify({action:'delete-key',service})}).catch(()=>{});
 }
 async function _restoreApiKeyState(){
-  try{const{data:{session}}=await _sb.auth.getSession();if(session)_currentSession=session;}catch(e){}
+  await _safeGetSession();
   if(!_currentSession)return;
   const h=_apiHeaders();
 
@@ -2484,7 +2598,7 @@ async function connectAPI(){
   const val=document.getElementById('api-key-input').value.trim();if(!val||val.startsWith('•')){setKeyStatus('err','API 키를 입력해주세요');return;}
   const btn=document.getElementById('connect-btn');btn.disabled=true;btn.textContent='확인 중...';
   // 최신 세션 확보
-  try{const{data:{session}}=await _sb.auth.getSession();if(session)_currentSession=session;}catch(e){}
+  await _safeGetSession();
   if(!_currentSession){setKeyStatus('err','로그인 후 API 키를 저장할 수 있습니다');btn.disabled=false;btn.textContent='연결';return;}
   try{
     // 1단계: 키 유효성 직접 검증
@@ -3930,7 +4044,7 @@ async function saveDartKey(){
   if(!key){if(errEl)errEl.textContent='API 키를 입력해주세요.';return;}
   if(!termsCheck?.checked){if(errEl)errEl.textContent='이용약관에 동의해주세요.';return;}
   // 항상 최신 세션 토큰 확보
-  try{const{data:{session}}=await _sb.auth.getSession();if(session)_currentSession=session;}catch(e){}
+  await _safeGetSession();
   if(!_currentSession){if(errEl)errEl.textContent='로그인이 필요합니다.';return;}
   if(btn){btn.disabled=true;btn.textContent='검증 중...';}
   if(errEl)errEl.textContent='';
@@ -4433,12 +4547,7 @@ function _buildCardHeaderHTML(co){
   const memosHtml=(co.memos||[]).map(m=>`
     <div class="mc-memo-item" id="mmi-${co.corp_code}-${m.id}">
       <div class="mc-memo-text">${escapeHtml(m.text)}</div>
-      <div class="mc-memo-actions">
-        <span class="mc-memo-time">${_fmtMonDate(m.time)}</span>
-        ${m.source?`<span class="mc-memo-src" title="${escapeHtml(m.source.disclosure_title||'')}">📋 공시 연계</span>`:''}
-        <button class="mc-memo-journal-btn" onclick="addMemoToJournal('${co.corp_code}',${m.id})">일지에 추가</button>
-        <button class="mc-memo-del-btn" onclick="deleteMonitorMemo('${co.corp_code}',${m.id})">삭제</button>
-      </div>
+      <div class="mc-memo-actions">${_mcMemoActionsHtml(co.corp_code,m)}</div>
     </div>`).join('')||'<div class="mc-empty-state">팀 메모가 없습니다.</div>';
   return`
     <div class="mc-header">
@@ -4696,6 +4805,33 @@ function openDisclosureMemo(corpCode,titleEncoded,date){
   input.focus();
 }
 
+// 모니터링 메모를 투자 일지 캘린더(아카이브)에 자동 저장. memo.journalId로 연결해 중복 방지.
+function _monitorMemoToCalendar(co,memo){
+  if(memo.journalId)return null;
+  const entry={
+    id:Date.now()+Math.floor(Math.random()*1000),
+    text:`[${co.corp_name}] ${memo.text}`,
+    tag:'monitor',
+    time:memo.time,
+    completedAt:memo.time, // 캘린더는 completedAt||time 기준 → 메모 날짜 칸에 표시
+    important:false,
+    source:{type:'monitor',corp_name:co.corp_name,corp_code:co.corp_code,...(memo.source||{})}
+  };
+  memo.journalId=entry.id;
+  memoArchive.unshift(entry);
+  localStorage.setItem('pf_ma',JSON.stringify(memoArchive));
+  return entry;
+}
+// 모니터 메모 액션 행 HTML (일지 저장 여부에 따라 배지/버튼 분기)
+function _mcMemoActionsHtml(corpCode,m){
+  const jbtn=m.journalId
+    ?`<span class="mc-memo-src" title="투자 일지 캘린더에 저장됨" style="background:var(--color-info-bg);color:var(--color-info)">📅 일지 저장됨</span>`
+    :`<button class="mc-memo-journal-btn" onclick="addMemoToJournal('${corpCode}',${m.id})">일지에 추가</button>`;
+  return `<span class="mc-memo-time">${_fmtMonDate(m.time)}</span>
+        ${m.source?`<span class="mc-memo-src" title="${escapeHtml(m.source.disclosure_title||'')}">📋 공시 연계</span>`:''}
+        ${jbtn}
+        <button class="mc-memo-del-btn" onclick="deleteMonitorMemo('${corpCode}',${m.id})">삭제</button>`;
+}
 function saveMonitorMemo(corpCode){
   const input=document.getElementById('mc-memo-input-'+corpCode);
   const text=(input?.value||'').trim();
@@ -4706,8 +4842,10 @@ function saveMonitorMemo(corpCode){
   const memo={id:Date.now(),text,time:new Date().toISOString(),source};
   co.memos=co.memos||[];
   co.memos.unshift(memo);
+  _monitorMemoToCalendar(co,memo); // 투자 일지 캘린더에 자동 저장
   localStorage.setItem('monitor_co',JSON.stringify(monitorCompanies));
   _syncToCloud();
+  renderMemos(); // 일지/캘린더 화면 갱신
   closeInlineMemoForm(corpCode);
   // 메모 목록 갱신
   const memosList=document.getElementById('mc-memos-'+corpCode);
@@ -4718,12 +4856,7 @@ function saveMonitorMemo(corpCode){
     div.className='mc-memo-item';div.id=`mmi-${corpCode}-${memo.id}`;
     div.innerHTML=`
       <div class="mc-memo-text">${escapeHtml(text)}</div>
-      <div class="mc-memo-actions">
-        <span class="mc-memo-time">${_fmtMonDate(memo.time)}</span>
-        ${source?`<span class="mc-memo-src" title="${escapeHtml(source.disclosure_title||'')}">📋 공시 연계</span>`:''}
-        <button class="mc-memo-journal-btn" onclick="addMemoToJournal('${corpCode}',${memo.id})">일지에 추가</button>
-        <button class="mc-memo-del-btn" onclick="deleteMonitorMemo('${corpCode}',${memo.id})">삭제</button>
-      </div>`;
+      <div class="mc-memo-actions">${_mcMemoActionsHtml(corpCode,memo)}</div>`;
     memosList.prepend(div);
   }
 }
@@ -4741,28 +4874,18 @@ function deleteMonitorMemo(corpCode,memoId){
     memosList.innerHTML='<div class="mc-empty-state">팀 메모가 없습니다.</div>';
 }
 
+// 기존(자동저장 이전) 메모용 수동 추가 버튼. 캘린더(아카이브)에 저장하고 배지로 갱신.
 function addMemoToJournal(corpCode,memoId){
   const co=monitorCompanies.find(c=>c.corp_code===corpCode);
   if(!co)return;
   const memo=(co.memos||[]).find(m=>m.id===memoId);
-  if(!memo)return;
-  memos.unshift({
-    id:Date.now(),
-    text:`[${co.corp_name}] ${memo.text}`,
-    tag:'monitor',
-    time:new Date().toISOString(),
-    important:false,
-    source:{type:'monitor',corp_name:co.corp_name,corp_code:co.corp_code,...(memo.source||{})}
-  });
-  localStorage.setItem('pf_m',JSON.stringify(memos));
+  if(!memo||memo.journalId)return; // 이미 일지에 저장됨
+  _monitorMemoToCalendar(co,memo);
+  localStorage.setItem('monitor_co',JSON.stringify(monitorCompanies)); // journalId 링크 보존
   _syncToCloud();
   renderMemos();
-  const btn=document.querySelector(`#mmi-${corpCode}-${memoId} .mc-memo-journal-btn`);
-  if(btn){
-    const orig=btn.textContent;
-    btn.textContent='✓ 추가됨';btn.disabled=true;
-    setTimeout(()=>{if(btn){btn.textContent=orig;btn.disabled=false;}},2000);
-  }
+  const item=document.getElementById(`mmi-${corpCode}-${memoId}`);
+  if(item){const acts=item.querySelector('.mc-memo-actions');if(acts)acts.innerHTML=_mcMemoActionsHtml(corpCode,memo);}
 }
 
 // ─ 초기화
@@ -4773,7 +4896,7 @@ else checkAndAutoFetch();
 setInterval(checkAndAutoFetch,60000);
 // ─ Auth 세션 확인 → 페이지 복원 순서 보장 (Finnhub가 user JWT 필요하므로 세션 확인 이후 복원)
 (async()=>{
-  const{data:{session}}=await _sb.auth.getSession();
+  const session=await _safeGetSession();
   if(session?.user){
     _currentUser=session.user;
     _currentSession=session;
@@ -4861,11 +4984,32 @@ setInterval(checkAndAutoFetch,60000);
         <button class="auth-tab" onclick="switchAuthTab('login')">로그인</button>
         <button class="auth-tab on" onclick="switchAuthTab('signup')">회원가입</button>
       </div>
-      <div class="auth-field"><label>이메일</label><input type="email" id="signup-email" placeholder="이메일 주소" autocomplete="email"></div>
-      <div class="auth-field"><label>비밀번호</label><input type="password" id="signup-pw" placeholder="8자 이상" autocomplete="new-password"></div>
-      <div class="auth-field"><label>비밀번호 확인</label><input type="password" id="signup-pw2" placeholder="비밀번호 재입력" autocomplete="new-password" onkeydown="if(event.key==='Enter')doSignUp()"></div>
+      <div class="auth-subtitle">이메일만 있으면 1분이면 가입 완료! 가입 후 맞춤 설정을 도와드려요.</div>
+      <div class="auth-field">
+        <label>이메일</label>
+        <input type="email" id="signup-email" placeholder="you@example.com" autocomplete="email" oninput="_signupOnInput()">
+        <div class="auth-hint" id="signup-email-hint"></div>
+      </div>
+      <div class="auth-field">
+        <label>비밀번호</label>
+        <div class="auth-pw-wrap">
+          <input type="password" id="signup-pw" placeholder="8자 이상 입력" autocomplete="new-password" oninput="_signupOnInput()">
+          <button type="button" class="auth-pw-toggle" id="signup-pw-toggle" onclick="_togglePw('signup-pw','signup-pw-toggle')" aria-label="비밀번호 표시/숨김">표시</button>
+        </div>
+        <div class="auth-strength" id="signup-strength" aria-hidden="true"><span></span><span></span><span></span></div>
+        <div class="auth-hint" id="signup-pw-hint">8자 이상, 영문·숫자 조합을 권장해요.</div>
+      </div>
+      <div class="auth-field">
+        <label>비밀번호 확인</label>
+        <div class="auth-pw-wrap">
+          <input type="password" id="signup-pw2" placeholder="비밀번호 재입력" autocomplete="new-password" oninput="_signupOnInput()" onkeydown="if(event.key==='Enter')doSignUp()">
+          <button type="button" class="auth-pw-toggle" id="signup-pw2-toggle" onclick="_togglePw('signup-pw2','signup-pw2-toggle')" aria-label="비밀번호 표시/숨김">표시</button>
+        </div>
+        <div class="auth-hint" id="signup-match-hint"></div>
+      </div>
       <div class="auth-err" id="signup-err"></div>
       <button class="auth-btn auth-btn-primary" onclick="doSignUp()">회원가입</button>
+      <div class="auth-switch-row">이미 계정이 있으신가요? <button type="button" class="auth-link" onclick="switchAuthTab('login')">로그인</button></div>
     </div>
 
     <!-- 비밀번호 찾기 폼 -->
@@ -4980,9 +5124,10 @@ setInterval(checkAndAutoFetch,60000);
 
     <!-- Step 3: 서비스 사용 목적 -->
     <div class="ob-step" id="ob-step-3">
-      <div class="ob-step-title">서비스 사용 목적을 알려주세요</div>
+      <div class="ob-step-title" id="ob-s3-title">서비스 사용 목적을 알려주세요</div>
       <div class="ob-step-sub">복수 선택 가능합니다.</div>
-      <div class="ob-purpose-list">
+      <!-- 개인: 투자 목적 -->
+      <div class="ob-purpose-list" id="ob-s3-personal">
         <div class="ob-purpose-item" onclick="togglePurpose(this,'portfolio')">
           <input type="checkbox" value="portfolio" style="pointer-events:none">
           <span class="ob-purpose-text">📈 개인 투자 포트폴리오 관리</span>
@@ -5002,6 +5147,33 @@ setInterval(checkAndAutoFetch,60000);
         <div class="ob-purpose-item" onclick="togglePurpose(this,'journal')">
           <input type="checkbox" value="journal" style="pointer-events:none">
           <span class="ob-purpose-text">📓 투자 일지 작성·관리</span>
+        </div>
+      </div>
+      <!-- 기업: 모니터링 목적 -->
+      <div class="ob-purpose-list" id="ob-s3-business" style="display:none">
+        <div class="ob-purpose-item" onclick="togglePurpose(this,'competitor')">
+          <input type="checkbox" value="competitor" style="pointer-events:none">
+          <span class="ob-purpose-text">🏢 경쟁사·협력사 공시 모니터링</span>
+        </div>
+        <div class="ob-purpose-item" onclick="togglePurpose(this,'holdings')">
+          <input type="checkbox" value="holdings" style="pointer-events:none">
+          <span class="ob-purpose-text">📊 투자·피투자 기업 지분 변동 추적</span>
+        </div>
+        <div class="ob-purpose-item" onclick="togglePurpose(this,'dart')">
+          <input type="checkbox" value="dart" style="pointer-events:none">
+          <span class="ob-purpose-text">📑 DART 전자공시 실시간 추적</span>
+        </div>
+        <div class="ob-purpose-item" onclick="togglePurpose(this,'reg')">
+          <input type="checkbox" value="reg" style="pointer-events:none">
+          <span class="ob-purpose-text">⚖️ 규제·정책 변화 모니터링</span>
+        </div>
+        <div class="ob-purpose-item" onclick="togglePurpose(this,'market')">
+          <input type="checkbox" value="market" style="pointer-events:none">
+          <span class="ob-purpose-text">📈 시장·산업 동향 파악</span>
+        </div>
+        <div class="ob-purpose-item" onclick="togglePurpose(this,'alert')">
+          <input type="checkbox" value="alert" style="pointer-events:none">
+          <span class="ob-purpose-text">🔔 주요 공시 실시간 알림 수신</span>
         </div>
       </div>
       <div class="ob-err" id="ob-err-3"></div>
