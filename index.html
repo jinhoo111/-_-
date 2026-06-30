@@ -1775,8 +1775,10 @@ async function proxyApiCall(service,path,params={}){
       return r.json();
     }
     // 폴백: 서버 프록시 (키 아직 로드 안 됐거나 서버 키 사용)
+    // 모든 사용자 fh-call 사용 — 서버가 승인 기업엔 관리자 키를 적용하고, 전체 허용 경로를 지원.
+    // (레거시 finnhub-proxy는 stock/recommendation 등을 path_not_allowed로 막아 월가 레이팅이 안 떴음)
     const isBiz=(_userType==='business'&&_bizApproved);
-    const action=isBiz?'finnhub-proxy':'fh-call';
+    const action='fh-call';
     const r=await fetch(DART_PROXY_URL,{method:'POST',headers:_apiHeaders(),
       body:JSON.stringify({action,path,params})});
     const d=await r.json().catch(()=>({}));
@@ -4388,7 +4390,7 @@ async function loadCompanyData(corpCode){
   if(!co)return;
   _monitorCache[corpCode]=_monitorCache[corpCode]||{};
   const[priceRes,discRes]=await Promise.allSettled([
-    _fetchCompanyPrice(co.stock_code),
+    _fetchCompanyPrice(co.stock_code,co.market),
     _fetchDartDisclosures(corpCode)
   ]);
   if(priceRes.status==='fulfilled')_monitorCache[corpCode].price=priceRes.value;
@@ -4401,21 +4403,44 @@ async function loadCompanyData(corpCode){
   if(monitorView==='table')renderMonitorTable();
 }
 
-async function _fetchCompanyPrice(stockCode){
+// 종목코드 → Yahoo 심볼 접미사 (KOSPI=.KS, KOSDAQ/KONEX=.KQ)
+function _krYahooSuffix(market){return (market==='KOSDAQ'||market==='KONEX')?'.KQ':'.KS';}
+async function _fetchYahooMeta(symbol){
+  const url=`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=1d&range=1d`;
+  const r=await fetch(DART_PROXY_URL,{method:'POST',headers:_apiHeaders(),body:JSON.stringify({action:'yahoo-finance',url})});
+  const d=await r.json().catch(()=>null);
+  return d?.chart?.result?.[0]?.meta||null;
+}
+// 국내 시세는 Naver(거래소 구분 불필요·공신력) 우선, 실패 시 Yahoo(시장구분 심볼) 폴백.
+// → 기존 dart-stock-price가 .KS 고정이라 KOSDAQ 시세가 틀리던 버그 해소.
+async function _fetchNaverKrPrice(stockCode){
+  const url=`https://m.stock.naver.com/api/stock/${stockCode}/integration`;
+  const r=await fetch(DART_PROXY_URL,{method:'POST',headers:_apiHeaders(),body:JSON.stringify({action:'yahoo-finance',url})});
+  const d=await r.json().catch(()=>null);
+  if(!d)return null;
+  const dt=d.dealTrendInfos&&d.dealTrendInfos[0];
+  const price=_dartNum(d.closePrice||(dt&&dt.closePrice));
+  if(!price)return null;
+  let change=dt?_dartNum(dt.compareToPreviousClosePrice):0;
+  if(!change){const p=(d.totalInfos||[]).find(x=>x.code==='lastClosePrice');if(p){const prev=_dartNum(p.value);if(prev)change=price-prev;}}
+  const prev=price-change;
+  return{price,change,changePct:prev?(change/prev*100).toFixed(2):'0.00'};
+}
+async function _fetchCompanyPrice(stockCode,market){
   if(!stockCode)return null;
+  // 1) Naver 우선 (6자리 코드만으로 정확, 거래소 혼동 없음)
+  try{const n=await _fetchNaverKrPrice(stockCode);if(n)return n;}catch(e){}
+  // 2) 폴백: Yahoo (시장구분으로 올바른 심볼 구성)
   try{
-    const r=await fetch(DART_PROXY_URL,{method:'POST',headers:_apiHeaders(),body:JSON.stringify({action:'dart-stock-price',stockCode})});
-    const d=await r.json();
-    const meta=d?.chart?.result?.[0]?.meta;
-    if(!meta)return null;
-    const price=meta.regularMarketPrice;
-    // Yahoo는 range=1d일 때 previousClose가 비고 chartPreviousClose에 전일종가가 들어옴
-    const prev=meta.previousClose||meta.chartPreviousClose;
-    if(price==null)return null;
-    if(!prev)return{price,change:0,changePct:'0.00'};
-    const change=price-prev;
-    return{price,change,changePct:(change/prev*100).toFixed(2)};
-  }catch(e){return null;}
+    const meta=await _fetchYahooMeta(stockCode+_krYahooSuffix(market));
+    if(meta&&meta.regularMarketPrice!=null){
+      const price=meta.regularMarketPrice;
+      const prev=meta.previousClose||meta.chartPreviousClose;
+      const change=prev?price-prev:0;
+      return{price,change,changePct:prev?(change/prev*100).toFixed(2):'0.00'};
+    }
+  }catch(e){}
+  return null;
 }
 
 async function _fetchDartDisclosures(corpCode){
