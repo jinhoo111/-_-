@@ -256,6 +256,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:va
 .bn-biz{display:none}
 body.biz-mode .bn-biz{display:flex}
 body.biz-mode .bn-personal{display:none}
+body.admin-mode .bn-biz,body.admin-mode .bn-personal{display:flex}
 
 /* ── LAYOUT ── */
 .page{display:none;padding:1.25rem 1.5rem;max-width:960px;margin:0 auto}
@@ -517,6 +518,8 @@ input:focus-visible,textarea:focus-visible{outline:2px solid var(--color-info);o
 .biz-only{display:none!important}
 body.biz-mode .biz-only{display:inline-flex!important}
 body.biz-mode .personal-only{display:none!important}
+/* 관리자: 기업+개인 탭 모두 노출(전체 기능 테스트용) */
+body.admin-mode .biz-only,body.admin-mode .personal-only{display:inline-flex!important}
 
 /* Setup Banner */
 .monitor-setup-banner{background:var(--color-warning-bg);border:1px solid #e8c040;border-radius:var(--radius-lg);padding:1.25rem 1.5rem;margin-bottom:1rem}
@@ -1147,11 +1150,36 @@ function saveToMemo(headline,url){
 }
 
 // ── Supabase Auth 클라이언트
-const _sb=window.supabase.createClient(SUPA_BASE,SUPA_KEY);
+// no-op lock: supabase-js v2가 onAuthStateChange 콜백 내 DB 호출 시 GoTrue 네비게이터
+// 잠금으로 교착(deadlock)되는 문제 우회. 잠금 없이 함수만 실행 → 쿼리 정상 resolve.
+// (라이브 검증: 적용 시 user_profiles/user_data/getUser 모두 정상, 미적용 시 전부 타임아웃)
+const _sb=window.supabase.createClient(SUPA_BASE,SUPA_KEY,{
+  auth:{lock:async(_name,_acquireTimeout,fn)=>await fn()}
+});
 let _currentUser=null;
 let _currentSession=null;
 let _syncTimer=null;
 let _signupEmail='';
+
+// 프로필 로드(이중화): supabase-js 우선, 타임아웃/실패 시 순수 REST 폴백.
+// → 클라이언트 라이브러리 교착/장애에도 계정 유형(기업/관리자)이 personal로
+//   조용히 떨어지지 않도록 보장.
+async function _fetchProfileRow(){
+  const sel='onboarding_done,user_type,business_approved';
+  try{
+    const r=await Promise.race([
+      _sb.from('user_profiles').select(sel).eq('user_id',_currentUser.id).single(),
+      new Promise((_,rej)=>setTimeout(()=>rej(new Error('sb_timeout')),4000))
+    ]);
+    if(r&&!r.error&&r.data)return r.data;
+  }catch(e){}
+  try{
+    const res=await fetch(`${SUPA_BASE}/rest/v1/user_profiles?select=${sel}&user_id=eq.${_currentUser.id}`,
+      {headers:{apikey:SUPA_KEY,Authorization:'Bearer '+(_currentSession?.access_token||SUPA_KEY)}});
+    if(res.ok){const arr=await res.json();return Array.isArray(arr)?(arr[0]||null):null;}
+  }catch(e){}
+  return null;
+}
 
 // ════════════════════════════════════════
 // AUTH UI 제어
@@ -1589,7 +1617,7 @@ _sb.auth.onAuthStateChange(async(event,session)=>{
     _currentSession=session;
     _updateNavAuth(_currentUser);
     closeAuthModal();
-    const{data:prof}=await _sb.from('user_profiles').select('onboarding_done,user_type,business_approved').eq('user_id',_currentUser.id).single();
+    const prof=await _fetchProfileRow();
     if(!prof||!prof.onboarding_done){_showOnboarding();}
     else if(prof.user_type==='business'&&!prof.business_approved){
       document.getElementById('biz-pending-overlay').classList.remove('hidden');
@@ -3888,6 +3916,8 @@ function applyUserTypeUI(type){
   _userType=type;
   if(type==='business') document.body.classList.add('biz-mode');
   else document.body.classList.remove('biz-mode');
+  // 관리자(wlsgn1878): 기업+개인 모든 탭 노출 → 전체 기능 테스트 가능
+  document.body.classList.toggle('admin-mode', !!_isAdmin);
 }
 
 // ── DART 키 등록 ──────────────────────────
@@ -4748,7 +4778,7 @@ setInterval(checkAndAutoFetch,60000);
     _currentUser=session.user;
     _currentSession=session;
     _updateNavAuth(_currentUser);
-    const{data:prof}=await _sb.from('user_profiles').select('onboarding_done,user_type,business_approved').eq('user_id',_currentUser.id).single();
+    const prof=await _fetchProfileRow();
     if(!prof||!prof.onboarding_done){_showOnboarding();}
     else if(prof.user_type==='business'&&!prof.business_approved){
       document.getElementById('biz-pending-overlay').classList.remove('hidden');
