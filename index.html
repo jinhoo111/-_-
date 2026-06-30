@@ -2805,6 +2805,8 @@ function switchMemoView(view){
   }
   if(view==='calendar'){
     _calYear=new Date().getFullYear();_calMonth=new Date().getMonth();_calSelectedDay=null;
+    // 보유 종목 어닝콜 로드 후 캘린더 갱신 (캐시 있으면 즉시, 신규/만료 시 백그라운드 갱신)
+    loadEarningsCalendar().then(()=>{if(memoView==='calendar')renderMemos();}).catch(()=>{});
   }
   renderMemos();
 }
@@ -3099,7 +3101,42 @@ const EV_STYLE={
   event: {bg:'#f5f3ff',c:'#7c3aed',label:'🏔️'},
   opex:  {bg:'#fff7ed',c:'#c2410c',label:'⚡'},
   macro: {bg:'#f0fdf4',c:'#15803d',label:'📈'},
+  stockearn:{bg:'#eef2ff',c:'#4f46e5',label:'🎙️'}, // 보유 종목 개별 어닝콜
 };
+
+// ── 보유 종목 어닝콜(실적발표) 캘린더 ────────────────────────────
+// Finnhub calendar/earnings(US 종목)를 proxy-api 'call'로 조회(fh-call 화이트리스트 우회).
+// KR(.KS/.KQ) 종목은 Finnhub 미커버 → 추후 Naver 연동 단계에서 추가 예정.
+let _earningsEvents=[]; let _earningsLoadedAt=0;
+try{_earningsEvents=JSON.parse(localStorage.getItem('earnings_cache')||'[]');_earningsLoadedAt=+localStorage.getItem('earnings_cache_at')||0;}catch(e){}
+
+function _usTickersFromPortfolio(){
+  const pf=JSON.parse(localStorage.getItem('pf_s')||'[]');
+  return [...new Set(pf.map(s=>s.ticker).filter(t=>t&&!/(\.KS|\.KQ)$/i.test(t)&&!/^\d/.test(t)&&t.length<=6))];
+}
+async function loadEarningsCalendar(force){
+  if(!force && _earningsEvents.length && (Date.now()-_earningsLoadedAt)<6*3600*1000) return;
+  const tickers=_usTickersFromPortfolio();
+  if(!tickers.length)return;
+  const now=new Date();
+  const from=new Date(now.getFullYear(),now.getMonth()-2,1).toISOString().slice(0,10);
+  const to=new Date(now.getFullYear(),now.getMonth()+5,0).toISOString().slice(0,10);
+  const results=await Promise.allSettled(tickers.map(sym=>
+    fetch(SUPA_URL,{method:'POST',headers:_apiHeaders(),body:JSON.stringify({action:'call',service:'finnhub',path:'calendar/earnings',params:{from,to,symbol:sym}})})
+      .then(r=>r.ok?r.json():null).then(d=>({sym,list:(d&&d.earningsCalendar)||[]}))
+  ));
+  const evs=[];
+  results.forEach(r=>{if(r.status==='fulfilled'&&r.value)r.value.list.forEach(e=>{if(e.date)evs.push({date:e.date,symbol:r.value.sym,hour:e.hour,quarter:e.quarter,year:e.year});});});
+  const seen=new Set();
+  _earningsEvents=evs.filter(e=>{const k=e.symbol+e.date;if(seen.has(k))return false;seen.add(k);return true;});
+  _earningsLoadedAt=Date.now();
+  try{localStorage.setItem('earnings_cache',JSON.stringify(_earningsEvents));localStorage.setItem('earnings_cache_at',String(_earningsLoadedAt));}catch(e){}
+}
+function _earnHourLabel(h){return h==='bmo'?'장 시작 전':h==='amc'?'장 마감 후':h==='dmh'?'장중':'';}
+// MARKET_EVENTS + 보유종목 어닝콜 합본
+function _allCalEvents(){
+  return MARKET_EVENTS.concat(_earningsEvents.map(e=>({date:e.date,type:'stockearn',title:`${e.symbol} 어닝콜`,_hour:e.hour})));
+}
 
 function renderArchiveCalendar(el){
   const today=new Date();
@@ -3118,9 +3155,9 @@ function renderArchiveCalendar(el){
     }
   });
 
-  // 날짜별 주요 일정
+  // 날짜별 주요 일정 (시장 일정 + 보유 종목 어닝콜)
   const byEvents={};
-  MARKET_EVENTS.forEach(ev=>{
+  _allCalEvents().forEach(ev=>{
     const d=new Date(ev.date+'T00:00:00');
     if(d.getFullYear()===y&&d.getMonth()===mo){
       const k=d.getDate();
@@ -3197,7 +3234,7 @@ function selectCalDay(d){
     const dt=new Date(m.completedAt||m.time);
     return dt.getFullYear()===y&&dt.getMonth()===mo&&dt.getDate()===d;
   });
-  const dayEvents=MARKET_EVENTS.filter(ev=>{
+  const dayEvents=_allCalEvents().filter(ev=>{
     const dt=new Date(ev.date+'T00:00:00');
     return dt.getFullYear()===y&&dt.getMonth()===mo&&dt.getDate()===d;
   });
@@ -3206,10 +3243,11 @@ function selectCalDay(d){
   if(!det)return;
   const evHtml=dayEvents.map(ev=>{
     const s=EV_STYLE[ev.type]||EV_STYLE.event;
+    const tag=ev.type==='stockearn'?(_earnHourLabel(ev._hour)||'실적발표'):'주요 일정';
     return`<div style="display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:8px;background:${s.bg};margin-bottom:6px">
       <span style="font-size:1.1em">${s.label}</span>
-      <span style="font-size:var(--text-base);font-weight:700;color:${s.c}">${ev.title}</span>
-      <span style="font-size:var(--text-sm);color:var(--color-text-muted);margin-left:auto">주요 일정</span>
+      <span style="font-size:var(--text-base);font-weight:700;color:${s.c}">${escapeHtml(ev.title)}</span>
+      <span style="font-size:var(--text-sm);color:var(--color-text-muted);margin-left:auto">${tag}</span>
     </div>`;
   }).join('');
   det.innerHTML=`<div class="arc-cal-detail">
