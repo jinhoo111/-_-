@@ -2805,8 +2805,8 @@ function switchMemoView(view){
   }
   if(view==='calendar'){
     _calYear=new Date().getFullYear();_calMonth=new Date().getMonth();_calSelectedDay=null;
-    // 보유 종목 어닝콜 로드 후 캘린더 갱신 (캐시 있으면 즉시, 신규/만료 시 백그라운드 갱신)
-    loadEarningsCalendar().then(()=>{if(memoView==='calendar')renderMemos();}).catch(()=>{});
+    // 보유 종목 어닝콜 로드 후 캘린더 갱신 (US: Finnhub, KR: DART). 캐시 있으면 즉시 표시.
+    Promise.allSettled([loadEarningsCalendar(),loadKrEarnings()]).then(()=>{if(memoView==='calendar')renderMemos();});
   }
   renderMemos();
 }
@@ -3105,10 +3105,12 @@ const EV_STYLE={
 };
 
 // ── 보유 종목 어닝콜(실적발표) 캘린더 ────────────────────────────
-// Finnhub calendar/earnings(US 종목)를 proxy-api 'call'로 조회(fh-call 화이트리스트 우회).
-// KR(.KS/.KQ) 종목은 Finnhub 미커버 → 추후 Naver 연동 단계에서 추가 예정.
+// US: Finnhub calendar/earnings를 proxy-api 'call'로 조회(예정일).
+// KR: Finnhub 미커버 → DART 잠정실적(영업잠정실적 공정공시=실제 어닝 발표) + 정기보고서 공시일 사용.
 let _earningsEvents=[]; let _earningsLoadedAt=0;
 try{_earningsEvents=JSON.parse(localStorage.getItem('earnings_cache')||'[]');_earningsLoadedAt=+localStorage.getItem('earnings_cache_at')||0;}catch(e){}
+let _krEarningsEvents=[]; let _krEarningsLoadedAt=0;
+try{_krEarningsEvents=JSON.parse(localStorage.getItem('kr_earnings_cache')||'[]');_krEarningsLoadedAt=+localStorage.getItem('kr_earnings_cache_at')||0;}catch(e){}
 
 function _usTickersFromPortfolio(){
   const pf=JSON.parse(localStorage.getItem('pf_s')||'[]');
@@ -3133,9 +3135,53 @@ async function loadEarningsCalendar(force){
   try{localStorage.setItem('earnings_cache',JSON.stringify(_earningsEvents));localStorage.setItem('earnings_cache_at',String(_earningsLoadedAt));}catch(e){}
 }
 function _earnHourLabel(h){return h==='bmo'?'장 시작 전':h==='amc'?'장 마감 후':h==='dmh'?'장중':'';}
-// MARKET_EVENTS + 보유종목 어닝콜 합본
+
+// ── KR 어닝콜: 포트폴리오 한국 종목의 DART 잠정실적/정기보고서 공시일 ──
+function _krHoldings(){
+  const pf=JSON.parse(localStorage.getItem('pf_s')||'[]');
+  const seen=new Set(); const out=[];
+  pf.forEach(s=>{const m=String(s.ticker||'').match(/^(\d{6})(\.(KS|KQ))?$/i);
+    if(m&&!seen.has(m[1])){seen.add(m[1]);out.push({code:m[1],name:(s.name||m[1]).replace(/\(주\)|주식회사/g,'').trim()});}});
+  return out;
+}
+async function loadKrEarnings(force){
+  if(!force && _krEarningsLoadedAt && (Date.now()-_krEarningsLoadedAt)<24*3600*1000) return;
+  const hold=_krHoldings();
+  if(!hold.length){_krEarningsLoadedAt=Date.now();return;}
+  const end=new Date().toISOString().slice(0,10).replace(/-/g,'');
+  const start=new Date(Date.now()-400*864e5).toISOString().slice(0,10).replace(/-/g,'');
+  const evs=[];
+  await Promise.allSettled(hold.map(async h=>{
+    let corp; try{const mp=await stockCodeToCorp(h.code);corp=mp&&mp[0];}catch(e){}
+    if(!corp)return;
+    let d; try{d=await callDartDirect('list.json',{corp_code:corp,bgn_de:start,end_de:end,page_count:'100'});}catch(e){return;}
+    (Array.isArray(d.list)?d.list:[]).forEach(x=>{
+      const nm=(x.report_nm||'').trim(), dt=x.rcept_dt||'';
+      if(!/^\d{8}$/.test(dt))return;
+      const iso=dt.replace(/(\d{4})(\d{2})(\d{2})/,'$1-$2-$3');
+      let kind=null;
+      if(/잠정\)?실적|영업\(잠정\)/.test(nm))kind='잠정실적';
+      else{const mm=nm.match(/분기보고서|반기보고서|사업보고서/);if(mm)kind=mm[0];}
+      if(kind)evs.push({date:iso,name:h.name,kind,code:h.code});
+    });
+    // 다음 분기 잠정실적 예상일(최근 잠정실적 + ~91일, 미래만)
+    const jj=evs.filter(e=>e.code===h.code&&e.kind==='잠정실적').map(e=>e.date).sort();
+    if(jj.length){const nx=new Date(new Date(jj[jj.length-1]+'T00:00:00').getTime()+91*864e5);
+      if(nx>new Date())evs.push({date:nx.toISOString().slice(0,10),name:h.name,kind:'잠정실적',code:h.code,est:true});}
+  }));
+  const seen=new Set();
+  _krEarningsEvents=evs.filter(e=>{const k=e.code+e.date+e.kind+(e.est?'E':'');if(seen.has(k))return false;seen.add(k);return true;});
+  _krEarningsLoadedAt=Date.now();
+  try{localStorage.setItem('kr_earnings_cache',JSON.stringify(_krEarningsEvents));localStorage.setItem('kr_earnings_cache_at',String(_krEarningsLoadedAt));}catch(e){}
+}
+// MARKET_EVENTS + 보유종목 어닝콜(US+KR) 합본
 function _allCalEvents(){
-  return MARKET_EVENTS.concat(_earningsEvents.map(e=>({date:e.date,type:'stockearn',title:`${e.symbol} 어닝콜`,_hour:e.hour})));
+  const us=_earningsEvents.map(e=>({date:e.date,type:'stockearn',title:`${e.symbol} 어닝콜`,_hour:e.hour}));
+  const kr=_krEarningsEvents.map(e=>{
+    const t=e.kind==='잠정실적'?`${e.name} 어닝콜${e.est?'(예상)':''}`:`${e.name} ${e.kind}`;
+    return{date:e.date,type:'stockearn',title:t,_kr:true,_est:e.est};
+  });
+  return MARKET_EVENTS.concat(us,kr);
 }
 
 function renderArchiveCalendar(el){
@@ -3243,7 +3289,7 @@ function selectCalDay(d){
   if(!det)return;
   const evHtml=dayEvents.map(ev=>{
     const s=EV_STYLE[ev.type]||EV_STYLE.event;
-    const tag=ev.type==='stockearn'?(_earnHourLabel(ev._hour)||'실적발표'):'주요 일정';
+    const tag=ev.type==='stockearn'?(ev._est?'예상 실적발표':(_earnHourLabel(ev._hour)||'실적발표')):'주요 일정';
     return`<div style="display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:8px;background:${s.bg};margin-bottom:6px">
       <span style="font-size:1.1em">${s.label}</span>
       <span style="font-size:var(--text-base);font-weight:700;color:${s.c}">${escapeHtml(ev.title)}</span>
