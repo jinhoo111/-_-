@@ -540,6 +540,9 @@ body.biz-mode .biz-only{display:inline-flex!important}
 body.biz-mode .personal-only{display:none!important}
 /* 관리자: 기업+개인 탭 모두 노출(전체 기능 테스트용) */
 body.admin-mode .biz-only,body.admin-mode .personal-only{display:inline-flex!important}
+/* 관리자 전용(보안 대시보드 등) */
+.admin-only{display:none!important}
+body.admin-mode .admin-only{display:inline-flex!important}
 
 /* Setup Banner */
 .monitor-setup-banner{background:var(--color-warning-bg);border:1px solid #e8c040;border-radius:var(--radius-lg);padding:1.25rem 1.5rem;margin-bottom:1rem}
@@ -670,6 +673,7 @@ body.admin-mode .biz-only,body.admin-mode .personal-only{display:inline-flex!imp
     <button class="nav-tab"     onclick="goPage('news',this)">뉴스</button>
     <button class="nav-tab"     onclick="goPage('research',this)">리서치·규제</button>
     <button class="nav-tab"     onclick="goPage('memo',this)">투자 일지</button>
+    <button class="nav-tab admin-only" onclick="goPage('security',this)">🛡️ 보안</button>
   </div>
   <div class="nav-right" id="nav-right">
     <button id="nav-login-btn" class="nav-login-btn" onclick="openAuthModal()">로그인</button>
@@ -1147,6 +1151,20 @@ body.admin-mode .biz-only,body.admin-mode .personal-only{display:inline-flex!imp
     </div>
   </div>
 
+</div>
+
+<!-- ═══════════ PAGE 7: 보안 대시보드 (관리자 전용) ═══════════ -->
+<div id="page-security" class="page">
+  <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:1rem">
+    <div>
+      <div style="font-size:var(--text-xl);font-weight:700">🛡️ 보안 대시보드</div>
+      <div style="font-size:var(--text-sm);color:var(--color-text-secondary);margin-top:2px">인증 거부·키 변경 등 이상행위 이벤트 모니터링 (관리자 전용)</div>
+    </div>
+    <button class="btn btn-primary" onclick="renderSecurityDashboard()" style="flex-shrink:0;white-space:nowrap">↻ 새로고침</button>
+  </div>
+  <div id="sec-notice" class="monitor-err-msg" style="display:none"></div>
+  <div id="sec-summary" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px;margin-bottom:1.25rem"></div>
+  <div id="sec-table"></div>
 </div>
 
 <!-- ══════════ SCRIPT ══════════ -->
@@ -3629,6 +3647,7 @@ function goPage(name,btn){
   document.querySelectorAll('.bn-item').forEach(b=>b.classList.toggle('on',b.dataset.page===name));
   localStorage.setItem('cur_page',name);
   if(name==='monitor')initMonitorPage();
+  if(name==='security')renderSecurityDashboard();
   if(name==='indices')loadAllIndices();
   if(name==='news')initNewsUI();
   if(name==='research'){
@@ -4347,6 +4366,71 @@ async function _pollMonitor(){
 }
 
 // ── initMonitorPage ───────────────────────
+// ── 보안 대시보드 (관리자 전용) — security_events 조회 ──────────────
+async function renderSecurityDashboard(){
+  const sumEl=document.getElementById('sec-summary');
+  const tblEl=document.getElementById('sec-table');
+  const noticeEl=document.getElementById('sec-notice');
+  if(!sumEl||!tblEl)return;
+  noticeEl.style.display='none';
+  if(!_isAdmin){ sumEl.innerHTML=''; tblEl.innerHTML='<div class="monitor-empty">관리자 전용 페이지입니다.</div>'; return; }
+  tblEl.innerHTML='<div class="monitor-empty">불러오는 중…</div>';
+  let rows=null,errKind=null;
+  try{
+    await _safeGetSession();
+    const url=`${SUPA_BASE}/rest/v1/security_events?select=created_at,event_type,severity,risk_score,email,user_id,ip,detail&order=created_at.desc&limit=100`;
+    const r=await fetch(url,{headers:_apiHeaders()});
+    if(!r.ok){
+      const t=await r.text().catch(()=>'');
+      if(r.status===404||/does not exist|relation|security_events/i.test(t)) errKind='table_missing';
+      else if(r.status===401||r.status===403) errKind='forbidden';
+      else errKind='http_'+r.status;
+    }else{ rows=await r.json(); }
+  }catch(e){ errKind='network'; }
+  if(errKind){
+    const msg={
+      table_missing:'security_events 테이블이 아직 없습니다. supabase/migrations/0001_security_events.sql 적용 후 이용하세요.',
+      forbidden:'접근 권한이 없습니다. (관리자 계정 + user_profiles.is_admin=true 필요)',
+      network:'네트워크 오류로 이벤트를 불러오지 못했습니다.'
+    }[errKind]||('오류: '+errKind);
+    noticeEl.style.display=''; noticeEl.textContent=msg;
+    sumEl.innerHTML=''; tblEl.innerHTML='<div class="monitor-empty">표시할 데이터가 없습니다.</div>';
+    return;
+  }
+  rows=Array.isArray(rows)?rows:[];
+  const now=Date.now();
+  const cnt=(f)=>rows.filter(f).length;
+  const cards=[
+    ['전체 이벤트',rows.length,'var(--color-text-primary)'],
+    ['최근 24시간',rows.filter(e=>now-new Date(e.created_at).getTime()<864e5).length,'var(--color-info)'],
+    ['경고(warn)',cnt(e=>e.severity==='warn'),'var(--color-warning-text)'],
+    ['위험(critical)',cnt(e=>e.severity==='critical'),'var(--color-error-text)'],
+    ['인증 거부',cnt(e=>e.event_type==='auth_rejected'),'var(--color-error-text)'],
+  ];
+  sumEl.innerHTML=cards.map(([l,v,c])=>`
+    <div style="background:var(--color-bg-surface);border:1px solid var(--color-border-default);border-radius:var(--radius-lg);padding:14px 16px">
+      <div style="font-size:var(--text-xs);color:var(--color-text-tertiary)">${l}</div>
+      <div style="font-size:1.6rem;font-weight:700;color:${c};margin-top:2px">${v}</div>
+    </div>`).join('');
+  if(!rows.length){
+    tblEl.innerHTML='<div class="monitor-empty">아직 기록된 보안 이벤트가 없습니다.<br>Edge Function 배포 후 로그인·키 변경 등이 발생하면 여기에 표시됩니다.</div>';
+    return;
+  }
+  const esc=x=>String(x==null?'':x).replace(/[&<>"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));
+  const sevBadge=s=>{const c=s==='critical'?'var(--color-error-text)':s==='warn'?'var(--color-warning-text)':'var(--color-text-tertiary)';return `<span style="color:${c};font-weight:600">${esc(s)}</span>`;};
+  const fmt=t=>{try{return new Date(t).toLocaleString('ko-KR',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'});}catch(e){return esc(t);}};
+  tblEl.innerHTML=`<div style="overflow-x:auto"><table class="monitor-compare-table">
+    <thead><tr><th>시각</th><th>유형</th><th>등급</th><th>대상</th><th>IP</th><th>상세</th></tr></thead>
+    <tbody>${rows.map(e=>`<tr>
+      <td style="white-space:nowrap">${fmt(e.created_at)}</td>
+      <td>${esc(e.event_type)}</td>
+      <td>${sevBadge(e.severity)}</td>
+      <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(e.email||e.user_id||'-')}</td>
+      <td>${esc(e.ip||'-')}</td>
+      <td style="font-size:var(--text-xs);color:var(--color-text-tertiary);max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(JSON.stringify(e.detail||{}))}</td>
+    </tr>`).join('')}</tbody></table></div>`;
+}
+
 function initMonitorPage(){
   const banner=document.getElementById('monitor-setup-banner');
   const changeBtn=document.getElementById('monitor-dart-key-change-btn');

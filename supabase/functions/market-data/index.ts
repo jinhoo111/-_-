@@ -70,6 +70,31 @@ serve(async (req: Request) => {
     const authHeader = req.headers.get("Authorization") || "";
     const jwt = authHeader.replace("Bearer ", "").trim();
 
+    // 보안 이벤트 로깅(Phase 1 프로듀서). security_events 테이블로 적재되어 이상행위
+    // 탐지·운영 대시보드의 데이터 소스가 됨. fire-and-forget — 실패(테이블 미적용 등)해도
+    // 본 요청 흐름엔 절대 영향 없음.
+    const clientIp = (req.headers.get("x-forwarded-for") || "").split(",")[0].trim()
+      || req.headers.get("cf-connecting-ip") || "";
+    const clientUa = req.headers.get("user-agent") || "";
+    const logSecurityEvent = (ev: {
+      user_id?: string | null; email?: string | null; event_type: string;
+      severity?: "info" | "warn" | "critical"; risk_score?: number;
+      detail?: Record<string, unknown>;
+    }) => {
+      try {
+        supabase.from("security_events").insert({
+          user_id: ev.user_id ?? null,
+          email: ev.email ?? null,
+          event_type: ev.event_type,
+          severity: ev.severity ?? "info",
+          risk_score: ev.risk_score ?? 0,
+          ip: clientIp,
+          user_agent: clientUa,
+          detail: ev.detail ?? {},
+        }).then(() => {}, () => {});
+      } catch { /* swallow */ }
+    };
+
     // Auth (fail-closed, signature-verified). decodeJwt only pre-screens claims
     // cheaply; supabase.auth.getUser(jwt) then verifies the signature against
     // Supabase Auth so a forged token with a spoofed `sub` (user/admin 사칭) is
@@ -83,7 +108,13 @@ serve(async (req: Request) => {
       if (p.exp && p.exp * 1000 < Date.now()) return null;
       if (!p.sub) return null;
       const { data, error } = await supabase.auth.getUser(jwt);
-      if (error || !data?.user || data.user.id !== p.sub) return null;
+      if (error || !data?.user || data.user.id !== p.sub) {
+        // 서명검증 실패/sub 불일치 = 위조 토큰 시도(사칭). 만료는 위에서 이미 걸러져 로깅 안 함.
+        logSecurityEvent({ user_id: (p.sub as string) ?? null, event_type: "auth_rejected",
+          severity: "warn", risk_score: 40,
+          detail: { reason: error ? "verify_failed" : "sub_mismatch", action: body?.action } });
+        return null;
+      }
       return { id: data.user.id, email: data.user.email || "" };
     };
     const _authedUser = await authenticate();
@@ -233,6 +264,8 @@ serve(async (req: Request) => {
       const { error: dbErr } = await supabase
         .from("user_profiles").update({ dart_api_key: key }).eq("user_id", user.id);
       if (dbErr) return err(`db_error: ${dbErr.message}`, 500);
+      logSecurityEvent({ user_id: user.id, email: user.email, event_type: "key_change",
+        detail: { action: "store-dart-key", validation_skipped: validationSkipped } });
       return ok({ ok: true, masked: "···" + key.slice(-4), ...(validationSkipped ? { warning: "dart_validation_skipped" } : {}) });
     }
 
@@ -240,6 +273,8 @@ serve(async (req: Request) => {
       const user = getUser();
       if (!user) return err("auth_required", 401);
       await supabase.from("user_profiles").update({ dart_api_key: null }).eq("user_id", user.id);
+      logSecurityEvent({ user_id: user.id, email: user.email, event_type: "key_change",
+        detail: { action: "delete-dart-key" } });
       return ok({ ok: true });
     }
 
