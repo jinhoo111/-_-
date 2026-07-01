@@ -1439,8 +1439,20 @@ async function resendVerify(){
 async function signOutUser(){
   await _sb.auth.signOut();
   _currentUser=null;
+  _resetToLoggedOutUI();
   _updateNavAuth(null);
   openAuthModal();
+}
+
+// 로그아웃 시 관리자/기업 전용 UI(보안 탭 등)를 즉시 감춘다.
+// (미적용 시 관리자 로그아웃 후 새로고침 전까지 🛡️ 보안 탭이 남아 보이던 문제 방지)
+function _resetToLoggedOutUI(){
+  _isAdmin=false;_bizApproved=false;
+  applyUserTypeUI('personal');
+  if(document.getElementById('page-security')?.classList.contains('on')){
+    const pb=[...document.querySelectorAll('.nav-tab')].find(b=>(b.getAttribute('onclick')||'').includes("'portfolio'"));
+    if(pb)goPage('portfolio',pb);
+  }
 }
 
 // ── 헤더 계정 상태 업데이트
@@ -1814,6 +1826,7 @@ _sb.auth.onAuthStateChange(async(event,session)=>{
     _currentSession=null;
     _cloudLoadedFor=null;
     _apiKeysRestoredFor=null;
+    _resetToLoggedOutUI();
     _updateNavAuth(null);
   }
 });
