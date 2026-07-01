@@ -1,10 +1,18 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-const CORS = {
-  "Access-Control-Allow-Origin": "*",
+// CORS 화이트리스트. 와일드카드(*) 대신 우리 도메인만 허용해 타 사이트의
+// 브라우저 교차출처 남용을 차단(CSRF 방어 심층화). 실제 인증 경계는 JWT(C1)이며
+// CORS는 보조 방어선. 운영 중 도메인 추가는 ALLOWED_ORIGINS env로 코드 수정 없이 가능.
+const ALLOWED_ORIGINS = (Deno.env.get("ALLOWED_ORIGINS") || "https://jinhoo111.github.io")
+  .split(",").map((s) => s.trim()).filter(Boolean);
+const isAllowedOrigin = (o: string): boolean =>
+  ALLOWED_ORIGINS.includes(o) || /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(o);
+const corsHeaders = (origin: string): Record<string, string> => ({
+  "Access-Control-Allow-Origin": isAllowedOrigin(origin) ? origin : ALLOWED_ORIGINS[0],
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+  "Vary": "Origin",
+});
 const DART_BASE = "https://opendart.fss.or.kr/api";
 const FINNHUB_BASE = "https://finnhub.io/api/v1";
 const MAX_DAILY_CALLS = 300;
@@ -42,6 +50,7 @@ const decodeJwt = (token: string): Record<string, any> | null => {
 };
 
 serve(async (req: Request) => {
+  const CORS = corsHeaders(req.headers.get("Origin") || "");
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
 
   const ok = (data: unknown, status = 200) =>
@@ -61,15 +70,24 @@ serve(async (req: Request) => {
     const authHeader = req.headers.get("Authorization") || "";
     const jwt = authHeader.replace("Bearer ", "").trim();
 
-    // Sync auth: decode JWT locally — reliable regardless of env vars
-    const getUser = (): { id: string; email: string } | null => {
+    // Auth (fail-closed, signature-verified). decodeJwt only pre-screens claims
+    // cheaply; supabase.auth.getUser(jwt) then verifies the signature against
+    // Supabase Auth so a forged token with a spoofed `sub` (user/admin 사칭) is
+    // rejected even if the gateway runs with --no-verify-jwt. Verified ONCE here;
+    // getUser() stays sync so the 15 downstream call sites are unchanged.
+    const authenticate = async (): Promise<{ id: string; email: string } | null> => {
+      if (!jwt) return null;
       const p = decodeJwt(jwt);
       if (!p) return null;
       if (p.role === "anon" || p.role === "service_role") return null;
       if (p.exp && p.exp * 1000 < Date.now()) return null;
       if (!p.sub) return null;
-      return { id: p.sub as string, email: (p.email || "") as string };
+      const { data, error } = await supabase.auth.getUser(jwt);
+      if (error || !data?.user || data.user.id !== p.sub) return null;
+      return { id: data.user.id, email: data.user.email || "" };
     };
+    const _authedUser = await authenticate();
+    const getUser = (): { id: string; email: string } | null => _authedUser;
 
     // ── DB helpers ───────────────────────────────────────
 
