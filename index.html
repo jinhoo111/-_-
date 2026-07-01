@@ -1181,6 +1181,7 @@ let _currentSession=null;
 let _syncTimer=null;
 let _signupEmail='';
 let _cloudLoadedFor=null; // _loadFromCloud 중복 호출 방지(onAuthStateChange + init IIFE 동시 실행)
+let _apiKeysRestoredFor=null; // _restoreApiKeyState 중복 호출 방지(로그인당 1회). 로그아웃 시 리셋
 
 // 프로필 로드(이중화): supabase-js 우선, 타임아웃/실패 시 순수 REST 폴백.
 // → 클라이언트 라이브러리 교착/장애에도 계정 유형(기업/관리자)이 personal로
@@ -1698,8 +1699,8 @@ async function _loadFromCloud(user){
   }
   // UI 재렌더링
   renderStocks();renderMemos();updateCashDisplay();updateMasterNotifyBtn();
-  // 로그인 시 서버 저장 API 키 자동 복원
-  await _restoreApiKeyState();
+  // (API 키 복원은 _loadFromCloud와 분리 — 포트폴리오 데이터 유무와 무관하게 항상 실행되도록
+  //  호출부(init IIFE / onAuthStateChange)에서 직접 _restoreApiKeyState()를 호출한다)
 }
 
 function _syncToCloud(immediate){
@@ -1746,11 +1747,14 @@ _sb.auth.onAuthStateChange(async(event,session)=>{
       _isAdmin=(_currentUser?.email==='wlsgn1878@naver.com');
       applyUserTypeUI(_userType);
       await _loadFromCloud(_currentUser);
+      // 서버 저장 API 키(DART/Finnhub 등) 자동 복원 — 포트폴리오 로드와 분리해 항상 실행
+      await _restoreApiKeyState();
     }
   }else if(event==='SIGNED_OUT'){
     _currentUser=null;
     _currentSession=null;
     _cloudLoadedFor=null;
+    _apiKeysRestoredFor=null;
     _updateNavAuth(null);
   }
 });
@@ -1816,6 +1820,9 @@ function _deleteApiKeyOnServer(service){
 async function _restoreApiKeyState(){
   await _safeGetSession();
   if(!_currentSession)return;
+  // 로그인당 1회만 서버 조회(중복 호출 방지). 로그아웃 시 _apiKeysRestoredFor 리셋
+  if(_apiKeysRestoredFor===_currentUser?.id)return;
+  _apiKeysRestoredFor=_currentUser?.id;
   const h=_apiHeaders();
 
   // 승인된 기업 사용자 → 관리자 키 자동 적용 (관리자 본인은 개인 키 관리 유지)
@@ -5096,6 +5103,8 @@ setInterval(checkAndAutoFetch,60000);
       _isAdmin=(_currentUser?.email==='wlsgn1878@naver.com');
       applyUserTypeUI(_userType);
       await _loadFromCloud(_currentUser);
+      // 서버 저장 API 키(DART/Finnhub 등) 자동 복원 — 포트폴리오 로드와 분리해 항상 실행
+      await _restoreApiKeyState();
     }
   }
   if(CKEY){
