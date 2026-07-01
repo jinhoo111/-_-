@@ -1294,7 +1294,10 @@ async function doSignUp(){
   if(pw.length<8){errEl.textContent='비밀번호는 8자 이상이어야 합니다.';return;}
   if(pw!==pw2){errEl.textContent='비밀번호가 일치하지 않습니다.';return;}
   errEl.textContent='처리 중...';
-  const{error}=await _sb.auth.signUp({email,password:pw});
+  // emailRedirectTo 미지정 시 인증 링크가 프로젝트 Site URL(루트)로 가서 404 발생 →
+  // 회원가입한 실제 페이지(prod: /-_-/ · dev: localhost)로 되돌아오도록 명시. (비밀번호 재설정과 동일 패턴)
+  const{error}=await _sb.auth.signUp({email,password:pw,
+    options:{emailRedirectTo:location.origin+location.pathname}});
   if(error){
     errEl.textContent=error.message.includes('already registered')||error.message.includes('already been registered')
       ?'이미 가입된 이메일입니다.'
@@ -1372,7 +1375,8 @@ async function resendVerify(){
   const okEl=document.getElementById('resend-ok');
   okEl.textContent='';
   if(!_signupEmail)return;
-  const{error}=await _sb.auth.resend({type:'signup',email:_signupEmail});
+  const{error}=await _sb.auth.resend({type:'signup',email:_signupEmail,
+    options:{emailRedirectTo:location.origin+location.pathname}});
   okEl.textContent=error?'재발송에 실패했습니다.':'인증 이메일을 재발송했습니다.';
 }
 
