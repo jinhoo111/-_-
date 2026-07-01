@@ -1371,13 +1371,50 @@ async function doForgotPw(){
 }
 
 // ── 인증 이메일 재발송
+let _resendCooldown=0;
+function _startResendCooldown(sec){
+  const btn=document.getElementById('resend-btn');
+  _resendCooldown=sec;
+  if(btn)btn.disabled=true;
+  const tick=()=>{
+    if(_resendCooldown<=0){if(btn){btn.disabled=false;btn.textContent='인증 이메일 재발송';}return;}
+    if(btn)btn.textContent=`재발송 (${_resendCooldown}초)`;
+    _resendCooldown--;setTimeout(tick,1000);
+  };
+  tick();
+}
 async function resendVerify(){
   const okEl=document.getElementById('resend-ok');
-  okEl.textContent='';
-  if(!_signupEmail)return;
-  const{error}=await _sb.auth.resend({type:'signup',email:_signupEmail,
+  if(_resendCooldown>0)return;
+  // 새로고침 등으로 _signupEmail(메모리 변수)이 비면 조용히 리턴하던 문제 →
+  // 화면 뱃지/입력값에서 이메일 복구, 그래도 없으면 사용자에게 안내.
+  const email=_signupEmail
+    || document.getElementById('verify-email-badge')?.textContent?.trim()
+    || document.getElementById('signup-email')?.value?.trim()
+    || '';
+  if(!email){okEl.style.color='var(--color-error-text)';okEl.textContent='이메일 정보가 없습니다. 회원가입을 다시 진행해주세요.';return;}
+  _signupEmail=email;
+  okEl.style.color='';okEl.textContent='발송 중...';
+  const{error}=await _sb.auth.resend({type:'signup',email,
     options:{emailRedirectTo:location.origin+location.pathname}});
-  okEl.textContent=error?'재발송에 실패했습니다.':'인증 이메일을 재발송했습니다.';
+  if(error){
+    console.warn('[resend] status=%s code=%s msg=%s',error.status,error.code,error.message);
+    const m=(error.message||'').toLowerCase(),code=error.code||'';
+    okEl.style.color='var(--color-error-text)';
+    if(error.status===429||code==='over_email_send_rate_limit'||m.includes('rate limit')||m.includes('too many')){
+      // Supabase 이메일 발송 rate limit(기본 SMTP는 시간당 소량 제한). 반복 시 도달.
+      okEl.textContent='발송 요청이 많습니다. 60초 후 다시 시도해주세요. 메일이 계속 안 오면 스팸함을 확인하세요.';
+      _startResendCooldown(60);
+    }else if(m.includes('already confirmed')||code==='email_already_confirmed'){
+      okEl.textContent='이미 인증이 완료된 계정입니다. 로그인해주세요.';
+    }else{
+      okEl.textContent='재발송 실패: '+(error.message||'알 수 없는 오류');
+    }
+    return;
+  }
+  okEl.style.color='var(--color-success-text)';
+  okEl.textContent='인증 이메일을 재발송했습니다. 도착까지 1~2분 걸릴 수 있고, 스팸함도 확인해주세요.';
+  _startResendCooldown(60);
 }
 
 // ── 로그아웃
@@ -5230,7 +5267,7 @@ setInterval(checkAndAutoFetch,60000);
         <div class="verify-title">이메일을 확인해주세요</div>
         <div class="verify-desc">아래 이메일로 인증 링크를 발송했습니다.<br>링크를 클릭하면 자동으로 로그인됩니다.</div>
         <div class="verify-email-badge" id="verify-email-badge"></div>
-        <button class="auth-btn auth-btn-primary" onclick="resendVerify()" style="margin-top:4px">인증 이메일 재발송</button>
+        <button class="auth-btn auth-btn-primary" id="resend-btn" onclick="resendVerify()" style="margin-top:4px">인증 이메일 재발송</button>
         <div class="auth-ok" id="resend-ok"></div>
         <div style="text-align:center;margin-top:12px">
           <button class="auth-btn auth-btn-ghost" onclick="switchAuthTab('login')">다른 계정으로 로그인</button>
