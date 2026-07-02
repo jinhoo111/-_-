@@ -886,7 +886,12 @@ body.admin-mode .admin-only{display:inline-flex!important}
 ═══════════════════════════════════════════ -->
 <div id="page-news" class="page">
   <!-- API KEY -->
-  <div class="apikey-box">
+  <!-- 기업 계정: 관리자 공용 Finnhub 키 자동 연결 안내 (applyUserTypeUI에서 표시) -->
+  <div id="fh-biz-note" class="apikey-box" style="display:none">
+    <div style="font-size:var(--text-md);font-weight:700;margin-bottom:4px">✅ 관리자 제공 공용 Finnhub 키로 자동 연결됨</div>
+    <div style="font-size:var(--text-sm);color:var(--color-text-tertiary)">기업 계정은 별도의 API 키 입력이 필요 없습니다. 시장 뉴스·실시간 시세가 자동으로 표시됩니다.</div>
+  </div>
+  <div class="apikey-box" id="fh-key-box">
     <div style="font-size:var(--text-lg);font-weight:700;margin-bottom:8px">🔑 Finnhub API 키 <span style="font-size:var(--text-sm);color:var(--color-text-tertiary);font-weight:400">(1회 입력 후 자동 저장 · <a href="https://finnhub.io" target="_blank" style="color:var(--color-info)">finnhub.io</a> 무료 발급)</span></div>
     <div class="key-row">
       <input id="api-key-input" type="password" placeholder="Finnhub API Key 입력..." autocomplete="off"/>
@@ -1109,6 +1114,19 @@ body.admin-mode .admin-only{display:inline-flex!important}
           <span>DART API 이용약관을 확인하였으며, 본인 명의 키의 약관 준수 의무가 본인에게 있음에 동의합니다.</span>
         </label>
         <div id="dart-key-err" style="color:var(--color-error-text);font-size:var(--text-sm)"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 기업 계정: 관리자 공용 DART 키 자동 연결 안내 (initMonitorPage에서 표시) -->
+  <div id="dart-biz-note" style="display:none">
+    <div class="monitor-setup-banner" style="margin-bottom:16px;background:var(--color-success-bg);border-color:var(--color-success)">
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        <span style="font-size:1.1rem">✅</span>
+        <div>
+          <div class="monitor-setup-title" style="margin-bottom:2px">관리자 제공 공용 DART 키로 자동 연결됨</div>
+          <div style="font-size:var(--text-xs);color:var(--color-text-tertiary)">기업 계정은 별도의 API 키 입력이 필요 없습니다. 공시·시세 데이터가 자동으로 연결됩니다.</div>
+        </div>
       </div>
     </div>
   </div>
@@ -2682,6 +2700,8 @@ function initNewsUI(){
 }
 
 async function connectAPI(){
+  // 승인된 기업 계정은 관리자 공용 키 사용 → 개인 키 저장 경로 차단(이중 안전장치)
+  if(_userType==='business'&&_bizApproved&&!_isAdmin)return;
   const val=document.getElementById('api-key-input').value.trim();if(!val||val.startsWith('•')){setKeyStatus('err','API 키를 입력해주세요');return;}
   const btn=document.getElementById('connect-btn');btn.disabled=true;btn.textContent='확인 중...';
   // 최신 세션 확보
@@ -4274,6 +4294,14 @@ function applyUserTypeUI(type){
   else document.body.classList.remove('biz-mode');
   // 관리자(wlsgn1878): 기업+개인 모든 탭 노출 → 전체 기능 테스트 가능
   document.body.classList.toggle('admin-mode', !!_isAdmin);
+  // 승인된 기업 계정은 관리자 공용 키로 자동 연결되므로 개인 키 입력란을 숨긴다.
+  // (관리자는 본인 개인 키를 계속 관리하므로 제외 → bizAuto)
+  const bizAuto = (type==='business' && _bizApproved && !_isAdmin);
+  const fhBox=document.getElementById('fh-key-box'),
+        fhNote=document.getElementById('fh-biz-note');
+  if(fhBox)  fhBox.style.display  = bizAuto ? 'none' : '';
+  if(fhNote) fhNote.style.display = bizAuto ? '' : 'none';
+  // DART 배너는 initMonitorPage에서 처리(페이지 진입 시점 dartKeyStored 반영)
 }
 
 // ── DART 키 등록 ──────────────────────────
@@ -4447,8 +4475,20 @@ async function renderSecurityDashboard(){
 function initMonitorPage(){
   const banner=document.getElementById('monitor-setup-banner');
   const changeBtn=document.getElementById('monitor-dart-key-change-btn');
+  const dartNote=document.getElementById('dart-biz-note');
   // 승인된 기업 사용자는 키 변경 버튼 숨김 (관리자 키 사용)
   if(changeBtn)changeBtn.style.display=(_bizApproved&&!_isAdmin)?'none':'';
+  // 승인된 기업 계정: DART 키 입력 배너를 절대 노출하지 않고 공용 키 안내만 표시.
+  // (공용 DART 키 미설정 등으로 dartKeyStored가 false여도 입력란 대신 안내를 유지)
+  const bizAuto = (_userType==='business' && _bizApproved && !_isAdmin);
+  if(bizAuto){
+    if(banner)banner.style.display='none';
+    if(dartNote)dartNote.style.display='';
+    if(dartKeyStored){renderMonitorCompanies();if(!_monitorPollTimer)startMonitorPolling();requestNotifyPermission();}
+    else{_renderDemoMonitor();}
+    return;
+  }
+  if(dartNote)dartNote.style.display='none';
   if(!dartKeyStored){
     if(banner)banner.style.display='';
     _renderDemoMonitor();
