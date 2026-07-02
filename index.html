@@ -1035,8 +1035,17 @@ body.admin-mode .admin-only{display:inline-flex!important}
       </div>
     </div>
 
+    <!-- 키워드 검색 (하이브리드: 즉시 필터 + 최신 RSS 검색) -->
+    <div style="display:flex;gap:8px;align-items:center;margin-bottom:12px;flex-wrap:wrap">
+      <input id="reg-search" placeholder="🔎 규제 키워드 검색 (가상자산, 공매도, 지주회사…)" autocomplete="off"
+        oninput="regSearchInput(this.value)" onkeydown="if(event.key==='Enter')regKeywordSearch()"
+        style="flex:1;min-width:200px;font-size:var(--text-sm);padding:7px 11px;border:1px solid var(--color-border-input);border-radius:var(--radius-md);background:var(--color-bg-surface);color:var(--color-text-primary);font-family:inherit"/>
+      <button class="btn btn-primary" onclick="regKeywordSearch()" style="flex-shrink:0;white-space:nowrap">최신 검색</button>
+      <button class="btn" id="reg-search-clear" onclick="regClearSearch()" style="display:none;flex-shrink:0">✕ 초기화</button>
+    </div>
+
     <!-- 미국 / 한국 2컬럼 -->
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+    <div id="reg-default-view" style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
       <div>
         <div style="font-size:var(--text-sm);font-weight:700;color:var(--color-text-secondary);margin-bottom:8px;padding-bottom:6px;border-bottom:2px solid var(--color-info-bg)">🇺🇸 미국 규제</div>
         <div id="reg-feed-us"><div class="empty" style="font-size:var(--text-sm)">로딩 대기</div></div>
@@ -1046,6 +1055,9 @@ body.admin-mode .admin-only{display:inline-flex!important}
         <div id="reg-feed-kr"><div class="empty" style="font-size:var(--text-sm)">로딩 대기</div></div>
       </div>
     </div>
+
+    <!-- 키워드 검색 결과 (검색 시 2컬럼 대체) -->
+    <div id="reg-search-results" style="display:none"></div>
   </div>
 </div>
 
@@ -4076,6 +4088,51 @@ async function loadRegRSS(){
   txt.textContent=total?'업데이트: '+new Date().toLocaleTimeString('ko-KR'):'로드 실패';
 }
 function renderRegFeed(el,items,emptyMsg){if(!items.length){el.innerHTML=`<div class="empty" style="font-size:var(--text-sm)">${emptyMsg}</div>`;return;}el.innerHTML=items.map(d=>{const t=d.date?new Date(d.date).toLocaleString('ko-KR',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'}):'';return`<div class="reg-card"><div class="reg-head"><div class="reg-title"><a href="${d.link}" target="_blank" rel="noopener" style="color:inherit;text-decoration:none">${d.title}</a></div><span class="reg-status" style="background:${d.bg};color:${d.color}">${d.source}</span></div><div class="reg-body">${d.summary||'내용 없음'}</div><div class="reg-foot"><span>${d.source}</span><span>${t}</span><span style="padding:1px 7px;border-radius:20px;background:${d.bg};color:${d.color}">${d.label}</span></div></div>`;}).join('');}
+
+// ── 규제 키워드 검색 (하이브리드: 즉시 필터 + 최신 RSS 검색) ──
+function _regShowResults(items,label){
+  const dv=document.getElementById('reg-default-view'),rr=document.getElementById('reg-search-results'),cl=document.getElementById('reg-search-clear');
+  if(!rr)return;
+  if(cl)cl.style.display='';
+  if(dv)dv.style.display='none';
+  rr.style.display='';
+  rr.innerHTML=`<div style="font-size:var(--text-sm);font-weight:700;color:var(--color-text-secondary);margin-bottom:8px">🔎 ${escapeHtml(label)} — ${items.length}건</div><div id="reg-results-list"></div>`;
+  renderRegFeed(document.getElementById('reg-results-list'),items,'검색 결과가 없습니다. [최신 검색]으로 새로 조회해보세요.');
+}
+function regClearSearch(){
+  const inp=document.getElementById('reg-search');if(inp)inp.value='';
+  const dv=document.getElementById('reg-default-view'),rr=document.getElementById('reg-search-results'),cl=document.getElementById('reg-search-clear');
+  if(rr){rr.style.display='none';rr.innerHTML='';}
+  if(dv)dv.style.display='';
+  if(cl)cl.style.display='none';
+}
+// 즉시: 이미 로드된 규제정보(regAllItems)를 키워드로 필터
+function regSearchInput(v){
+  const raw=(v||'').trim(),q=raw.toLowerCase();
+  if(!q){regClearSearch();return;}
+  const items=regAllItems.filter(d=>((d.title||'')+' '+(d.summary||'')).toLowerCase().includes(q))
+    .sort((a,b)=>new Date(b.date)-new Date(a.date));
+  _regShowResults(items,`'${raw}' 로드된 규제정보 필터`);
+}
+// 최신: 키워드로 Google News RSS를 새로 조회(한국+미국 규제)
+async function regKeywordSearch(){
+  const inp=document.getElementById('reg-search');const kw=(inp?.value||'').trim();
+  if(!kw)return;
+  const rr=document.getElementById('reg-search-results'),dv=document.getElementById('reg-default-view'),cl=document.getElementById('reg-search-clear');
+  if(dv)dv.style.display='none';if(cl)cl.style.display='';
+  if(rr){rr.style.display='';rr.innerHTML='<div class="empty" style="font-size:var(--text-sm)"><span class="spin">⟳</span> 최신 규제 뉴스 검색 중...</div>';}
+  const krUrl=`https://news.google.com/rss/search?q=${encodeURIComponent(kw+' 규제')}&hl=ko&gl=KR&ceid=KR:ko`;
+  const usUrl=`https://news.google.com/rss/search?q=${encodeURIComponent(kw+' regulation')}&hl=en-US&gl=US&ceid=US:en`;
+  const kf={key:'kw-kr',name:'검색',label:'KR',color:'var(--color-warning-text)',bg:'var(--color-warning-bg)'};
+  const uf={key:'kw-us',name:'검색',label:'US',color:'var(--color-info)',bg:'var(--color-info-bg)'};
+  const res=await Promise.allSettled([
+    _fetchRSSProxy(krUrl).then(x=>_parseRSSItems(x,kf)),
+    _fetchRSSProxy(usUrl).then(x=>_parseRSSItems(x,uf))
+  ]);
+  const items=[];res.forEach(r=>{if(r.status==='fulfilled')items.push(...r.value);});
+  items.sort((a,b)=>new Date(b.date)-new Date(a.date));
+  _regShowResults(items,`'${kw}' 최신 검색`);
+}
 
 // ─ 보유 종목 최신 소식 · AI 키 관리
 function handleAiSummaryBtn(){
