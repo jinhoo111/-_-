@@ -596,8 +596,8 @@ body.admin-mode .admin-only{display:inline-flex!important}
 .report-card{background:var(--color-bg-surface);border:1px solid var(--color-border-default);border-radius:var(--radius-lg);padding:1rem 1.1rem;margin-bottom:1rem}
 .report-title{font-size:var(--text-md);font-weight:700;margin-bottom:10px}
 /* 플로팅 도움말 위젯 */
-#help-fab{position:fixed;right:20px;bottom:24px;z-index:1500;width:48px;height:48px;border-radius:50%;border:none;background:var(--color-accent-primary);color:#fff;font-size:22px;cursor:pointer;box-shadow:0 6px 20px rgba(0,0,0,.22);display:flex;align-items:center;justify-content:center}
-#help-fab:hover{filter:brightness(1.08)}
+#help-fab{position:fixed;right:20px;bottom:24px;z-index:1500;width:48px;height:48px;border-radius:50%;border:none;background:#5f7d99;color:#fff;font-size:22px;cursor:pointer;box-shadow:0 4px 14px rgba(60,80,110,.28);display:flex;align-items:center;justify-content:center;transition:filter .15s}
+#help-fab:hover{filter:brightness(1.06)}
 .help-pop{position:fixed;right:20px;bottom:84px;z-index:1500;width:320px;max-width:calc(100vw - 32px);max-height:70vh;overflow-y:auto;background:var(--color-bg-surface);border:1px solid var(--color-border-default);border-radius:var(--radius-xl);box-shadow:0 16px 48px rgba(0,0,0,.2);padding:16px}
 .help-pop.hidden{display:none}
 .help-pop-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
@@ -3633,7 +3633,7 @@ function renderReport(el){
     </div>
     <div class="report-card"><div class="report-title">📊 목표 대비 실제 수입/지출 (${year})</div>${chart1}</div>
     <div class="report-card"><div class="report-title">📈 연 누적 수입·지출 (${year})</div>${chart2}</div>
-    <div class="report-card"><div class="report-title">⚖️ 몸무게 목표 대비 실제 (최근 6개월)</div>${chart3}</div>`;
+    <div class="report-card"><div class="report-title">⚖️ 건강관리 (최근 6개월)</div>${chart3}</div>`;
   _fillBudgetForm();
 }
 function _fillBudgetForm(){
@@ -4162,6 +4162,8 @@ function toggleHelpSection(k){_helpOpenSec=_helpOpenSec===k?null:k;renderHelpAll
 document.addEventListener('click',function(e){
   const p=document.getElementById('help-pop'),f=document.getElementById('help-fab');
   if(!p||!f||p.classList.contains('hidden'))return;
+  // 아코디언 토글 시 innerHTML 재생성으로 e.target이 DOM에서 분리되면 내부 클릭이었으므로 닫지 않음
+  if(!e.target.isConnected)return;
   if(p.contains(e.target)||f.contains(e.target))return;
   p.classList.add('hidden');
 });
