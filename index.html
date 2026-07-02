@@ -592,6 +592,18 @@ body.admin-mode .admin-only{display:inline-flex!important}
 .ledger-sec{margin-top:12px;padding-top:10px;border-top:1px dashed var(--color-border-default)}
 .ledger-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px;flex-wrap:wrap}
 .ledger-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:5px 0;font-size:var(--text-sm);border-bottom:1px solid var(--color-bg-overlay)}
+/* 플로팅 도움말 위젯 */
+#help-fab{position:fixed;right:20px;bottom:24px;z-index:1500;width:48px;height:48px;border-radius:50%;border:none;background:var(--color-accent-primary);color:#fff;font-size:22px;cursor:pointer;box-shadow:0 6px 20px rgba(0,0,0,.22);display:flex;align-items:center;justify-content:center}
+#help-fab:hover{filter:brightness(1.08)}
+.help-pop{position:fixed;right:20px;bottom:84px;z-index:1500;width:320px;max-width:calc(100vw - 32px);max-height:70vh;overflow-y:auto;background:var(--color-bg-surface);border:1px solid var(--color-border-default);border-radius:var(--radius-xl);box-shadow:0 16px 48px rgba(0,0,0,.2);padding:16px}
+.help-pop.hidden{display:none}
+.help-pop-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.help-x{border:none;background:none;font-size:16px;cursor:pointer;color:var(--color-text-tertiary)}
+.help-divider{height:1px;background:var(--color-border-default);margin:10px 0}
+.help-ctx-box{background:var(--color-accent-bg);border-radius:var(--radius-md);padding:10px 12px}
+.help-sec-title{display:flex;align-items:center;justify-content:space-between;gap:6px;padding:7px 4px;cursor:pointer;font-size:var(--text-sm);font-weight:600;border-top:1px solid var(--color-bg-overlay)}
+.help-tips{font-size:var(--text-sm);color:var(--color-text-secondary);line-height:1.7;padding:2px 4px 8px}
+@media(max-width:768px){#help-fab{bottom:78px}.help-pop{bottom:136px}}
 
 /* Company Card */
 .monitor-card{background:var(--color-bg-surface);border:1px solid var(--color-border-default);border-radius:var(--radius-2xl);padding:1.25rem 1.375rem;margin-bottom:1rem;box-shadow:0 1px 2px rgba(0,0,0,.04);transition:box-shadow .18s ease,border-color .18s ease}
@@ -724,6 +736,17 @@ body.admin-mode .admin-only{display:inline-flex!important}
   <button class="bn-item" data-page="research" onclick="goPage('research',this)"><span class="bn-ico">🔍</span><span class="bn-lbl">리서치</span></button>
   <button class="bn-item" data-page="memo" onclick="goPage('memo',this)"><span class="bn-ico">📓</span><span class="bn-lbl">투자일지</span></button>
 </nav>
+
+<!-- 플로팅 도움말 위젯 -->
+<div id="help-pop" class="help-pop hidden">
+  <div class="help-pop-head"><span style="font-weight:700">❓ 도움말</span><button type="button" onclick="toggleHelp()" class="help-x" aria-label="닫기">✕</button></div>
+  <div id="help-ctx"></div>
+  <div class="help-divider"></div>
+  <div style="font-size:var(--text-xs);color:var(--color-text-tertiary);margin:2px 0 4px">전체 기능 가이드</div>
+  <div id="help-all"></div>
+  <button type="button" class="btn" onclick="toggleHelp();_showOnboarding();" style="width:100%;margin-top:10px">🎬 온보딩 다시 보기</button>
+</div>
+<button id="help-fab" type="button" onclick="toggleHelp()" aria-label="도움말">❓</button>
 
 <!-- ══════════════════════════════════════════
      PAGE 1: 계좌 관리
@@ -1775,11 +1798,11 @@ async function saveProfile(){
 // 같은 브라우저에서 계정 전환 시 이전 계정 데이터가 새 계정으로 새는 것을 방지.
 function _clearLocalUserData(){
   clearTimeout(_syncTimer); // 이전 계정의 지연 동기화가 빈 데이터를 덮어쓰지 않도록 취소
-  stocks=[];memos=[];memoArchive=[];ledger=[];cashKRW=0;cashUSD=0;
+  stocks=[];memos=[];memoArchive=[];ledger=[];health={goal:null,entries:[]};cashKRW=0;cashUSD=0;
   quoteSymbols=['NVDA','AAPL','TSLA','MSFT'];notifyMaster=false;investPhilosophy=[];
   monitorCompanies=[];_monitorCache={};dartKeyStored=false;
   FKEY='';CKEY='';_fhKey='';_dartKey='';
-  ['pf_s','pf_m','pf_ma','pf_ledger','cash_krw','cash_usd','fh_q','pf_notify_master','pf_phil',
+  ['pf_s','pf_m','pf_ma','pf_ledger','pf_health','cash_krw','cash_usd','fh_q','pf_notify_master','pf_phil',
    'monitor_co','pf_is_sample','fhkey_stored','ck_stored','fhkey']
     .forEach(k=>localStorage.removeItem(k));
   _cloudLoadedFor=null;_apiKeysRestoredFor=null;
@@ -1844,6 +1867,10 @@ async function _loadFromCloud(user){
     ledger=data.ledger;
     localStorage.setItem('pf_ledger',JSON.stringify(ledger));
   }
+  if(data.health&&typeof data.health==='object'&&!Array.isArray(data.health)){
+    health={goal:(data.health.goal!=null?data.health.goal:null),entries:Array.isArray(data.health.entries)?data.health.entries:[]};
+    localStorage.setItem('pf_health',JSON.stringify(health));
+  }
   _migrateActiveMemos(); // 활성 일지 제거: 기존 memos를 캘린더/아카이브(memoArchive)로 이관
   if(data.cash_krw!=null){cashKRW=parseFloat(data.cash_krw)||0;localStorage.setItem('cash_krw',cashKRW);}
   if(data.cash_usd!=null){cashUSD=parseFloat(data.cash_usd)||0;localStorage.setItem('cash_usd',cashUSD);}
@@ -1885,6 +1912,7 @@ function _syncToCloud(immediate){
       invest_philosophy:investPhilosophy,
       monitor_companies:monitorCompanies,
       ledger:ledger,
+      health:health,
       updated_at:new Date().toISOString()
     });
     if(error)console.warn('[sync] 클라우드 저장 실패:',error.message);
@@ -2144,6 +2172,7 @@ let investPhilosophy=[];
 try{investPhilosophy=JSON.parse(localStorage.getItem('pf_phil')||'[]')}catch(e){}
 let stocks=[],memos=[],memoArchive=[],memoView='calendar',selTagV='general',memoEditTag='general',archiveTagFilter='all',archiveViewMode='card',FKEY='',newsCat='general',quoteSymbols=['NVDA','AAPL','TSLA','MSFT'],stkFilter='all',stkMarket='all',stkStyle='all',stkSort='',stkSortDir='desc',fxRate=1400;
 let ledger=[];  // 가계부: {id,date:'YYYY-MM-DD',type:'income'|'expense',amount,cat,memo}
+let health={goal:null,entries:[]};  // 몸무게: entries=[{date:'YYYY-MM-DD',kg}], goal=목표kg
 let notifyMaster=localStorage.getItem('pf_notify_master')==='true';
 let monitorCompanies=[],monitorView='card',dartKeyStored=false,_userType='personal',_bizApproved=false,_isAdmin=false,_monitorPollTimer=null,_monitorCache={};
 let _curMode=localStorage.getItem('cur_mode')||'USD';   // 총 평가금액 표시 통화(USD|KRW)
@@ -2193,6 +2222,7 @@ stocks=stocks.map(s=>{
 try{memos=JSON.parse(localStorage.getItem('pf_m')||'[]')}catch(e){}
 try{memoArchive=JSON.parse(localStorage.getItem('pf_ma')||'[]')}catch(e){}
 try{ledger=JSON.parse(localStorage.getItem('pf_ledger')||'[]')}catch(e){}
+try{const _h=JSON.parse(localStorage.getItem('pf_health')||'{}');health={goal:(_h.goal!=null?_h.goal:null),entries:Array.isArray(_h.entries)?_h.entries:[]};}catch(e){}
 _migrateActiveMemos();
 try{FKEY=localStorage.getItem('fhkey_stored')?'***':''}catch(e){}
 try{quoteSymbols=JSON.parse(localStorage.getItem('fh_q')||'["NVDA","AAPL","TSLA","MSFT"]')}catch(e){}
@@ -3482,6 +3512,61 @@ function deleteLedgerEntry(id,d){
   renderMemos();_calSelectedDay=null;selectCalDay(d);
 }
 
+// ── 몸무게 트래킹 (목표 + 등락률 종합) ──────────────────────────
+function _healthByDay(y,mo){
+  const by={},pre=`${y}-${String(mo+1).padStart(2,'0')}`;
+  (health.entries||[]).forEach(e=>{if((e.date||'').startsWith(pre)&&e.kg>0)by[parseInt(e.date.slice(8,10),10)]=e.kg;});
+  return by;
+}
+function _healthStats(y,mo){
+  const pre=`${y}-${String(mo+1).padStart(2,'0')}`;
+  const es=(health.entries||[]).filter(e=>(e.date||'').startsWith(pre)&&e.kg>0).sort((a,b)=>a.date.localeCompare(b.date));
+  if(!es.length)return null;
+  const start=es[0].kg,latest=es[es.length-1].kg,diff=latest-start,pct=start?diff/start*100:0;
+  const dod=es.length>=2?latest-es[es.length-2].kg:null;
+  let goalRemain=null,goalPct=null;
+  if(health.goal!=null){goalRemain=latest-health.goal;if(start!==health.goal)goalPct=Math.max(0,Math.min(100,(start-latest)/(start-health.goal)*100));}
+  return{start,latest,diff,pct,dod,goal:health.goal,goalRemain,goalPct};
+}
+function saveWeight(d){
+  const v=parseFloat(document.getElementById('wt-amt')?.value);
+  if(!v||v<=0){const a=document.getElementById('wt-amt');if(a)a.focus();return;}
+  const date=_ymd(_calYear,_calMonth,d);
+  health.entries=(health.entries||[]).filter(e=>e.date!==date); // 하루 1건(갱신)
+  health.entries.push({date,kg:Math.round(v*10)/10});
+  localStorage.setItem('pf_health',JSON.stringify(health));_syncToCloud();
+  renderMemos();_calSelectedDay=null;selectCalDay(d);
+}
+function deleteWeight(d){
+  const date=_ymd(_calYear,_calMonth,d);
+  health.entries=(health.entries||[]).filter(e=>e.date!==date);
+  localStorage.setItem('pf_health',JSON.stringify(health));_syncToCloud();
+  renderMemos();_calSelectedDay=null;selectCalDay(d);
+}
+function saveWeightGoal(){
+  const v=parseFloat(document.getElementById('wt-goal')?.value);
+  health.goal=(v&&v>0)?Math.round(v*10)/10:null;
+  localStorage.setItem('pf_health',JSON.stringify(health));_syncToCloud();
+  renderMemos();
+}
+function _renderWeightSection(d){
+  const date=_ymd(_calYear,_calMonth,d);
+  const cur=(health.entries||[]).find(e=>e.date===date);
+  const before=(health.entries||[]).filter(e=>e.date<date&&e.kg>0).sort((a,b)=>a.date.localeCompare(b.date));
+  const prevKg=before.length?before[before.length-1].kg:null;
+  let dodHtml='';
+  if(cur&&prevKg!=null){const dd=cur.kg-prevKg;dodHtml=`<span class="${dd<=0?'up':'down'}" style="font-size:var(--text-sm);font-weight:700">전일 대비 ${dd>=0?'+':''}${dd.toFixed(1)}kg</span>`;}
+  return `<div class="ledger-sec">
+    <div class="ledger-head"><span style="font-weight:700">⚖️ 몸무게</span></div>
+    <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+      <input id="wt-amt" type="number" step="0.1" min="0" placeholder="kg" value="${cur?cur.kg:''}" style="width:100px;font-size:var(--text-base);padding:5px 8px;border:1px solid var(--color-border-input);border-radius:7px;font-family:inherit;color:var(--color-text-primary)"/>
+      <button type="button" onclick="saveWeight(${d})" style="font-size:var(--text-sm);padding:5px 14px;border:1px solid var(--color-accent-border-soft);border-radius:6px;background:var(--color-accent-subtle);cursor:pointer;color:var(--color-accent-indigo);font-weight:700">저장</button>
+      ${cur?`<button type="button" onclick="deleteWeight(${d})" class="mc-text-btn" style="color:var(--color-error)">삭제</button>`:''}
+      ${dodHtml}
+    </div>
+  </div>`;
+}
+
 function renderArchiveCalendar(el){
   const today=new Date();
   const y=_calYear,mo=_calMonth;
@@ -3513,6 +3598,9 @@ function renderArchiveCalendar(el){
   // 날짜별 가계부 + 월 합계
   const byLedger=_ledgerByDay(y,mo);
   const _lt=_ledgerMonthTotals(y,mo);
+  // 몸무게 월 통계 + 일별
+  const _ws=_healthStats(y,mo);
+  const wByDay=_healthByDay(y,mo);
 
   const DOW=['일','월','화','수','목','금','토'];
   const dowHtml=DOW.map(d=>`<div class="arc-cal-dow">${d}</div>`).join('');
@@ -3524,7 +3612,8 @@ function renderArchiveCalendar(el){
     const dayEvents=byEvents[d]||[];
     const dl=byLedger[d]||[];
     let dexp=0,dinc=0;dl.forEach(e=>{if(e.type==='income')dinc+=(+e.amount||0);else dexp+=(+e.amount||0);});
-    const hasAny=dayMemos.length||dayEvents.length||dl.length;
+    const wkg=wByDay[d];
+    const hasAny=dayMemos.length||dayEvents.length||dl.length||wkg;
     const isToday=today.getFullYear()===y&&today.getMonth()===mo&&today.getDate()===d;
     const dow=(firstDay+d-1)%7;
     const cls=['arc-cal-day','clickable',hasAny?'has-memo':'',isToday?'today':'',dow===0?'sun':dow===6?'sat':''].filter(Boolean).join(' ');
@@ -3543,15 +3632,27 @@ function renderArchiveCalendar(el){
     let ledgerChip='';
     if(dexp>0)ledgerChip=`<span class="arc-tag-chip" style="background:var(--color-error-bg);color:var(--color-error-text)">💸 ${_fmtWon(dexp)}</span>`;
     else if(dinc>0)ledgerChip=`<span class="arc-tag-chip" style="background:var(--color-success-bg);color:var(--color-success-text)">💰 ${_fmtWon(dinc)}</span>`;
+    const weightChip=wkg?`<span class="arc-tag-chip" style="background:var(--color-info-bg);color:var(--color-info)">⚖️ ${wkg}</span>`:'';
 
     cells.push(`<div class="${cls}" id="cal-day-${d}" onclick="selectCalDay(${d})">
       <span class="arc-cal-num">${d}</span>
-      <div>${evChips}${memoChips}${ledgerChip}</div>
+      <div>${evChips}${memoChips}${ledgerChip}${weightChip}</div>
     </div>`);
   }
 
   const netCls=_lt.net>=0?'up':'down';
   const summaryBar=`<div class="ledger-summary">💰 이번 달 수입 <b class="up">${_fmtWon(_lt.inc)}</b> · 지출 <b class="down">${_fmtWon(_lt.exp)}</b> · 순액 <b class="${netCls}">${_lt.net>=0?'+':'-'}${_fmtWon(_lt.net)}</b></div>`;
+  // 몸무게 요약(등락률 종합) + 목표 설정
+  const goalVal=health.goal!=null?health.goal:'';
+  const sgn=v=>v>=0?'+':'';
+  let wLine;
+  if(_ws){
+    let g='';
+    if(_ws.goal!=null)g=` · 🎯 목표 ${_ws.goal}까지 ${Math.abs(_ws.goalRemain).toFixed(1)}kg`+(_ws.goalPct!=null?` (진행 ${Math.round(_ws.goalPct)}%)`:'');
+    const dod=_ws.dod!=null?` · 전일 ${sgn(_ws.dod)}${_ws.dod.toFixed(1)}`:'';
+    wLine=`⚖️ 시작 ${_ws.start} → 현재 ${_ws.latest} <b class="${_ws.diff<=0?'up':'down'}">(${sgn(_ws.diff)}${_ws.diff.toFixed(1)}kg, ${sgn(_ws.pct)}${_ws.pct.toFixed(1)}%)</b>${g}${dod}`;
+  }else wLine='⚖️ 이번 달 몸무게 기록이 없습니다. 날짜를 눌러 기록하세요.';
+  const weightBar=`<div class="ledger-summary">${wLine} <span style="white-space:nowrap;margin-left:6px">🎯 목표 <input id="wt-goal" type="number" step="0.1" min="0" value="${goalVal}" style="width:64px;font-size:var(--text-xs);padding:2px 6px;border:1px solid var(--color-border-input);border-radius:6px;font-family:inherit"/> <button onclick="saveWeightGoal()" class="mc-text-btn">설정</button></span></div>`;
 
   el.innerHTML=`
     <div class="arc-cal-nav">
@@ -3560,6 +3661,7 @@ function renderArchiveCalendar(el){
       <button onclick="moveCalMonth(1)">&#8250;</button>
     </div>
     ${summaryBar}
+    ${weightBar}
     <div class="arc-cal-grid">${dowHtml}${cells.join('')}</div>
     <div id="arc-cal-detail"></div>`;
 }
@@ -3655,6 +3757,7 @@ function _renderCalDetail(d){
       </div>`;
     }).join('')}
     ${_renderLedgerSection(d)}
+    ${_renderWeightSection(d)}
   </div>`;
 }
 
@@ -3943,7 +4046,43 @@ function goPage(name,btn){
     if(tabBtn)swInner(savedTab,'research',tabBtn);
     if(!regAllItems.length){if(!_loadRegCache())loadRegRSS();}
   }
+  if(!document.getElementById('help-pop')?.classList.contains('hidden'))renderHelpContext();
 }
+
+// ── 플로팅 도움말 위젯 ──────────────────────────────────────────
+const HELP_CONTENT={
+  portfolio:{label:'📊 투자 종목 관리',tips:['종목 추가/편집·삭제로 보유·매수·관심 종목 관리','총 평가금액은 $ / ₩ 토글로 환율 기준 전환','현금(원화/달러) 입력 시 총자산에 반영']},
+  monitor:{label:'📈 기업 모니터링',tips:['경쟁사(상장사) 종목코드로 등록','🛰️ 레이더: 공시를 전략 시그널로 자동 분류·조기경보','팀 메모는 투자 일지 캘린더에도 자동 표시']},
+  indices:{label:'📉 지수·환율',tips:['주요 지수·환율을 한눈에','설정에서 표시 항목 선택']},
+  news:{label:'📰 뉴스',tips:['시장/종목별 뉴스, 월가 레이팅, 실시간 시세','기업 계정은 관리자 공용 키로 자동 연결']},
+  research:{label:'🔍 리서치·규제',tips:['규제기관 RSS 실시간 모니터링','키워드로 최신 규제 뉴스 검색']},
+  memo:{label:'📓 투자 일지',tips:['캘린더 날짜에 일지 작성·편집','💰 가계부(수입/지출)와 ⚖️ 몸무게를 함께 기록','어닝콜·FOMC 등 주요 일정 자동 표시']},
+  security:{label:'🛡️ 보안 (관리자)',tips:['이상행위 이벤트 모니터링','공용 시장 일정 관리']}
+};
+let _helpOpenSec=null;
+function _curPageKey(){const on=document.querySelector('.page.on');return on?on.id.replace('page-',''):(localStorage.getItem('cur_page')||'portfolio');}
+function toggleHelp(){
+  const p=document.getElementById('help-pop');if(!p)return;
+  const willOpen=p.classList.contains('hidden');
+  p.classList.toggle('hidden');
+  if(willOpen){renderHelpContext();renderHelpAll();}
+}
+function renderHelpContext(){
+  const el=document.getElementById('help-ctx');if(!el)return;
+  const c=HELP_CONTENT[_curPageKey()]||HELP_CONTENT.portfolio;
+  el.innerHTML=`<div class="help-ctx-box"><div style="font-weight:700;font-size:var(--text-sm);margin-bottom:4px">📍 이 페이지 · ${c.label}</div><div class="help-tips" style="padding-bottom:0">${c.tips.map(t=>'· '+t).join('<br>')}</div></div>`;
+}
+function renderHelpAll(){
+  const el=document.getElementById('help-all');if(!el)return;
+  el.innerHTML=Object.entries(HELP_CONTENT).map(([k,c])=>`<div class="help-sec-title" onclick="toggleHelpSection('${k}')"><span>${c.label}</span><span>${_helpOpenSec===k?'▾':'▸'}</span></div>${_helpOpenSec===k?`<div class="help-tips">${c.tips.map(t=>'· '+t).join('<br>')}</div>`:''}`).join('');
+}
+function toggleHelpSection(k){_helpOpenSec=_helpOpenSec===k?null:k;renderHelpAll();}
+document.addEventListener('click',function(e){
+  const p=document.getElementById('help-pop'),f=document.getElementById('help-fab');
+  if(!p||!f||p.classList.contains('hidden'))return;
+  if(p.contains(e.target)||f.contains(e.target))return;
+  p.classList.add('hidden');
+});
 
 function swInner(panel,page,btn){
   const prefix=`ip-${page}-`;
