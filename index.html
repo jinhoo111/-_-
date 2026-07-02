@@ -592,6 +592,9 @@ body.admin-mode .admin-only{display:inline-flex!important}
 .ledger-sec{margin-top:12px;padding-top:10px;border-top:1px dashed var(--color-border-default)}
 .ledger-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px;flex-wrap:wrap}
 .ledger-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:5px 0;font-size:var(--text-sm);border-bottom:1px solid var(--color-bg-overlay)}
+/* 리포트 차트 카드 */
+.report-card{background:var(--color-bg-surface);border:1px solid var(--color-border-default);border-radius:var(--radius-lg);padding:1rem 1.1rem;margin-bottom:1rem}
+.report-title{font-size:var(--text-md);font-weight:700;margin-bottom:10px}
 /* 플로팅 도움말 위젯 */
 #help-fab{position:fixed;right:20px;bottom:24px;z-index:1500;width:48px;height:48px;border-radius:50%;border:none;background:var(--color-accent-primary);color:#fff;font-size:22px;cursor:pointer;box-shadow:0 6px 20px rgba(0,0,0,.22);display:flex;align-items:center;justify-content:center}
 #help-fab:hover{filter:brightness(1.08)}
@@ -1099,6 +1102,7 @@ body.admin-mode .admin-only{display:inline-flex!important}
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.75rem">
     <div class="memo-view-tabs">
       <button class="memo-vtab active" id="vtab-calendar"   onclick="switchMemoView('calendar')">📅 캘린더</button>
+      <button class="memo-vtab"        id="vtab-report"     onclick="switchMemoView('report')">📊 리포트</button>
       <button class="memo-vtab"        id="vtab-archive"    onclick="switchMemoView('archive')">아카이브</button>
       <button class="memo-vtab"        id="vtab-philosophy" onclick="switchMemoView('philosophy')">투자 철학</button>
     </div>
@@ -1284,13 +1288,8 @@ let _apiKeysRestoredFor=null; // _restoreApiKeyState 중복 호출 방지(로그
 //   조용히 떨어지지 않도록 보장.
 async function _fetchProfileRow(){
   const sel='onboarding_done,user_type,business_approved';
-  try{
-    const r=await Promise.race([
-      _sb.from('user_profiles').select(sel).eq('user_id',_currentUser.id).single(),
-      new Promise((_,rej)=>setTimeout(()=>rej(new Error('sb_timeout')),4000))
-    ]);
-    if(r&&!r.error&&r.data)return r.data;
-  }catch(e){}
+  // REST 직접 호출 우선 — supabase-js .from()은 이 환경서 교착 위험이라 4s 타임아웃 낭비.
+  // (교착 우회 원칙 유지: init 경로는 REST만 사용)
   try{
     const res=await fetch(`${SUPA_BASE}/rest/v1/user_profiles?select=${sel}&user_id=eq.${_currentUser.id}`,
       {headers:{apikey:SUPA_KEY,Authorization:'Bearer '+(_currentSession?.access_token||SUPA_KEY)}});
@@ -1319,7 +1318,7 @@ async function _restUpsert(table,row){
   }catch(e){return{error:{message:String(e)}};}
 }
 // getSession()이 교착돼도 onAuthStateChange가 유지하는 _currentSession으로 폴백.
-async function _safeGetSession(ms=3000){
+async function _safeGetSession(ms=800){
   try{
     const r=await Promise.race([_sb.auth.getSession(),new Promise(res=>setTimeout(()=>res(null),ms))]);
     if(r&&r.data&&r.data.session)_currentSession=r.data.session;
@@ -1798,11 +1797,11 @@ async function saveProfile(){
 // 같은 브라우저에서 계정 전환 시 이전 계정 데이터가 새 계정으로 새는 것을 방지.
 function _clearLocalUserData(){
   clearTimeout(_syncTimer); // 이전 계정의 지연 동기화가 빈 데이터를 덮어쓰지 않도록 취소
-  stocks=[];memos=[];memoArchive=[];ledger=[];health={goal:null,entries:[]};cashKRW=0;cashUSD=0;
+  stocks=[];memos=[];memoArchive=[];ledger=[];health={goal:null,entries:[]};budget={};cashKRW=0;cashUSD=0;
   quoteSymbols=['NVDA','AAPL','TSLA','MSFT'];notifyMaster=false;investPhilosophy=[];
   monitorCompanies=[];_monitorCache={};dartKeyStored=false;
   FKEY='';CKEY='';_fhKey='';_dartKey='';
-  ['pf_s','pf_m','pf_ma','pf_ledger','pf_health','cash_krw','cash_usd','fh_q','pf_notify_master','pf_phil',
+  ['pf_s','pf_m','pf_ma','pf_ledger','pf_health','pf_budget','cash_krw','cash_usd','fh_q','pf_notify_master','pf_phil',
    'monitor_co','pf_is_sample','fhkey_stored','ck_stored','fhkey']
     .forEach(k=>localStorage.removeItem(k));
   _cloudLoadedFor=null;_apiKeysRestoredFor=null;
@@ -1871,6 +1870,9 @@ async function _loadFromCloud(user){
     health={goal:(data.health.goal!=null?data.health.goal:null),entries:Array.isArray(data.health.entries)?data.health.entries:[]};
     localStorage.setItem('pf_health',JSON.stringify(health));
   }
+  if(data.budget&&typeof data.budget==='object'&&!Array.isArray(data.budget)){
+    budget=data.budget;localStorage.setItem('pf_budget',JSON.stringify(budget));
+  }
   _migrateActiveMemos(); // 활성 일지 제거: 기존 memos를 캘린더/아카이브(memoArchive)로 이관
   if(data.cash_krw!=null){cashKRW=parseFloat(data.cash_krw)||0;localStorage.setItem('cash_krw',cashKRW);}
   if(data.cash_usd!=null){cashUSD=parseFloat(data.cash_usd)||0;localStorage.setItem('cash_usd',cashUSD);}
@@ -1913,6 +1915,7 @@ function _syncToCloud(immediate){
       monitor_companies:monitorCompanies,
       ledger:ledger,
       health:health,
+      budget:budget,
       updated_at:new Date().toISOString()
     });
     if(error)console.warn('[sync] 클라우드 저장 실패:',error.message);
@@ -1941,9 +1944,8 @@ _sb.auth.onAuthStateChange(async(event,session)=>{
       _bizApproved=!!(prof.user_type==='business'&&prof.business_approved);
       _isAdmin=(_currentUser?.email==='wlsgn1878@naver.com');
       applyUserTypeUI(_userType);
-      await _loadFromCloud(_currentUser);
-      // 서버 저장 API 키(DART/Finnhub 등) 자동 복원 — 포트폴리오 로드와 분리해 항상 실행
-      await _restoreApiKeyState();
+      // 클라우드 로드 + API 키 복원 병렬(독립). _cloudLoadedFor/_apiKeysRestoredFor가 중복 호출 방지
+      await Promise.all([_loadFromCloud(_currentUser),_restoreApiKeyState()]);
     }
   }else if(event==='SIGNED_OUT'){
     _currentUser=null;
@@ -2173,6 +2175,7 @@ try{investPhilosophy=JSON.parse(localStorage.getItem('pf_phil')||'[]')}catch(e){
 let stocks=[],memos=[],memoArchive=[],memoView='calendar',selTagV='general',memoEditTag='general',archiveTagFilter='all',archiveViewMode='card',FKEY='',newsCat='general',quoteSymbols=['NVDA','AAPL','TSLA','MSFT'],stkFilter='all',stkMarket='all',stkStyle='all',stkSort='',stkSortDir='desc',fxRate=1400;
 let ledger=[];  // 가계부: {id,date:'YYYY-MM-DD',type:'income'|'expense',amount,cat,memo}
 let health={goal:null,entries:[]};  // 몸무게: entries=[{date:'YYYY-MM-DD',kg}], goal=목표kg
+let budget={};  // 월별 예산: {'YYYY-MM':{income,expense}} (목표 대비 실제 비교용)
 let notifyMaster=localStorage.getItem('pf_notify_master')==='true';
 let monitorCompanies=[],monitorView='card',dartKeyStored=false,_userType='personal',_bizApproved=false,_isAdmin=false,_monitorPollTimer=null,_monitorCache={};
 let _curMode=localStorage.getItem('cur_mode')||'USD';   // 총 평가금액 표시 통화(USD|KRW)
@@ -2223,6 +2226,7 @@ try{memos=JSON.parse(localStorage.getItem('pf_m')||'[]')}catch(e){}
 try{memoArchive=JSON.parse(localStorage.getItem('pf_ma')||'[]')}catch(e){}
 try{ledger=JSON.parse(localStorage.getItem('pf_ledger')||'[]')}catch(e){}
 try{const _h=JSON.parse(localStorage.getItem('pf_health')||'{}');health={goal:(_h.goal!=null?_h.goal:null),entries:Array.isArray(_h.entries)?_h.entries:[]};}catch(e){}
+try{const _b=JSON.parse(localStorage.getItem('pf_budget')||'{}');budget=(_b&&typeof _b==='object'&&!Array.isArray(_b))?_b:{};}catch(e){}
 _migrateActiveMemos();
 try{FKEY=localStorage.getItem('fhkey_stored')?'***':''}catch(e){}
 try{quoteSymbols=JSON.parse(localStorage.getItem('fh_q')||'["NVDA","AAPL","TSLA","MSFT"]')}catch(e){}
@@ -3017,6 +3021,7 @@ function addMemo(){
 function switchMemoView(view){
   memoView=view;
   const calTab=document.getElementById('vtab-calendar');if(calTab)calTab.classList.toggle('active',view==='calendar');
+  document.getElementById('vtab-report')?.classList.toggle('active',view==='report');
   document.getElementById('vtab-archive').classList.toggle('active',view==='archive');
   document.getElementById('vtab-philosophy').classList.toggle('active',view==='philosophy');
   const filterRow=document.getElementById('archive-filter-row');
@@ -3048,6 +3053,7 @@ function renderMemos(){
   const el=document.getElementById('memo-list');
   if(memoView==='archive'){renderArchive(el);return;}
   if(memoView==='philosophy'){renderPhilosophy(el);return;}
+  if(memoView==='report'){renderReport(el);return;}
   if(memoView==='calendar'){renderArchiveCalendar(el);return;}
   if(!memos.length){
     el.innerHTML='<div style="color:var(--color-text-tertiary);font-size:var(--text-md);padding:.5rem 0">첫 투자 일지를 남겨보세요.</div>';
@@ -3565,6 +3571,82 @@ function _renderWeightSection(d){
       ${dodHtml}
     </div>
   </div>`;
+}
+
+// ══════════════════════════════════════════════════════════════
+// 📊 리포트: 경량 SVG 선차트 (가계부 목표 대비 실제·연 누적 / 몸무게)
+// ══════════════════════════════════════════════════════════════
+function _lineChartSVG(o){
+  const w=o.w||520,h=o.h||220,padL=48,padR=14,padT=14,padB=26;
+  const xs=o.xLabels||[],n=xs.length,iw=w-padL-padR,ih=h-padT-padB;
+  let ys=[];o.series.forEach(s=>s.points.forEach(p=>{if(p!=null&&isFinite(p))ys.push(p);}));(o.hlines||[]).forEach(l=>ys.push(l.y));
+  if(!ys.length)return `<div style="font-size:var(--text-sm);color:var(--color-text-tertiary);padding:24px 0;text-align:center">표시할 데이터가 없습니다.</div>`;
+  let ymin=Math.min(...ys),ymax=Math.max(...ys);
+  if(o.zeroBased)ymin=Math.min(0,ymin);
+  if(ymin===ymax){ymax=ymin+1;ymin=ymin-1;}
+  const gap=(ymax-ymin)*0.1;ymax+=gap;if(!(o.zeroBased&&ymin===0))ymin-=gap;
+  const X=i=>padL+(n<=1?iw/2:iw*i/(n-1)),Y=v=>padT+ih-(ih*(v-ymin)/(ymax-ymin));
+  let grid='';for(let g=0;g<=4;g++){const v=ymin+(ymax-ymin)*g/4,yy=Y(v);grid+=`<line x1="${padL}" y1="${yy}" x2="${w-padR}" y2="${yy}" stroke="var(--color-border-default)" stroke-width="0.5"/><text x="${padL-6}" y="${yy+3}" text-anchor="end" font-size="9" fill="var(--color-text-tertiary)">${o.fmtY?o.fmtY(v):Math.round(v)}</text>`;}
+  let xlab='';xs.forEach((l,i)=>{xlab+=`<text x="${X(i)}" y="${h-8}" text-anchor="middle" font-size="9" fill="var(--color-text-tertiary)">${escapeHtml(l)}</text>`;});
+  let hl='';(o.hlines||[]).forEach(l=>{const yy=Y(l.y);hl+=`<line x1="${padL}" y1="${yy}" x2="${w-padR}" y2="${yy}" stroke="${l.color}" stroke-width="1.2" stroke-dasharray="5 4"/><text x="${w-padR}" y="${yy-3}" text-anchor="end" font-size="9" fill="${l.color}">${escapeHtml(l.label)}</text>`;});
+  let lines='';o.series.forEach(s=>{
+    const pts=s.points.map((p,i)=>p!=null&&isFinite(p)?`${X(i)},${Y(p)}`:null).filter(Boolean).join(' ');
+    if(pts)lines+=`<polyline points="${pts}" fill="none" stroke="${s.color}" stroke-width="2" ${s.dashed?'stroke-dasharray="4 3"':''} stroke-linejoin="round"/>`;
+    s.points.forEach((p,i)=>{if(p!=null&&isFinite(p))lines+=`<circle cx="${X(i)}" cy="${Y(p)}" r="2.4" fill="${s.color}"/>`;});
+  });
+  const legend=o.series.map(s=>`<span style="display:inline-flex;align-items:center;gap:4px;margin-right:10px;font-size:var(--text-xs)"><span style="width:14px;border-top:2px ${s.dashed?'dashed':'solid'} ${s.color};display:inline-block"></span>${escapeHtml(s.label)}</span>`).join('');
+  return `<div style="overflow-x:auto"><svg viewBox="0 0 ${w} ${h}" width="100%" style="max-width:${w}px;height:auto">${grid}${hl}${lines}${xlab}</svg></div><div style="margin-top:4px">${legend}</div>`;
+}
+function renderReport(el){
+  const now=new Date(),year=_calYear||now.getFullYear();
+  const mLabels=['1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월','12월'];
+  const actExp=[],actInc=[],tgtExp=[],tgtInc=[];
+  for(let mo=0;mo<12;mo++){const t=_ledgerMonthTotals(year,mo);actExp.push(t.exp);actInc.push(t.inc);
+    const b=budget[`${year}-${String(mo+1).padStart(2,'0')}`]||{};tgtExp.push(b.expense!=null?+b.expense:null);tgtInc.push(b.income!=null?+b.income:null);}
+  let ce=0,ci=0;const cumExp=actExp.map(v=>ce+=v),cumInc=actInc.map(v=>ci+=v);
+  const fmtMan=v=>'₩'+Math.round(v/10000).toLocaleString()+'만';
+  const chart1=_lineChartSVG({xLabels:mLabels,zeroBased:true,fmtY:fmtMan,series:[
+    {label:'실제 지출',color:'var(--color-error-text)',points:actExp},
+    {label:'목표 지출',color:'var(--color-error-text)',points:tgtExp,dashed:true},
+    {label:'실제 수입',color:'var(--color-success-text)',points:actInc},
+    {label:'목표 수입',color:'var(--color-success-text)',points:tgtInc,dashed:true}]});
+  const chart2=_lineChartSVG({xLabels:mLabels,zeroBased:true,fmtY:fmtMan,series:[
+    {label:'누적 수입',color:'var(--color-success-text)',points:cumInc},
+    {label:'누적 지출',color:'var(--color-error-text)',points:cumExp}]});
+  const wLabels=[],wActual=[];
+  for(let k=5;k>=0;k--){const d=new Date(now.getFullYear(),now.getMonth()-k,1),ym=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+    wLabels.push(`${d.getMonth()+1}월`);
+    const es=(health.entries||[]).filter(e=>(e.date||'').startsWith(ym)&&e.kg>0).sort((a,b)=>a.date.localeCompare(b.date));
+    wActual.push(es.length?es[es.length-1].kg:null);}
+  const chart3=_lineChartSVG({xLabels:wLabels,fmtY:v=>v.toFixed(1),series:[{label:'실제 몸무게',color:'var(--color-info)',points:wActual}],hlines:health.goal!=null?[{y:health.goal,label:'🎯 목표 '+health.goal,color:'var(--color-accent-indigo)'}]:[]});
+  const curIdx=(now.getFullYear()===year?now.getMonth():0);
+  const monthOpts=mLabels.map((l,i)=>`<option value="${year}-${String(i+1).padStart(2,'0')}"${i===curIdx?' selected':''}>${year}.${i+1}월</option>`).join('');
+  el.innerHTML=`
+    <div class="report-card">
+      <div class="report-title">🎯 월별 예산(목표) 설정</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+        <select id="bg-month" onchange="_fillBudgetForm()" style="font-size:var(--text-base);padding:5px 8px;border:1px solid var(--color-border-input);border-radius:7px;font-family:inherit;color:var(--color-text-primary)">${monthOpts}</select>
+        <input id="bg-income" type="number" min="0" placeholder="수입 목표(원)" style="width:130px;font-size:var(--text-base);padding:5px 8px;border:1px solid var(--color-border-input);border-radius:7px;font-family:inherit;color:var(--color-text-primary)"/>
+        <input id="bg-expense" type="number" min="0" placeholder="지출 목표(원)" style="width:130px;font-size:var(--text-base);padding:5px 8px;border:1px solid var(--color-border-input);border-radius:7px;font-family:inherit;color:var(--color-text-primary)"/>
+        <button class="btn btn-primary" onclick="saveBudget()">저장</button>
+      </div>
+    </div>
+    <div class="report-card"><div class="report-title">📊 목표 대비 실제 수입/지출 (${year})</div>${chart1}</div>
+    <div class="report-card"><div class="report-title">📈 연 누적 수입·지출 (${year})</div>${chart2}</div>
+    <div class="report-card"><div class="report-title">⚖️ 몸무게 목표 대비 실제 (최근 6개월)</div>${chart3}</div>`;
+  _fillBudgetForm();
+}
+function _fillBudgetForm(){
+  const ym=document.getElementById('bg-month')?.value;if(!ym)return;
+  const b=budget[ym]||{},i=document.getElementById('bg-income'),e=document.getElementById('bg-expense');
+  if(i)i.value=b.income!=null?b.income:'';if(e)e.value=b.expense!=null?b.expense:'';
+}
+function saveBudget(){
+  const ym=document.getElementById('bg-month')?.value;if(!ym)return;
+  const inc=parseFloat(document.getElementById('bg-income')?.value),exp=parseFloat(document.getElementById('bg-expense')?.value);
+  budget[ym]={income:(inc>=0?Math.round(inc):null),expense:(exp>=0?Math.round(exp):null)};
+  localStorage.setItem('pf_budget',JSON.stringify(budget));_syncToCloud();
+  renderMemos();
 }
 
 function renderArchiveCalendar(el){
@@ -5919,6 +6001,8 @@ if(stocks.length)fetchPrices().then(()=>checkAndAutoFetch());
 else checkAndAutoFetch();
 setInterval(checkAndAutoFetch,60000);
 // ─ Auth 세션 확인 → 페이지 복원 순서 보장 (Finnhub가 user JWT 필요하므로 세션 확인 이후 복원)
+// 새로고침 즉시성: 로그인/클라우드 로드를 기다리지 않고 localStorage 캐시로 먼저 렌더
+try{renderStocks();renderMemos();updateCashDisplay();}catch(e){}
 (async()=>{
   const session=await _safeGetSession();
   if(session?.user){
@@ -5934,9 +6018,8 @@ setInterval(checkAndAutoFetch,60000);
       _bizApproved=!!(prof.user_type==='business'&&prof.business_approved);
       _isAdmin=(_currentUser?.email==='wlsgn1878@naver.com');
       applyUserTypeUI(_userType);
-      await _loadFromCloud(_currentUser);
-      // 서버 저장 API 키(DART/Finnhub 등) 자동 복원 — 포트폴리오 로드와 분리해 항상 실행
-      await _restoreApiKeyState();
+      // 클라우드 로드 + API 키 복원 병렬(독립) — 순차 await 제거로 체감 단축
+      await Promise.all([_loadFromCloud(_currentUser),_restoreApiKeyState()]);
     }
   }
   if(CKEY){
