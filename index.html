@@ -1734,8 +1734,34 @@ async function saveProfile(){
 // ════════════════════════════════════════
 // 데이터 동기화 (Cloud ↔ Local)
 // ════════════════════════════════════════
+// 계정 격리: 로컬(메모리+localStorage) 사용자 데이터를 모두 비운다.
+// 같은 브라우저에서 계정 전환 시 이전 계정 데이터가 새 계정으로 새는 것을 방지.
+function _clearLocalUserData(){
+  clearTimeout(_syncTimer); // 이전 계정의 지연 동기화가 빈 데이터를 덮어쓰지 않도록 취소
+  stocks=[];memos=[];memoArchive=[];cashKRW=0;cashUSD=0;
+  quoteSymbols=['NVDA','AAPL','TSLA','MSFT'];notifyMaster=false;investPhilosophy=[];
+  monitorCompanies=[];_monitorCache={};dartKeyStored=false;
+  FKEY='';CKEY='';_fhKey='';_dartKey='';
+  ['pf_s','pf_m','pf_ma','cash_krw','cash_usd','fh_q','pf_notify_master','pf_phil',
+   'monitor_co','pf_is_sample','fhkey_stored','ck_stored','fhkey']
+    .forEach(k=>localStorage.removeItem(k));
+  _cloudLoadedFor=null;_apiKeysRestoredFor=null;
+  // 이전 계정 화면 잔상 즉시 제거 + 키 입력 UI 초기화
+  try{renderStocks();renderMemos();updateCashDisplay();}catch(e){}
+  try{if(document.getElementById('monitor-cards'))renderMonitorCompanies();}catch(e){}
+  const _i=document.getElementById('api-key-input');if(_i)_i.value='';
+  const _c=document.getElementById('clear-btn');if(_c)_c.style.display='none';
+  const _l=document.getElementById('monitor-dart-key-label');if(_l)_l.textContent='····';
+  const _d=document.getElementById('pn-ai-dot');if(_d)_d.style.display='none';
+}
+
 async function _loadFromCloud(user){
   if(!user)return;
+  // 계정 격리 가드: 로컬 데이터 소유자가 다른 계정이면 로드 전에 초기화(누수 방지).
+  // owner가 없으면(첫 로그인/비로그인 게스트 데이터) 지우지 않고 기존 업로드 로직에 맡긴다.
+  const _owner=localStorage.getItem('data_owner');
+  if(_owner&&_owner!==user.id)_clearLocalUserData();
+  localStorage.setItem('data_owner',user.id);
   if(_cloudLoadedFor===user.id)return; // 중복 로드 방지
   _cloudLoadedFor=user.id;
   let data=null;
@@ -1844,6 +1870,8 @@ _sb.auth.onAuthStateChange(async(event,session)=>{
     _currentSession=null;
     _cloudLoadedFor=null;
     _apiKeysRestoredFor=null;
+    _clearLocalUserData();              // 계정 격리: 로그아웃 시 로컬 데이터 완전 삭제
+    localStorage.removeItem('data_owner');
     _resetToLoggedOutUI();
     _updateNavAuth(null);
   }
