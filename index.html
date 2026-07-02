@@ -571,6 +571,20 @@ body.admin-mode .admin-only{display:inline-flex!important}
 .radar-corp{font-weight:700;font-size:var(--text-sm)}
 .radar-title{font-size:var(--text-sm);color:var(--color-text-secondary);flex:1;min-width:120px}
 .radar-brief{margin:6px 0 2px 34px;padding:8px 10px;background:var(--color-bg-muted);border-radius:var(--radius-md);font-size:var(--text-xs);color:var(--color-text-secondary);line-height:1.7;white-space:normal}
+/* 통화 토글 */
+.cur-seg{display:inline-flex;border:1px solid var(--color-border);border-radius:6px;overflow:hidden;vertical-align:middle;margin-left:6px}
+.cur-seg-btn{border:none;background:var(--color-bg-muted);color:var(--color-text-tertiary);font-size:var(--text-xs);font-weight:700;padding:1px 8px;cursor:pointer;font-family:inherit}
+.cur-seg-btn.on{background:var(--color-info);color:#fff}
+/* 홈 경쟁사 브리핑 카드 */
+.cbrief{background:var(--color-bg-surface);border:1px solid var(--color-border-default);border-radius:var(--radius-2xl);padding:1.1rem 1.25rem;margin-bottom:1.25rem;box-shadow:var(--shadow-card)}
+.cbrief-head{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px}
+.cbrief-title{font-weight:700;font-size:var(--text-md)}
+.pro-badge{font-size:var(--text-2xs);font-weight:700;padding:2px 7px;border-radius:20px;background:linear-gradient(90deg,#7c3aed,#4f46e5);color:#fff}
+.cbrief-sub{font-size:var(--text-xs);color:var(--color-text-tertiary);margin-bottom:8px}
+.cbrief-row{display:flex;gap:7px;align-items:baseline;font-size:var(--text-sm);padding:3px 0;line-height:1.6}
+.cbrief-ainote{color:var(--color-text-secondary);font-size:var(--text-xs);margin:1px 0 4px 20px;line-height:1.6}
+.cbrief-lock{filter:blur(3px);opacity:.5;pointer-events:none;user-select:none}
+.cbrief-cta{margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
 
 /* Company Card */
 .monitor-card{background:var(--color-bg-surface);border:1px solid var(--color-border-default);border-radius:var(--radius-2xl);padding:1.25rem 1.375rem;margin-bottom:1rem;box-shadow:0 1px 2px rgba(0,0,0,.04);transition:box-shadow .18s ease,border-color .18s ease}
@@ -709,7 +723,7 @@ body.admin-mode .admin-only{display:inline-flex!important}
 ═══════════════════════════════════════════ -->
 <div id="page-portfolio" class="page on">
   <div class="metrics">
-    <div class="metric"><div class="metric-label">총 평가금액</div><div class="metric-value" id="m-total">—</div></div>
+    <div class="metric"><div class="metric-label">총 평가금액 <span class="cur-seg"><button id="cur-usd" class="cur-seg-btn on" onclick="setCurMode('USD')">$</button><button id="cur-krw" class="cur-seg-btn" onclick="setCurMode('KRW')">₩</button></span></div><div class="metric-value" id="m-total">—</div></div>
     <div class="metric"><div class="metric-label">총 손익</div><div class="metric-value" id="m-profit">—</div></div>
     <div class="metric"><div class="metric-label">수익률</div><div class="metric-value" id="m-rate">—</div></div>
     <div class="metric metric-sm"><div class="metric-label">보유 종목</div><div class="metric-value" id="m-cnt">—</div></div>
@@ -742,6 +756,9 @@ body.admin-mode .admin-only{display:inline-flex!important}
       </div>
     </div>
   </div>
+
+  <!-- 홈 상단: 이번 주 경쟁사 브리핑 (renderCompetitorBrief가 채움. 신호 없거나 미로그인 시 숨김) -->
+  <div id="competitor-brief-card" style="display:none"></div>
 
   <!-- 보유 종목 -->
   <div id="ip-portfolio-stk" class="ipanel on">
@@ -2107,6 +2124,8 @@ try{investPhilosophy=JSON.parse(localStorage.getItem('pf_phil')||'[]')}catch(e){
 let stocks=[],memos=[],memoArchive=[],memoView='active',selTagV='general',memoEditTag='general',archiveTagFilter='all',archiveViewMode='card',FKEY='',newsCat='general',quoteSymbols=['NVDA','AAPL','TSLA','MSFT'],stkFilter='all',stkMarket='all',stkStyle='all',stkSort='',stkSortDir='desc',fxRate=1400;
 let notifyMaster=localStorage.getItem('pf_notify_master')==='true';
 let monitorCompanies=[],monitorView='card',dartKeyStored=false,_userType='personal',_bizApproved=false,_isAdmin=false,_monitorPollTimer=null,_monitorCache={};
+let _curMode=localStorage.getItem('cur_mode')||'USD';   // 총 평가금액 표시 통화(USD|KRW)
+let _isPro=false;                                        // 승인기업/관리자 = Pro (AI·자동화 게이트). applyUserTypeUI에서 갱신
 let _dartKey='',_fhKey='';
 try{monitorCompanies=JSON.parse(localStorage.getItem('monitor_co')||'[]')}catch(e){}
 const IDX_DEFAULT={kr:true,us:true,vix:true,futures:false,crypto:false,fx:false,commodities:false};
@@ -2317,8 +2336,11 @@ function renderStocks(){
   const cashTotal=cashUSD+(cashKRW/fx);
   const grandTotal=tv+cashTotal;
   const fmtUSD=n=>'$'+Math.round(n).toLocaleString();
-  document.getElementById('m-total').textContent=grandTotal?fmtUSD(grandTotal):'—';
-  const pe=document.getElementById('m-profit');pe.textContent=tv?(tp>=0?'+':'')+fmtUSD(Math.abs(tp)):'—';pe.className='metric-value '+(tp>=0?'up':'down');
+  // 총 평가금액/손익은 _curMode(USD|KRW)에 따라 표시 통화 전환(기준환율 fx). 계산은 USD 그대로.
+  const _fmtTop=n=>_curMode==='KRW'?'₩'+Math.round(n*fx).toLocaleString():'$'+Math.round(n).toLocaleString();
+  _syncCurToggle();
+  document.getElementById('m-total').textContent=grandTotal?_fmtTop(grandTotal):'—';
+  const pe=document.getElementById('m-profit');pe.textContent=tv?(tp>=0?'+':'')+_fmtTop(Math.abs(tp)):'—';pe.className='metric-value '+(tp>=0?'up':'down');
   const re=document.getElementById('m-rate');re.textContent=tv?(tr>=0?'+':'')+tr.toFixed(2)+'%':'—';re.className='metric-value '+(tr>=0?'up':'down');
   document.getElementById('m-cnt').textContent=held.length?held.length+'개':'—';
   const filtered=stocks.map((s,i)=>({s,i})).filter(({s})=>{
@@ -2370,6 +2392,19 @@ function renderStocks(){
   }).join('');
   localStorage.setItem('pf_s',JSON.stringify(stocks));
   _syncToCloud();
+  try{renderCompetitorBrief();}catch(e){}
+}
+
+function _syncCurToggle(){
+  const u=document.getElementById('cur-usd'),k=document.getElementById('cur-krw');
+  if(u)u.classList.toggle('on',_curMode==='USD');
+  if(k)k.classList.toggle('on',_curMode==='KRW');
+}
+function setCurMode(m){
+  _curMode=(m==='KRW')?'KRW':'USD';
+  localStorage.setItem('cur_mode',_curMode);
+  _syncCurToggle();
+  renderStocks();
 }
 
 const ACCT_COLOR={
@@ -4332,10 +4367,12 @@ async function checkAndAutoFetch(){
 
 function applyUserTypeUI(type){
   _userType=type;
+  _isPro=(_bizApproved||_isAdmin); // 승인기업/관리자 = Pro
   if(type==='business') document.body.classList.add('biz-mode');
   else document.body.classList.remove('biz-mode');
   // 관리자(wlsgn1878): 기업+개인 모든 탭 노출 → 전체 기능 테스트 가능
   document.body.classList.toggle('admin-mode', !!_isAdmin);
+  try{renderCompetitorBrief();}catch(e){}
   // 승인된 기업 계정은 관리자 공용 키로 자동 연결되므로 개인 키 입력란을 숨긴다.
   // (관리자는 본인 개인 키를 계속 관리하므로 제외 → bizAuto)
   const bizAuto = (type==='business' && _bizApproved && !_isAdmin);
@@ -5285,6 +5322,7 @@ async function briefRadarSignal(corpCode,rcptNo){
   const co=monitorCompanies.find(c=>c.corp_code===corpCode);if(!co)return;
   const sig=(co.signals||[]).find(s=>s.rcept_no===rcptNo);if(!sig)return;
   if(sig.brief){renderMonitorRadar();return;}
+  if(!_isPro){showMonitorErr('AI 브리핑은 Pro 기능입니다. 기업(Pro) 계정에서 이용할 수 있습니다.');return;}
   if(!CKEY){showMonitorErr('AI 브리핑은 홈 화면에서 Google AI 키를 연결한 뒤 사용할 수 있습니다.');return;}
   const res=await _briefSignal(co,sig);
   if(res.ok){
@@ -5294,6 +5332,71 @@ async function briefRadarSignal(corpCode,rcptNo){
   }else{
     showMonitorErr(res.reason==='rate_limit'?'AI 호출 한도 초과 — 잠시 후 다시 시도하세요.':'AI 브리핑 생성에 실패했습니다.');
   }
+}
+
+// ══════════════════════════════════════════════════════════════
+// 홈 상단 "이번 주 경쟁사 브리핑" 카드 (Pro) — 습관형성용 자동 요약
+// ══════════════════════════════════════════════════════════════
+function _weekKey(){const d=new Date();const oneJan=new Date(d.getFullYear(),0,1);const wk=Math.ceil((((d-oneJan)/864e5)+oneJan.getDay()+1)/7);return d.getFullYear()+'-W'+wk;}
+function _weeklyBriefCacheHtml(){
+  try{const c=JSON.parse(localStorage.getItem('brief_week')||'{}');
+    if(c.weekKey===_weekKey()&&c.text)return `<div class="cbrief-ainote">🧠 ${escapeHtml(c.text).replace(/\n/g,'<br>')}</div>`;
+  }catch(e){}
+  return '';
+}
+function _proLockCard(){
+  return `<div class="cbrief">
+    <div class="cbrief-head"><span class="cbrief-title">🤖 이번 주 경쟁사 브리핑</span><span class="pro-badge">Pro ✨</span></div>
+    <div class="cbrief-sub">경쟁사 공시를 AI가 종합해 매주 자동으로 정리해드립니다.</div>
+    <div class="cbrief-lock">
+      <div class="cbrief-row">🔴 <b>LG전자</b> 대규모 시설투자 → 증산 신호, CAPA 검토 필요</div>
+      <div class="cbrief-row">🟠 <b>키움증권</b> 자기주식 취득 → 주주환원 강화</div>
+    </div>
+    <div class="cbrief-cta"><button class="btn btn-primary" onclick="goPage('monitor')">경쟁사 모니터링 보기</button><span style="font-size:var(--text-xs);color:var(--color-text-tertiary)">Pro 업그레이드 시 AI 브리핑이 자동 생성됩니다</span></div>
+  </div>`;
+}
+function renderCompetitorBrief(){
+  const host=document.getElementById('competitor-brief-card');
+  if(!host)return;
+  if(!_currentUser){host.style.display='none';return;}
+  const hasAny=monitorCompanies.some(co=>(co.signals||[]).length);
+  if(!hasAny){host.style.display='none';return;} // 경쟁사 시그널 없으면 카드 숨김
+  host.style.display='';
+  if(!_isPro){host.innerHTML=_proLockCard();return;} // 비Pro → 잠금 티저
+  const since7=_daysAgoYmd(7);
+  const recent=[];
+  for(const co of monitorCompanies)for(const s of(co.signals||[]))if((s.date||'')>=since7)recent.push({...s,corp_name:co.corp_name});
+  const alertCos=monitorCompanies.filter(co=>_evalAlert(co).severity!=='info').length;
+  recent.sort((a,b)=>(b.weight==='high'?1:0)-(a.weight==='high'?1:0)||(b.date||'').localeCompare(a.date||''));
+  const rows=recent.slice(0,3).map(s=>{
+    const c=SIGNAL_CATS[s.category]||{label:s.category,color:'var(--color-text-tertiary)'};
+    const dot=s.weight==='high'?'🔴':'🟠';
+    return`<div class="cbrief-row">${dot} <b>${escapeHtml(s.corp_name)}</b> <span class="mc-disc-type-badge" style="background:${c.color}1f;color:${c.color}">${c.label}</span> <span style="color:var(--color-text-secondary)">${escapeHtml(s.report_nm)}</span></div>`;
+  }).join('')||'<div class="cbrief-sub">최근 7일 새 시그널이 없습니다.</div>';
+  host.innerHTML=`<div class="cbrief">
+    <div class="cbrief-head"><span class="cbrief-title">🤖 이번 주 경쟁사 브리핑</span><span class="pro-badge">Pro ✨</span></div>
+    <div class="cbrief-sub">최근 7일 새 신호 <b>${recent.length}</b>건 · 경보 상태 기업 <b>${alertCos}</b>곳</div>
+    ${rows}
+    ${_weeklyBriefCacheHtml()}
+    <div class="cbrief-cta"><button class="btn btn-primary" onclick="goPage('monitor');setTimeout(function(){setMonitorView('radar');},60)">레이더 전체보기</button><button class="btn" onclick="generateWeeklyBrief()">${CKEY?'AI 요약 새로고침':'AI 요약'}</button></div>`;
+}
+async function generateWeeklyBrief(){
+  if(!_isPro)return;
+  const host=document.getElementById('competitor-brief-card');
+  const note=(msg,err)=>{const c=host&&host.querySelector('.cbrief');if(c){const n=document.createElement('div');n.className='cbrief-sub';if(err)n.style.color='var(--color-error-text)';n.textContent=msg;c.appendChild(n);}};
+  if(!CKEY){note('AI 요약은 홈 화면 "보유 종목 최신 소식"에서 Google AI 키를 연결한 뒤 사용할 수 있습니다.',true);return;}
+  const since7=_daysAgoYmd(7);
+  const lines=[];
+  for(const co of monitorCompanies)for(const s of(co.signals||[]))if((s.date||'')>=since7)lines.push(`${co.corp_name}: ${s.report_nm} [${SIGNAL_CATS[s.category]?.label||''}]`);
+  if(!lines.length){note('최근 7일 새 시그널이 없어 요약할 내용이 없습니다.');return;}
+  note('AI가 이번 주 경쟁사 동향을 요약하는 중…');
+  const prompt=`너는 기업 전략기획 애널리스트야. 아래 경쟁사들의 최근 1주 공시 시그널을 종합해 전략적으로 의미있는 흐름을 3줄 이내 불릿으로 한국어로 요약해. 각 불릿은 '회사: 무슨 움직임 → 전략적 함의' 형식.\n\n${lines.join('\n')}`;
+  try{
+    const data=await proxyApiCall('googleai','',{contents:[{parts:[{text:prompt}]}]});
+    const txt=data.candidates?.[0]?.content?.parts?.[0]?.text||'';
+    if(txt){localStorage.setItem('brief_week',JSON.stringify({weekKey:_weekKey(),text:txt.trim()}));renderCompetitorBrief();}
+    else note('AI 요약 생성에 실패했습니다.',true);
+  }catch(e){note('AI 요약 생성 중 오류가 발생했습니다.',true);}
 }
 
 function renderMonitorTable(){
