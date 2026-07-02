@@ -585,6 +585,13 @@ body.admin-mode .admin-only{display:inline-flex!important}
 .cbrief-ainote{color:var(--color-text-secondary);font-size:var(--text-xs);margin:1px 0 4px 20px;line-height:1.6}
 .cbrief-lock{filter:blur(3px);opacity:.5;pointer-events:none;user-select:none}
 .cbrief-cta{margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+/* 가계부 (투자 일지 캘린더 통합) */
+.ledger-summary{background:var(--color-bg-muted);border:1px solid var(--color-border-default);border-radius:var(--radius-md);padding:8px 12px;margin:8px 0 12px;font-size:var(--text-sm);color:var(--color-text-secondary);text-align:center}
+.ledger-summary .up,.ledger-row .up{color:var(--color-success-text)}
+.ledger-summary .down,.ledger-row .down{color:var(--color-error-text)}
+.ledger-sec{margin-top:12px;padding-top:10px;border-top:1px dashed var(--color-border-default)}
+.ledger-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px;flex-wrap:wrap}
+.ledger-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:5px 0;font-size:var(--text-sm);border-bottom:1px solid var(--color-bg-overlay)}
 
 /* Company Card */
 .monitor-card{background:var(--color-bg-surface);border:1px solid var(--color-border-default);border-radius:var(--radius-2xl);padding:1.25rem 1.375rem;margin-bottom:1rem;box-shadow:0 1px 2px rgba(0,0,0,.04);transition:box-shadow .18s ease,border-color .18s ease}
@@ -1068,42 +1075,13 @@ body.admin-mode .admin-only{display:inline-flex!important}
 
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.75rem">
     <div class="memo-view-tabs">
-      <button class="memo-vtab active" id="vtab-active"     onclick="switchMemoView('active')">활성 일지</button>
-      <button class="memo-vtab"        id="vtab-calendar"   onclick="switchMemoView('calendar')">📅 캘린더</button>
+      <button class="memo-vtab active" id="vtab-calendar"   onclick="switchMemoView('calendar')">📅 캘린더</button>
       <button class="memo-vtab"        id="vtab-archive"    onclick="switchMemoView('archive')">아카이브</button>
       <button class="memo-vtab"        id="vtab-philosophy" onclick="switchMemoView('philosophy')">투자 철학</button>
     </div>
     <button id="notify-master-btn" type="button" onclick="toggleMasterNotify()" style="font-size:var(--text-base);padding:5px 12px;border:1px solid var(--color-border-input);border-radius:8px;background:var(--color-bg-surface);cursor:pointer;color:var(--color-text-tertiary);font-family:inherit">전체 알림 OFF</button>
   </div>
-  <div id="memo-compose-area" style="border-bottom:1px solid var(--color-border-default);padding-bottom:.875rem;margin-bottom:.875rem">
-    <div class="tag-btns" id="tag-btns">
-      <button class="tbtn sel" onclick="selTag('general',this)" style="background:var(--color-info-bg);color:var(--color-info);border-color:var(--color-info)">메모</button>
-      <button class="tbtn" onclick="selTag('buy',this)">매수</button>
-      <button class="tbtn" onclick="selTag('sell',this)">매도</button>
-    </div>
-    <!-- 매수 폼 -->
-    <div id="memo-buy-form" style="display:none;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:8px">
-      <input id="memo-buy-name" type="text" placeholder="종목명" style="font-size:var(--text-base);padding:5px 8px;border:1px solid var(--color-border-input);border-radius:7px;font-family:inherit;color:var(--color-text-primary);width:120px"/>
-      <input id="memo-buy-price" type="number" placeholder="매수가" style="font-size:var(--text-base);padding:5px 8px;border:1px solid var(--color-border-input);border-radius:7px;font-family:inherit;color:var(--color-text-primary);width:100px"/>
-      <button type="button" onclick="insertBuyText()" style="font-size:var(--text-base);padding:5px 12px;border:none;border-radius:7px;background:var(--color-success-dark);color:var(--color-bg-surface);cursor:pointer;font-family:inherit">매수</button>
-    </div>
-    <!-- 매도 폼 -->
-    <div id="memo-sell-form" style="display:none;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:8px">
-      <select id="memo-sell-name" style="font-size:var(--text-base);padding:5px 8px;border:1px solid var(--color-border-input);border-radius:7px;font-family:inherit;color:var(--color-text-primary);max-width:160px"><option value="">종목 선택</option></select>
-      <input id="memo-sell-price" type="number" placeholder="매도가" style="font-size:var(--text-base);padding:5px 8px;border:1px solid var(--color-border-input);border-radius:7px;font-family:inherit;color:var(--color-text-primary);width:100px"/>
-      <button type="button" onclick="insertSellText()" style="font-size:var(--text-base);padding:5px 12px;border:none;border-radius:7px;background:var(--color-error);color:var(--color-bg-surface);cursor:pointer;font-family:inherit">매도</button>
-    </div>
-    <div class="memo-compose">
-      <div style="display:flex;flex-direction:column;flex:1;gap:6px">
-        <div style="display:flex;gap:6px;flex-wrap:wrap">
-          <input type="date" id="memo-date" style="font-size:var(--text-base);padding:4px 7px;border:1px solid var(--color-border-input);border-radius:7px;font-family:inherit;color:var(--color-text-primary)"/>
-          <input type="time" id="memo-time" style="font-size:var(--text-base);padding:4px 7px;border:1px solid var(--color-border-input);border-radius:7px;font-family:inherit;color:var(--color-text-primary)"/>
-        </div>
-        <textarea id="memo-txt" placeholder="오늘의 투자 메모를 남겨보세요..."></textarea>
-      </div>
-      <button class="btn" onclick="addMemo()" style="align-self:flex-end;padding:8px 14px">전송</button>
-    </div>
-  </div>
+  <!-- (활성 일지 작성영역 제거됨 — 일지는 캘린더 날짜별로 작성) -->
   <!-- 아카이브 컨트롤 바 (태그 필터 + 뷰 토글) -->
   <div id="archive-filter-row" style="display:none;margin-bottom:.75rem">
     <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
@@ -1781,11 +1759,11 @@ async function saveProfile(){
 // 같은 브라우저에서 계정 전환 시 이전 계정 데이터가 새 계정으로 새는 것을 방지.
 function _clearLocalUserData(){
   clearTimeout(_syncTimer); // 이전 계정의 지연 동기화가 빈 데이터를 덮어쓰지 않도록 취소
-  stocks=[];memos=[];memoArchive=[];cashKRW=0;cashUSD=0;
+  stocks=[];memos=[];memoArchive=[];ledger=[];cashKRW=0;cashUSD=0;
   quoteSymbols=['NVDA','AAPL','TSLA','MSFT'];notifyMaster=false;investPhilosophy=[];
   monitorCompanies=[];_monitorCache={};dartKeyStored=false;
   FKEY='';CKEY='';_fhKey='';_dartKey='';
-  ['pf_s','pf_m','pf_ma','cash_krw','cash_usd','fh_q','pf_notify_master','pf_phil',
+  ['pf_s','pf_m','pf_ma','pf_ledger','cash_krw','cash_usd','fh_q','pf_notify_master','pf_phil',
    'monitor_co','pf_is_sample','fhkey_stored','ck_stored','fhkey']
     .forEach(k=>localStorage.removeItem(k));
   _cloudLoadedFor=null;_apiKeysRestoredFor=null;
@@ -1796,6 +1774,15 @@ function _clearLocalUserData(){
   const _c=document.getElementById('clear-btn');if(_c)_c.style.display='none';
   const _l=document.getElementById('monitor-dart-key-label');if(_l)_l.textContent='····';
   const _d=document.getElementById('pn-ai-dot');if(_d)_d.style.display='none';
+}
+
+// 활성 일지 뷰 제거: 기존 memos(활성)를 memoArchive(캘린더/아카이브)로 1회 이관해 손실 방지
+function _migrateActiveMemos(){
+  if(!Array.isArray(memos)||!memos.length)return;
+  memos.forEach(m=>{ if(!memoArchive.some(a=>a.id===m.id))memoArchive.unshift({...m,completedAt:m.completedAt||m.time}); });
+  memos=[];
+  try{localStorage.setItem('pf_m','[]');localStorage.setItem('pf_ma',JSON.stringify(memoArchive));}catch(e){}
+  if(_currentUser)_syncToCloud();
 }
 
 async function _loadFromCloud(user){
@@ -1837,6 +1824,11 @@ async function _loadFromCloud(user){
     memoArchive=data.memo_archive;
     localStorage.setItem('pf_ma',JSON.stringify(memoArchive));
   }
+  if(Array.isArray(data.ledger)){
+    ledger=data.ledger;
+    localStorage.setItem('pf_ledger',JSON.stringify(ledger));
+  }
+  _migrateActiveMemos(); // 활성 일지 제거: 기존 memos를 캘린더/아카이브(memoArchive)로 이관
   if(data.cash_krw!=null){cashKRW=parseFloat(data.cash_krw)||0;localStorage.setItem('cash_krw',cashKRW);}
   if(data.cash_usd!=null){cashUSD=parseFloat(data.cash_usd)||0;localStorage.setItem('cash_usd',cashUSD);}
   if(Array.isArray(data.quote_symbols)&&data.quote_symbols.length){
@@ -1876,6 +1868,7 @@ function _syncToCloud(immediate){
       notify_master:notifyMaster,
       invest_philosophy:investPhilosophy,
       monitor_companies:monitorCompanies,
+      ledger:ledger,
       updated_at:new Date().toISOString()
     });
     if(error)console.warn('[sync] 클라우드 저장 실패:',error.message);
@@ -2133,7 +2126,8 @@ async function proxyFetchDirect(url,ms=5000){await _nSem.get();try{return await 
 
 let investPhilosophy=[];
 try{investPhilosophy=JSON.parse(localStorage.getItem('pf_phil')||'[]')}catch(e){}
-let stocks=[],memos=[],memoArchive=[],memoView='active',selTagV='general',memoEditTag='general',archiveTagFilter='all',archiveViewMode='card',FKEY='',newsCat='general',quoteSymbols=['NVDA','AAPL','TSLA','MSFT'],stkFilter='all',stkMarket='all',stkStyle='all',stkSort='',stkSortDir='desc',fxRate=1400;
+let stocks=[],memos=[],memoArchive=[],memoView='calendar',selTagV='general',memoEditTag='general',archiveTagFilter='all',archiveViewMode='card',FKEY='',newsCat='general',quoteSymbols=['NVDA','AAPL','TSLA','MSFT'],stkFilter='all',stkMarket='all',stkStyle='all',stkSort='',stkSortDir='desc',fxRate=1400;
+let ledger=[];  // 가계부: {id,date:'YYYY-MM-DD',type:'income'|'expense',amount,cat,memo}
 let notifyMaster=localStorage.getItem('pf_notify_master')==='true';
 let monitorCompanies=[],monitorView='card',dartKeyStored=false,_userType='personal',_bizApproved=false,_isAdmin=false,_monitorPollTimer=null,_monitorCache={};
 let _curMode=localStorage.getItem('cur_mode')||'USD';   // 총 평가금액 표시 통화(USD|KRW)
@@ -2182,6 +2176,8 @@ stocks=stocks.map(s=>{
 });
 try{memos=JSON.parse(localStorage.getItem('pf_m')||'[]')}catch(e){}
 try{memoArchive=JSON.parse(localStorage.getItem('pf_ma')||'[]')}catch(e){}
+try{ledger=JSON.parse(localStorage.getItem('pf_ledger')||'[]')}catch(e){}
+_migrateActiveMemos();
 try{FKEY=localStorage.getItem('fhkey_stored')?'***':''}catch(e){}
 try{quoteSymbols=JSON.parse(localStorage.getItem('fh_q')||'["NVDA","AAPL","TSLA","MSFT"]')}catch(e){}
 
@@ -2974,12 +2970,9 @@ function addMemo(){
 
 function switchMemoView(view){
   memoView=view;
-  document.getElementById('vtab-active').classList.toggle('active',view==='active');
   const calTab=document.getElementById('vtab-calendar');if(calTab)calTab.classList.toggle('active',view==='calendar');
   document.getElementById('vtab-archive').classList.toggle('active',view==='archive');
   document.getElementById('vtab-philosophy').classList.toggle('active',view==='philosophy');
-  const compose=document.getElementById('memo-compose-area');
-  if(compose)compose.style.display=view==='active'?'':'none';
   const filterRow=document.getElementById('archive-filter-row');
   if(filterRow){
     filterRow.style.display=view==='archive'?'':'none';
@@ -3378,6 +3371,62 @@ function _allCalEvents(){
   return MARKET_EVENTS.concat(us,kr);
 }
 
+// ── 가계부 (심플: 수입/지출 + 카테고리 + 월 합계) ─────────────────
+const LEDGER_CATS={expense:['식비','교통','주거','쇼핑','의료','여가','기타'],income:['급여','용돈','투자수익','기타']};
+function _ymd(y,mo,d){return `${y}-${String(mo+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;}
+function _fmtWon(n){return '₩'+Math.round(Math.abs(n)).toLocaleString();}
+function _ledgerMonthTotals(y,mo){
+  const pre=`${y}-${String(mo+1).padStart(2,'0')}`;let inc=0,exp=0;
+  ledger.forEach(e=>{if((e.date||'').startsWith(pre)){if(e.type==='income')inc+=(+e.amount||0);else exp+=(+e.amount||0);}});
+  return{inc,exp,net:inc-exp};
+}
+function _ledgerByDay(y,mo){
+  const by={},pre=`${y}-${String(mo+1).padStart(2,'0')}`;
+  ledger.forEach(e=>{if((e.date||'').startsWith(pre)){const d=parseInt((e.date||'').slice(8,10),10);(by[d]=by[d]||[]).push(e);}});
+  return by;
+}
+function _renderLedgerSection(d){
+  const items=ledger.filter(e=>e.date===_ymd(_calYear,_calMonth,d));
+  const rows=items.map(e=>{
+    const inc=e.type==='income';
+    return `<div class="ledger-row"><span>${inc?'💰':'💸'} <b>${escapeHtml(e.cat||'기타')}</b>${e.memo?` <span style="color:var(--color-text-tertiary)">${escapeHtml(e.memo)}</span>`:''}</span><span class="${inc?'up':'down'}" style="font-weight:700">${inc?'+':'-'}${_fmtWon(e.amount)}</span><button type="button" class="mc-text-btn" onclick="deleteLedgerEntry(${e.id},${d})">삭제</button></div>`;
+  }).join('');
+  return `<div class="ledger-sec">
+    <div class="ledger-head"><span style="font-weight:700">💰 가계부</span><span style="display:flex;gap:6px">
+      <button type="button" class="tbtn" onclick="openLedgerForm(${d},'expense')" style="border-color:var(--color-error-border);color:var(--color-error)">+ 지출</button>
+      <button type="button" class="tbtn" onclick="openLedgerForm(${d},'income')" style="border-color:var(--color-success);color:var(--color-success-text)">+ 수입</button></span></div>
+    <div id="ledger-form-wrap"></div>
+    ${rows||'<div style="font-size:var(--text-sm);color:var(--color-text-tertiary);padding:4px 0">이 날의 수입/지출 기록이 없습니다.</div>'}
+  </div>`;
+}
+function openLedgerForm(d,type){
+  const wrap=document.getElementById('ledger-form-wrap');if(!wrap)return;
+  if(wrap.dataset.type===type){wrap.innerHTML='';wrap.dataset.type='';return;} // 같은 버튼 재클릭 = 닫기
+  wrap.dataset.type=type;
+  const cats=LEDGER_CATS[type]||[];
+  wrap.innerHTML=`<div class="cal-compose" style="margin:6px 0"><div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+    <select id="ledger-cat" style="font-size:var(--text-base);padding:5px 8px;border:1px solid var(--color-border-input);border-radius:7px;font-family:inherit;color:var(--color-text-primary)">${cats.map(c=>`<option value="${c}">${c}</option>`).join('')}</select>
+    <input id="ledger-amt" type="number" min="0" placeholder="금액(원)" style="width:120px;font-size:var(--text-base);padding:5px 8px;border:1px solid var(--color-border-input);border-radius:7px;font-family:inherit;color:var(--color-text-primary)"/>
+    <input id="ledger-memo" type="text" placeholder="메모(선택)" style="flex:1;min-width:100px;font-size:var(--text-base);padding:5px 8px;border:1px solid var(--color-border-input);border-radius:7px;font-family:inherit;color:var(--color-text-primary)"/>
+    <button type="button" onclick="saveLedgerEntry(${d},'${type}')" style="font-size:var(--text-sm);padding:5px 14px;border:1px solid var(--color-accent-border-soft);border-radius:6px;background:var(--color-accent-subtle);cursor:pointer;color:var(--color-accent-indigo);font-weight:700">${type==='income'?'수입':'지출'} 저장</button>
+  </div></div>`;
+  const amt=document.getElementById('ledger-amt');if(amt)amt.focus();
+}
+function saveLedgerEntry(d,type){
+  const amt=parseFloat(document.getElementById('ledger-amt')?.value);
+  if(!amt||amt<=0){const a=document.getElementById('ledger-amt');if(a)a.focus();return;}
+  const cat=document.getElementById('ledger-cat')?.value||'기타';
+  const memo=(document.getElementById('ledger-memo')?.value||'').trim();
+  ledger.unshift({id:Date.now(),date:_ymd(_calYear,_calMonth,d),type,amount:Math.round(amt),cat,memo});
+  localStorage.setItem('pf_ledger',JSON.stringify(ledger));_syncToCloud();
+  renderMemos();_calSelectedDay=null;selectCalDay(d);
+}
+function deleteLedgerEntry(id,d){
+  ledger=ledger.filter(e=>e.id!==id);
+  localStorage.setItem('pf_ledger',JSON.stringify(ledger));_syncToCloud();
+  renderMemos();_calSelectedDay=null;selectCalDay(d);
+}
+
 function renderArchiveCalendar(el){
   const today=new Date();
   const y=_calYear,mo=_calMonth;
@@ -3406,6 +3455,10 @@ function renderArchiveCalendar(el){
     }
   });
 
+  // 날짜별 가계부 + 월 합계
+  const byLedger=_ledgerByDay(y,mo);
+  const _lt=_ledgerMonthTotals(y,mo);
+
   const DOW=['일','월','화','수','목','금','토'];
   const dowHtml=DOW.map(d=>`<div class="arc-cal-dow">${d}</div>`).join('');
 
@@ -3414,7 +3467,9 @@ function renderArchiveCalendar(el){
   for(let d=1;d<=lastDate;d++){
     const dayMemos=byDate[d]||[];
     const dayEvents=byEvents[d]||[];
-    const hasAny=dayMemos.length||dayEvents.length;
+    const dl=byLedger[d]||[];
+    let dexp=0,dinc=0;dl.forEach(e=>{if(e.type==='income')dinc+=(+e.amount||0);else dexp+=(+e.amount||0);});
+    const hasAny=dayMemos.length||dayEvents.length||dl.length;
     const isToday=today.getFullYear()===y&&today.getMonth()===mo&&today.getDate()===d;
     const dow=(firstDay+d-1)%7;
     const cls=['arc-cal-day','clickable',hasAny?'has-memo':'',isToday?'today':'',dow===0?'sun':dow===6?'sat':''].filter(Boolean).join(' ');
@@ -3430,11 +3485,18 @@ function renderArchiveCalendar(el){
       return`<span class="arc-tag-chip" style="background:${c.bg};color:${c.c}">${c.l}</span>`;
     }).join('')+(dayMemos.length>2?`<span class="arc-tag-chip" style="background:var(--color-bg-overlay);color:var(--color-text-muted)">+${dayMemos.length-2}</span>`:'');
 
+    let ledgerChip='';
+    if(dexp>0)ledgerChip=`<span class="arc-tag-chip" style="background:var(--color-error-bg);color:var(--color-error-text)">💸 ${_fmtWon(dexp)}</span>`;
+    else if(dinc>0)ledgerChip=`<span class="arc-tag-chip" style="background:var(--color-success-bg);color:var(--color-success-text)">💰 ${_fmtWon(dinc)}</span>`;
+
     cells.push(`<div class="${cls}" id="cal-day-${d}" onclick="selectCalDay(${d})">
       <span class="arc-cal-num">${d}</span>
-      <div>${evChips}${memoChips}</div>
+      <div>${evChips}${memoChips}${ledgerChip}</div>
     </div>`);
   }
+
+  const netCls=_lt.net>=0?'up':'down';
+  const summaryBar=`<div class="ledger-summary">💰 이번 달 수입 <b class="up">${_fmtWon(_lt.inc)}</b> · 지출 <b class="down">${_fmtWon(_lt.exp)}</b> · 순액 <b class="${netCls}">${_lt.net>=0?'+':'-'}${_fmtWon(_lt.net)}</b></div>`;
 
   el.innerHTML=`
     <div class="arc-cal-nav">
@@ -3442,6 +3504,7 @@ function renderArchiveCalendar(el){
       <span class="arc-cal-title">${y}년 ${mo+1}월</span>
       <button onclick="moveCalMonth(1)">&#8250;</button>
     </div>
+    ${summaryBar}
     <div class="arc-cal-grid">${dowHtml}${cells.join('')}</div>
     <div id="arc-cal-detail"></div>`;
 }
@@ -3519,6 +3582,7 @@ function _renderCalDetail(d){
         <div class="memo-text" style="color:var(--color-text-secondary)">${escapeHtml(m.text)}</div>
       </div>`;
     }).join('')}
+    ${_renderLedgerSection(d)}
   </div>`;
 }
 
@@ -3772,6 +3836,7 @@ function goPage(name,btn){
   if(name==='security')renderSecurityDashboard();
   if(name==='indices')loadAllIndices();
   if(name==='news')initNewsUI();
+  if(name==='memo')switchMemoView('calendar');
   if(name==='research'){
     const savedTab=localStorage.getItem('cur_itab_research')||'reg';
     const tabBtn=document.querySelector(`#page-research .itab[onclick*="'${savedTab}','research'"]`);
