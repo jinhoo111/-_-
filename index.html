@@ -2961,69 +2961,12 @@ function renderPortfolioChips(){
 // 투자 일지 (Memo) - 모든 기능
 // ═══════════════════════════════════════════════════════════════
 
-function selTag(tag,btn){
-  selTagV=tag;
-  document.querySelectorAll('#tag-btns .tbtn').forEach(b=>{
-    b.classList.remove('sel');
-    b.style.background='';
-    b.style.color='';
-    b.style.borderColor='';
-  });
-  const c=TAG[tag];
-  btn.classList.add('sel');
-  btn.style.background=c.bg;
-  btn.style.color=c.c;
-  const bf=document.getElementById('memo-buy-form');
-  const sf=document.getElementById('memo-sell-form');
-  if(bf)bf.style.display=tag==='buy'?'flex':'none';
-  if(sf)sf.style.display=tag==='sell'?'flex':'none';
-  if(tag==='sell')updateSellDropdown();
-  btn.style.borderColor=c.c;
-}
-
-function updateSellDropdown(){
-  const sel=document.getElementById('memo-sell-name');
-  if(!sel)return;
-  const held=stocks.filter(s=>s.status==='hold'&&!s.hidden);
-  sel.innerHTML='<option value="">종목 선택</option>'+held.map(s=>`<option value="${s.name}">${s.name} (${s.ticker})</option>`).join('');
-}
-function insertBuyText(){
-  const name=document.getElementById('memo-buy-name').value.trim();
-  const price=document.getElementById('memo-buy-price').value.trim();
-  if(!name||!price)return;
-  const ta=document.getElementById('memo-txt');
-  ta.value=(ta.value?ta.value+'\n':'')+`${name} : ${price}`;
-  ta.focus();
-}
-function insertSellText(){
-  const name=document.getElementById('memo-sell-name').value;
-  const price=document.getElementById('memo-sell-price').value.trim();
-  if(!name||!price)return;
-  const ta=document.getElementById('memo-txt');
-  ta.value=(ta.value?ta.value+'\n':'')+`${name} : ${price}`;
-  ta.focus();
-}
-
 function resetMemoDateTime(){
   const now=new Date();
   const d=document.getElementById('memo-date');
   const t=document.getElementById('memo-time');
   if(d)d.value=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
   if(t)t.value=`${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
-}
-
-function addMemo(){
-  const txt=document.getElementById('memo-txt').value.trim();
-  if(!txt)return;
-  const dateStr=document.getElementById('memo-date').value;
-  const timeStr=document.getElementById('memo-time').value;
-  const time=(dateStr&&timeStr)?new Date(`${dateStr}T${timeStr}:00`).toISOString():new Date().toISOString();
-  memos.unshift({id:Date.now(),text:txt,tag:selTagV,time,important:false});
-  localStorage.setItem('pf_m',JSON.stringify(memos));
-  _syncToCloud();
-  document.getElementById('memo-txt').value='';
-  resetMemoDateTime();
-  renderMemos();
 }
 
 function switchMemoView(view){
@@ -6047,12 +5990,6 @@ async function briefRadarSignal(corpCode,rcptNo){
 // 홈 상단 "이번 주 경쟁사 브리핑" 카드 (Pro) — 습관형성용 자동 요약
 // ══════════════════════════════════════════════════════════════
 function _weekKey(){const d=new Date();const oneJan=new Date(d.getFullYear(),0,1);const wk=Math.ceil((((d-oneJan)/864e5)+oneJan.getDay()+1)/7);return d.getFullYear()+'-W'+wk;}
-function _weeklyBriefCacheHtml(){
-  try{const c=JSON.parse(localStorage.getItem('brief_week')||'{}');
-    if(c.weekKey===_weekKey()&&c.text)return `<div class="cbrief-ainote">🧠 ${escapeHtml(c.text).replace(/\n/g,'<br>')}</div>`;
-  }catch(e){}
-  return '';
-}
 function _proLockCard(){
   return `<div class="cbrief">
     <div class="cbrief-head"><span class="cbrief-title">🤖 이번 주 경쟁사 브리핑</span><span class="pro-badge">Pro ✨</span></div>
