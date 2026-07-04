@@ -2506,13 +2506,14 @@ function _rsi14(closes,period=14){
   if(al===0)return 100;
   return 100-100/(1+ag/al);
 }
-// 신호 메타(라벨·색톤). tone: up=강세/반등, down=과열/주의, warn=임박
+// 신호 메타(라벨·색톤·산출기준). tone: up=강세/반등, down=과열/주의, warn=임박
+// basis = 어떤 근거(계산 기준)로 이 신호가 잡혔는지 사용자에게 표기하는 설명.
 const TECH_SIG={
-  golden_day :{label:'골든크로스',      tone:'up'},
-  golden_soon:{label:'골든크로스 임박',  tone:'warn'},
-  high52     :{label:'52주 신고가 근접', tone:'up'},
-  rsi_os     :{label:'RSI 과매도',       tone:'up'},
-  disparity  :{label:'이격도 과열',      tone:'down'},
+  golden_day :{label:'골든크로스',      tone:'up',  basis:'5일 이동평균선이 20일선을 상향 돌파(당일 교차 완성)'},
+  golden_soon:{label:'골든크로스 임박',  tone:'warn',basis:'5일선이 20일선 1.5% 이내 아래에서 상승 수렴 중'},
+  high52     :{label:'52주 신고가 근접', tone:'up',  basis:'현재가가 최근 52주 최고가의 −1% 이내'},
+  rsi_os     :{label:'RSI 과매도',       tone:'up',  basis:'RSI(14) ≤ 30 (단기 낙폭과대 → 반등 후보)'},
+  disparity  :{label:'이격도 과열',      tone:'down',basis:'5일선이 20일선보다 +10% 이상 이격(단기 과열)'},
 };
 // 종가/고가/저가 배열 → 신호 배열
 function computeTechnicals(closes,highs){
@@ -2601,20 +2602,29 @@ function renderTechCard(){
   }else{
     bodyHtml=hit.map(r=>{
       const mkt=_isKRticker(r.ticker)?'국':'미';
+      // 각 신호 옆에 실제 측정값(detail)을 함께 표기 — 어떤 근거로 잡혔는지 바로 보이게
+      const sigHtml=r.signals.map(s=>`<span style="display:inline-flex;align-items:center;gap:4px">${_techChip(s.key)}<span style="font-size:var(--text-2xs);color:var(--color-text-tertiary)">${escapeHtml(s.detail||'')}</span></span>`).join('');
       return `<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:8px 4px;border-bottom:1px solid var(--color-border-default)">
         <span style="font-size:var(--text-2xs);font-weight:700;padding:1px 5px;border-radius:4px;background:var(--color-bg-badge);color:var(--color-text-placeholder)">${mkt}</span>
         <b style="font-size:var(--text-sm)">${escapeHtml(r.name)}</b>
         <span style="font-size:var(--text-xs);color:var(--color-text-tertiary);font-family:monospace">${escapeHtml(r.ticker)}</span>
-        <span style="display:flex;gap:5px;flex-wrap:wrap;margin-left:auto">${r.signals.map(s=>_techChip(s.key)).join('')}</span>
+        <span style="display:flex;gap:12px;flex-wrap:wrap;margin-left:auto;align-items:center">${sigHtml}</span>
       </div>`;
     }).join('');
   }
+  // 결과에 실제 등장한 신호 유형만 골라 '산출 기준' 범례 구성
+  const presentKeys=[...new Set(hit.flatMap(r=>r.signals.map(s=>s.key)))].sort((a,b)=>(order[a]??9)-(order[b]??9));
+  const legendHtml=presentKeys.length?`<div style="margin-top:10px;padding-top:8px;border-top:1px solid var(--color-border-default)">
+      <div style="font-size:var(--text-2xs);font-weight:700;color:var(--color-text-secondary);margin-bottom:4px">📋 산출 기준</div>
+      ${presentKeys.map(k=>`<div style="font-size:var(--text-2xs);color:var(--color-text-tertiary);line-height:1.7"><b style="color:var(--color-text-secondary)">${TECH_SIG[k].label}</b> — ${TECH_SIG[k].basis}</div>`).join('')}
+    </div>`:'';
   host.innerHTML=`<div class="cbrief" style="padding:14px 16px">
     <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px">
       <span style="font-weight:700;font-size:var(--text-base)">📡 기술 신호 스캐너</span>${btn}
     </div>
     ${bodyHtml}
-    <div style="font-size:var(--text-2xs);color:var(--color-text-tertiary);margin-top:8px">일봉(전일 종가) 기준 · 정보 제공용이며 매수·매도 추천이 아닙니다.</div>
+    ${legendHtml}
+    <div style="font-size:var(--text-2xs);color:var(--color-text-tertiary);margin-top:8px;line-height:1.6">※ 위 신호는 <b>일봉(전일 종가) 기준으로 자동 계산된 기술적 지표</b>이며, 종목의 미래 수익을 보장하지 않습니다. <b style="color:var(--color-text-secondary)">정보 제공용이며 매수·매도 추천이 아닙니다.</b></div>
   </div>`;
 }
 
