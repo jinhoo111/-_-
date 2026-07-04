@@ -322,9 +322,10 @@ body.admin-mode .bn-biz,body.admin-mode .bn-personal{display:flex}
 .empty{text-align:center;padding:2rem 1rem;color:var(--color-text-tertiary);font-size:var(--text-md)}
 
 /* ── METRICS ── */
-.metrics{display:grid;grid-template-columns:1fr 1fr 1fr 80px 1.3fr 1.3fr;gap:16px;margin-bottom:1.75rem}
-.metric{background:var(--color-bg-surface);border:1px solid var(--color-border-default);border-radius:var(--radius-2xl);padding:12px 14px;box-shadow:var(--shadow-card)}
-.metric-label{font-size:var(--text-sm);color:var(--color-text-tertiary);margin-bottom:4px}
+/* 반응형: 폭이 좁아지면 자동 줄바꿈(고정 6열 → auto-fit). 폰트 확대로 인한 라벨 잘림 방지. */
+.metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:16px;margin-bottom:1.75rem}
+.metric{background:var(--color-bg-surface);border:1px solid var(--color-border-default);border-radius:var(--radius-2xl);padding:14px 16px;box-shadow:var(--shadow-card);min-width:0}
+.metric-label{font-size:var(--text-sm);color:var(--color-text-tertiary);margin-bottom:4px;white-space:nowrap}
 .metric-value{font-size:var(--text-xl);font-weight:800;font-family:monospace;letter-spacing:-.4px}
 .metric-sm{max-width:none}
 
@@ -3701,21 +3702,36 @@ function saveWeightGoal(){
   localStorage.setItem('pf_health',JSON.stringify(health));_syncToCloud();
   renderMemos();
 }
+// 몸무게 빠른 조절(±0.1) — 키보드 없이 터치로 미세조정
+function stepWeight(delta){
+  const el=document.getElementById('wt-amt');if(!el)return;
+  const base=parseFloat(el.value)||0;
+  const v=Math.max(0,Math.round((base+delta)*10)/10);
+  el.value=v.toFixed(1);el.focus();
+}
 function _renderWeightSection(d){
   const date=_ymd(_calYear,_calMonth,d);
   const cur=(health.entries||[]).find(e=>e.date===date);
   const before=(health.entries||[]).filter(e=>e.date<date&&e.kg>0).sort((a,b)=>a.date.localeCompare(b.date));
   const prevKg=before.length?before[before.length-1].kg:null;
-  let dodHtml='';
-  if(cur&&prevKg!=null){const dd=cur.kg-prevKg;dodHtml=`<span class="${dd<=0?'up':'down'}" style="font-size:var(--text-sm);font-weight:700">전일 대비 ${dd>=0?'+':''}${dd.toFixed(1)}kg</span>`;}
+  const ym=`${_calYear}-${String(_calMonth+1).padStart(2,'0')}`;
+  const goal=((health.monthlyGoals||{})[ym]!=null)?+health.monthlyGoals[ym]:(health.goal!=null?+health.goal:null);
+  const startVal=cur?cur.kg:(prevKg!=null?prevKg:'');
+  const infoBits=[];
+  if(cur&&prevKg!=null){const dd=cur.kg-prevKg;infoBits.push(`<span class="${dd<=0?'up':'down'}" style="font-weight:700">전일 대비 ${dd>=0?'+':''}${dd.toFixed(1)}kg</span>`);}
+  if(cur&&goal!=null){const gd=cur.kg-goal;infoBits.push(`<span style="color:var(--color-text-secondary)">목표 ${goal.toFixed(1)}kg 대비 <b style="color:${Math.abs(gd)<0.05?'var(--color-success-text)':'var(--color-text-primary)'}">${gd>0?'+':gd<0?'−':''}${Math.abs(gd).toFixed(1)}kg</b></span>`);}
+  const stepBtn=(sym,delta,lbl)=>`<button type="button" class="btn btn-sm" style="width:var(--btn-h-md);padding:0;font-size:var(--text-lg)" onclick="stepWeight(${delta})" aria-label="${lbl}">${sym}</button>`;
   return `<div class="ledger-sec">
-    <div class="ledger-head"><span style="font-weight:700">⚖️ 몸무게</span></div>
-    <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
-      <input id="wt-amt" type="number" step="0.1" min="0" placeholder="kg" value="${cur?cur.kg:''}" style="width:100px;font-size:var(--text-base);padding:5px 8px;border:1px solid var(--color-border-input);border-radius:7px;font-family:inherit;color:var(--color-text-primary)"/>
-      <button type="button" onclick="saveWeight(${d})" style="font-size:var(--text-sm);padding:5px 14px;border:1px solid var(--color-accent-border-soft);border-radius:6px;background:var(--color-accent-subtle);cursor:pointer;color:var(--color-accent-indigo);font-weight:700">저장</button>
-      ${cur?`<button type="button" onclick="deleteWeight(${d})" class="mc-text-btn" style="color:var(--color-error)">삭제</button>`:''}
-      ${dodHtml}
+    <div class="ledger-head"><span style="font-weight:700">몸무게</span>${cur?`<span class="pill" style="background:var(--color-success-bg);color:var(--color-success-text)">기록됨 ${cur.kg.toFixed(1)}kg</span>`:''}</div>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:4px">
+      ${stepBtn('−',-0.1,'0.1 감소')}
+      <input id="wt-amt" type="number" step="0.1" min="0" placeholder="kg" value="${startVal}" style="width:94px;height:var(--btn-h-md);text-align:center;font-size:var(--text-lg);font-weight:700;box-sizing:border-box;border:1px solid var(--color-border-input);border-radius:var(--radius-control);font-family:inherit;color:var(--color-text-primary)"/>
+      ${stepBtn('＋',0.1,'0.1 증가')}
+      <span style="font-size:var(--text-md);color:var(--color-text-tertiary)">kg</span>
+      <button type="button" class="btn btn-primary btn-sm" onclick="saveWeight(${d})">${cur?'수정 저장':'저장'}</button>
+      ${cur?`<button type="button" class="btn btn-sm" onclick="deleteWeight(${d})" style="color:var(--color-error);border-color:var(--color-error-border)">삭제</button>`:''}
     </div>
+    ${infoBits.length?`<div style="margin-top:8px;display:flex;gap:14px;flex-wrap:wrap;font-size:var(--text-sm)">${infoBits.join('')}</div>`:''}
   </div>`;
 }
 
