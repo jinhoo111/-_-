@@ -2412,7 +2412,7 @@ function renderStocks(){
   const _fmtTop=n=>_curMode==='KRW'?'₩'+Math.round(n*fx).toLocaleString():'$'+Math.round(n).toLocaleString();
   _syncCurToggle();
   document.getElementById('m-total').textContent=grandTotal?_fmtTop(grandTotal):'—';
-  const pe=document.getElementById('m-profit');pe.textContent=tv?(tp>=0?'+':'')+_fmtTop(Math.abs(tp)):'—';pe.className='metric-value '+(tp>=0?'pl-up':'pl-down');
+  const pe=document.getElementById('m-profit');pe.textContent=tv?(tp>=0?'+':'-')+_fmtTop(Math.abs(tp)):'—';pe.className='metric-value '+(tp>=0?'pl-up':'pl-down');
   const re=document.getElementById('m-rate');re.textContent=tv?(tr>=0?'+':'')+tr.toFixed(2)+'%':'—';re.className='metric-value '+(tr>=0?'pl-up':'pl-down');
   document.getElementById('m-cnt').textContent=held.length?held.length+'개':'—';
   const filtered=stocks.map((s,i)=>({s,i})).filter(({s})=>{
