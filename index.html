@@ -1268,7 +1268,7 @@ body.admin-mode .admin-only{display:inline-flex!important}
     <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:8px">
       <input type="date" id="mev-date" style="font-size:var(--text-base);padding:5px 8px;border:1px solid var(--color-border-input);border-radius:7px;font-family:inherit;color:var(--color-text-primary)"/>
       <select id="mev-type" style="font-size:var(--text-base);padding:5px 8px;border:1px solid var(--color-border-input);border-radius:7px;font-family:inherit;color:var(--color-text-primary)">
-        <option value="fomc">🏦 FOMC</option><option value="macro">📈 지표(CPI 등)</option><option value="earnings">📊 어닝시즌</option><option value="opex">⚡ OpEx</option><option value="event" selected>🏔️ 기타 일정</option>
+        <option value="fomc">🏦 FOMC</option><option value="macro">📈 지표(CPI 등)</option><option value="earnings">📊 어닝시즌</option><option value="opex">⚡ OpEx</option><option value="ipo">🏛️ 상장/IPO</option><option value="event" selected>🏔️ 기타 일정</option>
       </select>
       <input type="text" id="mev-title" placeholder="일정 제목 (예: FOMC 결정)" style="flex:1;min-width:160px;font-size:var(--text-base);padding:5px 8px;border:1px solid var(--color-border-input);border-radius:7px;font-family:inherit;color:var(--color-text-primary)"/>
       <button class="btn btn-primary" onclick="adminAddMarketEvent()" style="flex-shrink:0;white-space:nowrap">추가</button>
@@ -3485,6 +3485,8 @@ const MARKET_EVENTS=[
   {date:'2026-10-14',type:'macro',title:'미국 CPI'},
   {date:'2026-11-11',type:'macro',title:'미국 CPI'},
   {date:'2026-12-09',type:'macro',title:'미국 CPI'},
+  // ── 상장/IPO ── (웹 검증 2026-07: SK하이닉스 나스닥 ADR, 티커 SKHY, 상장일 잠정)
+  {date:'2026-07-10',type:'ipo',title:'SK하이닉스 나스닥 상장(SKHY)',_mkt:'US'},
 ];
 
 const EV_STYLE={
@@ -3493,6 +3495,7 @@ const EV_STYLE={
   event: {bg:'#f5f3ff',c:'#7c3aed',label:'🏔️'},
   opex:  {bg:'#fff7ed',c:'#c2410c',label:'⚡'},
   macro: {bg:'#f0fdf4',c:'#15803d',label:'📈'},
+  ipo:   {bg:'#ecfeff',c:'#0891b2',label:'🏛️'}, // 상장/IPO (미국·국내)
   stockearn:{bg:'#eef2ff',c:'#4f46e5',label:'🎙️'}, // 보유 종목 개별 어닝콜
 };
 
