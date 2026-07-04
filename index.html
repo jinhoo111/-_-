@@ -1802,7 +1802,7 @@ async function saveProfile(){
 // 같은 브라우저에서 계정 전환 시 이전 계정 데이터가 새 계정으로 새는 것을 방지.
 function _clearLocalUserData(){
   clearTimeout(_syncTimer); // 이전 계정의 지연 동기화가 빈 데이터를 덮어쓰지 않도록 취소
-  stocks=[];memos=[];memoArchive=[];ledger=[];health={goal:null,entries:[],monthlyGoals:{}};budget={};impulseTrades=[];cashKRW=0;cashUSD=0;
+  stocks=[];memos=[];memoArchive=[];ledger=[];health={goal:null,entries:[],monthlyGoals:{},weeklyActual:{}};budget={};impulseTrades=[];cashKRW=0;cashUSD=0;
   quoteSymbols=['NVDA','AAPL','TSLA','MSFT'];notifyMaster=false;investPhilosophy=[];
   monitorCompanies=[];_monitorCache={};dartKeyStored=false;
   FKEY='';CKEY='';_fhKey='';_dartKey='';
@@ -1873,7 +1873,7 @@ async function _loadFromCloud(user){
     localStorage.setItem('pf_ledger',JSON.stringify(ledger));
   }
   if(data.health&&typeof data.health==='object'&&!Array.isArray(data.health)){
-    health={goal:(data.health.goal!=null?data.health.goal:null),entries:Array.isArray(data.health.entries)?data.health.entries:[],monthlyGoals:(data.health.monthlyGoals&&typeof data.health.monthlyGoals==='object'&&!Array.isArray(data.health.monthlyGoals))?data.health.monthlyGoals:{}};
+    health={goal:(data.health.goal!=null?data.health.goal:null),entries:Array.isArray(data.health.entries)?data.health.entries:[],monthlyGoals:(data.health.monthlyGoals&&typeof data.health.monthlyGoals==='object'&&!Array.isArray(data.health.monthlyGoals))?data.health.monthlyGoals:{},weeklyActual:(data.health.weeklyActual&&typeof data.health.weeklyActual==='object'&&!Array.isArray(data.health.weeklyActual))?data.health.weeklyActual:{}};
     localStorage.setItem('pf_health',JSON.stringify(health));
   }
   if(data.budget&&typeof data.budget==='object'&&!Array.isArray(data.budget)){
@@ -2184,11 +2184,12 @@ let investPhilosophy=[];
 try{investPhilosophy=JSON.parse(localStorage.getItem('pf_phil')||'[]')}catch(e){}
 let stocks=[],memos=[],memoArchive=[],memoView='calendar',selTagV='general',memoEditTag='general',archiveTagFilter='all',archiveViewMode='card',FKEY='',newsCat='general',quoteSymbols=['NVDA','AAPL','TSLA','MSFT'],stkFilter='all',stkMarket='all',stkStyle='all',stkSort='',stkSortDir='desc',fxRate=1400;
 let ledger=[];  // 가계부: {id,date:'YYYY-MM-DD',type:'income'|'expense',amount,cat,memo}
-let health={goal:null,entries:[],monthlyGoals:{}};  // 몸무게: entries=[{date:'YYYY-MM-DD',kg}], goal=기본목표kg, monthlyGoals={'YYYY-MM':kg}(월별 목표)
-let budget={};  // 월별 예산: {'YYYY-MM':{income,expense}} (목표 대비 실제 비교용)
+let health={goal:null,entries:[],monthlyGoals:{},weeklyActual:{}};  // 몸무게: entries=[{date,kg}], goal=기본목표, monthlyGoals={'YYYY-MM':kg}, weeklyActual={'YYYY-MM':[kg|null,...주차]}(주차별 실제체중 직접입력 override)
+let budget={};  // 월별 예산: {'YYYY-MM':{income,expense,incomeWeeks?:[..주차],expenseWeeks?:[..주차]}} (주차 배열 없으면 월÷주수 균등분할 폴백)
 let impulseTrades=[];  // 뇌동매매: [{id,date:'YYYY-MM-DD',reason,createdAt}] (하루 1건, 투자철학 '절대 금지'에 자동 반영)
 let _impulseSort='desc';  // 뇌동매매 정렬: 'desc'=최신순 / 'asc'=오래된순
 let _rptYear=new Date().getFullYear(),_rptMonth=new Date().getMonth();  // 리포트 기준 기간(주차별 뷰)
+let _rptAllocOpen=false,_rptWeightWkOpen=false;  // 리포트 접이식 편집기 열림 상태(주차 금액배분 / 주차 실제체중)
 let notifyMaster=localStorage.getItem('pf_notify_master')==='true';
 let monitorCompanies=[],monitorView='card',dartKeyStored=false,_userType='personal',_bizApproved=false,_isAdmin=false,_monitorPollTimer=null,_monitorCache={};
 let _curMode=localStorage.getItem('cur_mode')||'USD';   // 총 평가금액 표시 통화(USD|KRW)
@@ -2238,7 +2239,7 @@ stocks=stocks.map(s=>{
 try{memos=JSON.parse(localStorage.getItem('pf_m')||'[]')}catch(e){}
 try{memoArchive=JSON.parse(localStorage.getItem('pf_ma')||'[]')}catch(e){}
 try{ledger=JSON.parse(localStorage.getItem('pf_ledger')||'[]')}catch(e){}
-try{const _h=JSON.parse(localStorage.getItem('pf_health')||'{}');health={goal:(_h.goal!=null?_h.goal:null),entries:Array.isArray(_h.entries)?_h.entries:[],monthlyGoals:(_h.monthlyGoals&&typeof _h.monthlyGoals==='object'&&!Array.isArray(_h.monthlyGoals))?_h.monthlyGoals:{}};}catch(e){}
+try{const _h=JSON.parse(localStorage.getItem('pf_health')||'{}');health={goal:(_h.goal!=null?_h.goal:null),entries:Array.isArray(_h.entries)?_h.entries:[],monthlyGoals:(_h.monthlyGoals&&typeof _h.monthlyGoals==='object'&&!Array.isArray(_h.monthlyGoals))?_h.monthlyGoals:{},weeklyActual:(_h.weeklyActual&&typeof _h.weeklyActual==='object'&&!Array.isArray(_h.weeklyActual))?_h.weeklyActual:{}};}catch(e){}
 try{const _b=JSON.parse(localStorage.getItem('pf_budget')||'{}');budget=(_b&&typeof _b==='object'&&!Array.isArray(_b))?_b:{};}catch(e){}
 try{impulseTrades=JSON.parse(localStorage.getItem('pf_impulse')||'[]')}catch(e){}
 _migrateActiveMemos();
@@ -3851,6 +3852,26 @@ function _rptWeeks(year,mo){
 }
 function _ymdOf(d){return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;}
 function _weekIdxOf(dateStr,weeks){for(let i=0;i<weeks.length;i++){if(dateStr>=_ymdOf(weeks[i].start)&&dateStr<=_ymdOf(weeks[i].end))return i;}return -1;}
+// 주차별 목표(수입/지출): 사용자가 배분한 incomeWeeks/expenseWeeks 우선, 없으면 월÷주수 균등분할 폴백.
+// 배열 길이가 주수(W)와 다르면 slice/pad(부족분은 균등값)로 정합.
+function _weeklyTargets(year,mo){
+  const ym=`${year}-${String(mo+1).padStart(2,'0')}`,W=_rptWeeks(year,mo).length,b=budget[ym]||{};
+  const eqI=b.income!=null?+b.income/W:null,eqE=b.expense!=null?+b.expense/W:null;
+  const fix=(arr,eq)=>{const a=Array.isArray(arr)?arr.slice(0,W).map(v=>v!=null&&isFinite(v)?+v:eq):[];while(a.length<W)a.push(eq);return a;};
+  return {W,ym,inc:(Array.isArray(b.incomeWeeks)&&b.incomeWeeks.length)?fix(b.incomeWeeks,eqI):Array(W).fill(eqI),
+              exp:(Array.isArray(b.expenseWeeks)&&b.expenseWeeks.length)?fix(b.expenseWeeks,eqE):Array(W).fill(eqE)};
+}
+// 주차별 실제 체중: weeklyActual 직접입력 override 우선, 없으면 캘린더 기록(그 주 일요일/마지막값) 자동.
+function _weeklyWeights(year,mo,weeks){
+  const ym=`${year}-${String(mo+1).padStart(2,'0')}`,ov=(health.weeklyActual||{})[ym]||[];
+  return weeks.map((w,i)=>{
+    if(ov[i]!=null&&isFinite(ov[i]))return +ov[i];
+    const s=_ymdOf(w.start),e=_ymdOf(w.end);
+    const sun=(health.entries||[]).find(en=>en.kg>0&&en.date===e);if(sun)return sun.kg;
+    const inWk=(health.entries||[]).filter(en=>en.kg>0&&en.date>=s&&en.date<=e).sort((a,b)=>a.date.localeCompare(b.date));
+    return inWk.length?inWk[inWk.length-1].kg:null;
+  });
+}
 function setReportPeriod(){
   const y=+document.getElementById('rpt-year')?.value,m=+document.getElementById('rpt-month')?.value;
   if(!isNaN(y))_rptYear=y;if(!isNaN(m))_rptMonth=m;
@@ -3865,9 +3886,9 @@ function renderReport(el){
   // 주차별 가계부 집계
   const wkInc=Array(W).fill(0),wkExp=Array(W).fill(0);
   ledger.forEach(e=>{const ds=e.date||'';if(!ds.startsWith(ym))return;const i=_weekIdxOf(ds,weeks);if(i<0)return;if(e.type==='income')wkInc[i]+=(+e.amount||0);else wkExp[i]+=(+e.amount||0);});
-  // 월 목표 → 주간 목표(÷주수) 자동 환산
+  // 주간 목표: 사용자 주차 배분 우선, 없으면 월÷주수 균등분할(_weeklyTargets)
   const b=budget[ym]||{};
-  const tgtIncArr=Array(W).fill(b.income!=null?+b.income/W:null),tgtExpArr=Array(W).fill(b.expense!=null?+b.expense/W:null);
+  const _wt=_weeklyTargets(year,mo),tgtIncArr=_wt.inc,tgtExpArr=_wt.exp;
   const mInc=wkInc.reduce((a,c)=>a+c,0),mExp=wkExp.reduce((a,c)=>a+c,0),mNet=mInc-mExp;
   const incRate=b.income>0?Math.round(mInc/b.income*100):null,expRate=b.expense>0?Math.round(mExp/b.expense*100):null;
   // ── 데이터 없으면 '예시'(연한 회색)로 형태 미리보기 ──
@@ -3876,7 +3897,7 @@ function renderReport(el){
   const exWrap=(html)=>`<div style="position:relative">${exBadge}${html}</div>`;
   const sl=(arr)=>arr.slice(0,W);
   // 수입
-  const incHasData=(b.income!=null)||wkInc.some(v=>v>0);
+  const incHasData=(b.income!=null)||(Array.isArray(b.incomeWeeks)&&b.incomeWeeks.some(v=>v!=null))||wkInc.some(v=>v>0);
   const chartInc=incHasData
     ?_groupedBarSVG({h:230,xLabels:wkLabels,fmtY:fmtMan,fmtLabel:fmtManLbl,series:[
       {label:'주간 목표',color:'var(--color-success-text)',values:tgtIncArr,outline:true},
@@ -3888,7 +3909,7 @@ function renderReport(el){
     ?`테두리=주간 목표, 채움=실제. ${incRate!=null?`이 달 목표의 <b style="color:var(--color-success-text)">${incRate}%</b> 달성`:'위에서 월 수입 목표를 입력하면 비교됩니다.'}`
     :'아직 수입 데이터가 없어 <b>예시</b>로 표시됩니다. 위에서 월 수입 목표를 정하고 캘린더 가계부에 수입을 기록하면 실제 값이 채워집니다.';
   // 지출
-  const expHasData=(b.expense!=null)||wkExp.some(v=>v>0);
+  const expHasData=(b.expense!=null)||(Array.isArray(b.expenseWeeks)&&b.expenseWeeks.some(v=>v!=null))||wkExp.some(v=>v>0);
   const chartExp=expHasData
     ?_groupedBarSVG({h:230,xLabels:wkLabels,fmtY:fmtMan,fmtLabel:fmtManLbl,series:[
       {label:'주간 목표',color:'var(--color-error-text)',values:tgtExpArr,outline:true},
@@ -3912,10 +3933,7 @@ function renderReport(el){
     :'아직 뇌동매매 기록이 없어 <b>예시</b>로 표시됩니다. (좋은 상태!) 기록은 캘린더에서 추가합니다.';
   // 건강관리 주차별: 각 주의 일요일(주 마지막일) 체중 자동 반영 (없으면 그 주 마지막 기록)
   const gMonthly=(health.monthlyGoals||{})[ym],gVal=gMonthly!=null?+gMonthly:(health.goal!=null?health.goal:null);
-  const wkWeight=weeks.map(w=>{const s=_ymdOf(w.start),e=_ymdOf(w.end);
-    const sun=(health.entries||[]).find(en=>en.kg>0&&en.date===e);if(sun)return sun.kg;
-    const inWk=(health.entries||[]).filter(en=>en.kg>0&&en.date>=s&&en.date<=e).sort((a,b)=>a.date.localeCompare(b.date));
-    return inWk.length?inWk[inWk.length-1].kg:null;});
+  const wkWeight=_weeklyWeights(year,mo,weeks); // 주차별 실제(직접입력 override 우선, 없으면 캘린더 자동)
   const wHasData=wkWeight.some(v=>v!=null)||gVal!=null;
   const chart3=wHasData
     ?_lineChartSVG({h:240,xLabels:wkLabels,fmtY:v=>v.toFixed(1),series:[
@@ -3945,6 +3963,42 @@ function renderReport(el){
   const moOpts=Array.from({length:12},(_,i)=>`<option value="${i}"${i===mo?' selected':''}>${i+1}월</option>`).join('');
   const selCss='font-size:var(--text-base);padding:5px 10px;border:1px solid var(--color-border-input);border-radius:7px;font-family:inherit;color:var(--color-text-primary)';
   const cap=(t)=>`<div style="font-size:var(--text-xs);color:var(--color-text-tertiary);margin-top:8px">${t}</div>`;
+  // 주차 기간 라벨(예: 6/1~6/7)
+  const wkRange=weeks.map(w=>`${w.start.getMonth()+1}/${w.start.getDate()}~${w.end.getMonth()+1}/${w.end.getDate()}`);
+  // 📆 주차별 금액 배분 편집기(접이식)
+  const allocRows=weeks.map((w,i)=>`<div style="display:flex;gap:6px;align-items:center;margin-bottom:5px;flex-wrap:wrap">
+    <span style="width:118px;font-size:var(--text-xs);color:var(--color-text-secondary)">${w.idx}주차 <span style="color:var(--color-text-tertiary)">${wkRange[i]}</span></span>
+    <input id="alloc-inc-${i}" type="number" min="0" placeholder="수입" oninput="_updateAllocSum()" style="width:104px;${selCss}"/>
+    <input id="alloc-exp-${i}" type="number" min="0" placeholder="지출" oninput="_updateAllocSum()" style="width:104px;${selCss}"/>
+  </div>`).join('');
+  const allocEditor=`<div style="margin-top:10px;border-top:1px dashed var(--color-border-default);padding-top:8px">
+    <div onclick="toggleRptAlloc()" style="cursor:pointer;user-select:none;font-size:var(--text-sm);font-weight:600;color:var(--color-accent)">📆 주차별로 직접 배분 ${_rptAllocOpen?'▾':'▸'}</div>
+    ${_rptAllocOpen?`<div style="margin-top:8px">
+      <div style="display:flex;gap:6px;margin-bottom:4px"><span style="width:118px"></span><span style="width:104px;font-size:var(--text-2xs);color:var(--color-success-text);text-align:center">수입(원)</span><span style="width:104px;font-size:var(--text-2xs);color:var(--color-error-text);text-align:center">지출(원)</span></div>
+      ${allocRows}
+      <div id="alloc-sum" style="font-size:var(--text-xs);color:var(--color-text-tertiary);margin:6px 0 8px"></div>
+      <button class="btn btn-primary" onclick="saveWeekAllocation()">배분 저장</button>
+      <button class="btn" onclick="resetWeekAllocation()">균등하게 초기화</button>
+    </div>`:''}
+  </div>`;
+  // 📆 주차별 실제 체중 편집기(접이식)
+  const wkWeightRows=weeks.map((w,i)=>`<div style="display:flex;gap:6px;align-items:center;margin-bottom:5px;flex-wrap:wrap">
+    <span style="width:118px;font-size:var(--text-xs);color:var(--color-text-secondary)">${w.idx}주차 <span style="color:var(--color-text-tertiary)">${wkRange[i]}</span></span>
+    <input id="wwk-${i}" type="number" step="0.1" min="0" placeholder="실제 체중(kg)" style="width:130px;${selCss}"/>
+  </div>`).join('');
+  const weightWkEditor=`<div style="margin-top:10px;border-top:1px dashed var(--color-border-default);padding-top:8px">
+    <div onclick="toggleRptWeightWk()" style="cursor:pointer;user-select:none;font-size:var(--text-sm);font-weight:600;color:var(--color-accent)">📆 주차별 실제 체중 직접 입력 ${_rptWeightWkOpen?'▾':'▸'}</div>
+    ${_rptWeightWkOpen?`<div style="margin-top:8px">
+      ${wkWeightRows}
+      <button class="btn btn-primary" onclick="saveWeeklyWeight()">체중 저장</button>
+      <button class="btn" onclick="resetWeeklyWeight()">직접입력 지우기</button>
+      <div style="font-size:var(--text-2xs);color:var(--color-text-tertiary);margin-top:6px">비워두면 캘린더 기록(그 주 마지막 값)이 자동 반영됩니다.</div>
+    </div>`:''}
+  </div>`;
+  // 목표 대비 최근 실제 체중 비교
+  const _latestW=[...wkWeight].reverse().find(v=>v!=null);
+  const _wDiff=(gVal!=null&&_latestW!=null)?(_latestW-gVal):null;
+  const wgCompare=_wDiff!=null?`최근 실제 <b>${_latestW.toFixed(1)}kg</b> vs 월 목표 <b>${(+gVal).toFixed(1)}kg</b> · 차이 <b style="color:${Math.abs(_wDiff)<0.05?'var(--color-success-text)':'var(--color-text-primary)'}">${_wDiff>0?'+':_wDiff<0?'−':''}${Math.abs(_wDiff).toFixed(1)}kg</b>`:'';
   el.innerHTML=`
     <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:1rem">
       <span style="font-size:var(--text-sm);font-weight:700;color:var(--color-text-secondary)">📅 기준 기간</span>
@@ -3960,7 +4014,8 @@ function renderReport(el){
         <input id="bg-expense" type="number" min="0" placeholder="지출 목표(원)" style="width:150px;${selCss}"/>
         <button class="btn btn-primary" onclick="saveBudget()">저장</button>
       </div>
-      ${cap('월 목표를 주 수로 나눠 매주 \'주간 목표\'로 자동 비교합니다.')}
+      ${cap('월 목표를 주 수로 나눠 매주 \'주간 목표\'로 자동 비교합니다. 아래에서 주차별로 직접 배분할 수도 있어요.')}
+      ${allocEditor}
     </div>
     <div class="report-card"><div class="report-title">📥 수입: 주차별 목표 vs 실제 (${ymLbl})</div>${chartInc}${cap(incCap)}</div>
     <div class="report-card"><div class="report-title">📤 지출: 주차별 목표 vs 실제 (${ymLbl})</div>${chartExp}${cap(expCap)}</div>
@@ -3971,10 +4026,12 @@ function renderReport(el){
         <input id="wg-kg" type="number" step="0.1" min="0" placeholder="목표 체중(kg)" style="width:150px;${selCss}"/>
         <button class="btn btn-primary" onclick="saveMonthlyWeightGoal()">저장</button>
       </div>
-      ${cap('실제 체중은 캘린더에서 기록하면 매주 일요일 값이 자동 반영됩니다.')}
+      ${wgCompare?`<div style="font-size:var(--text-sm);color:var(--color-text-secondary);margin-top:8px">${wgCompare}</div>`:''}
+      ${cap('실제 체중은 캘린더에 기록하면 매주 자동 반영되고, 아래에서 주차별로 직접 입력할 수도 있어요.')}
+      ${weightWkEditor}
     </div>
     <div class="report-card"><div class="report-title">⚖️ 건강관리: 주차별 목표 vs 실제 (${ymLbl})</div>${chart3}${cap(wCap)}</div>`;
-  _fillBudgetForm();_fillWeightGoalForm();
+  _fillBudgetForm();_fillWeightGoalForm();_fillWeekAllocationForm();_fillWeeklyWeightForm();
 }
 function _fillBudgetForm(){
   const ym=`${_rptYear}-${String(_rptMonth+1).padStart(2,'0')}`,b=budget[ym]||{};
@@ -3984,7 +4041,8 @@ function _fillBudgetForm(){
 function saveBudget(){
   const ym=`${_rptYear}-${String(_rptMonth+1).padStart(2,'0')}`;
   const inc=parseFloat(document.getElementById('bg-income')?.value),exp=parseFloat(document.getElementById('bg-expense')?.value);
-  budget[ym]={income:(inc>=0?Math.round(inc):null),expense:(exp>=0?Math.round(exp):null)};
+  // 기존 주차 배분(incomeWeeks/expenseWeeks) 보존하며 월 총액만 갱신
+  budget[ym]={...(budget[ym]||{}),income:(inc>=0?Math.round(inc):null),expense:(exp>=0?Math.round(exp):null)};
   localStorage.setItem('pf_budget',JSON.stringify(budget));_syncToCloud();
   renderMemos();
 }
@@ -4000,6 +4058,72 @@ function saveMonthlyWeightGoal(){
   if(g&&g>0)health.monthlyGoals[ym]=Math.round(g*10)/10;
   else delete health.monthlyGoals[ym]; // 비우면 해당 달 목표 삭제
   localStorage.setItem('pf_health',JSON.stringify(health));_syncToCloud();
+  renderMemos();
+}
+
+// ── 📆 주차별 금액 배분(수입/지출) ─────────────────────────────
+function toggleRptAlloc(){_rptAllocOpen=!_rptAllocOpen;renderMemos();}
+function _fillWeekAllocationForm(){
+  if(!_rptAllocOpen)return;
+  const wt=_weeklyTargets(_rptYear,_rptMonth);
+  for(let i=0;i<wt.W;i++){
+    const ii=document.getElementById('alloc-inc-'+i),ee=document.getElementById('alloc-exp-'+i);
+    if(ii)ii.value=wt.inc[i]!=null?Math.round(wt.inc[i]):'';
+    if(ee)ee.value=wt.exp[i]!=null?Math.round(wt.exp[i]):'';
+  }
+  _updateAllocSum();
+}
+function _updateAllocSum(){
+  const el=document.getElementById('alloc-sum');if(!el)return;
+  const ym=`${_rptYear}-${String(_rptMonth+1).padStart(2,'0')}`,b=budget[ym]||{},W=_rptWeeks(_rptYear,_rptMonth).length;
+  let si=0,se=0,hasI=false,hasE=false;
+  for(let i=0;i<W;i++){
+    const iv=parseFloat(document.getElementById('alloc-inc-'+i)?.value);if(!isNaN(iv)){si+=iv;hasI=true;}
+    const ev=parseFloat(document.getElementById('alloc-exp-'+i)?.value);if(!isNaN(ev)){se+=ev;hasE=true;}
+  }
+  const man=v=>'₩'+Math.round(v/10000).toLocaleString()+'만';
+  const cmp=(sum,has,tgt)=>{if(!has)return'—';if(tgt==null)return `합계 ${man(sum)}`;const d=sum-tgt;
+    return `합계 ${man(sum)} / 월 목표 ${man(tgt)} ${Math.abs(d)>=10000?`<span style="color:var(--color-warning-text)">(${d>0?'+':'−'}${man(Math.abs(d))})</span>`:'<span style="color:var(--color-success-text)">✓</span>'}`;};
+  el.innerHTML=`수입 ${cmp(si,hasI,b.income!=null?+b.income:null)} · 지출 ${cmp(se,hasE,b.expense!=null?+b.expense:null)}`;
+}
+function saveWeekAllocation(){
+  const ym=`${_rptYear}-${String(_rptMonth+1).padStart(2,'0')}`,W=_rptWeeks(_rptYear,_rptMonth).length;
+  if(!budget[ym])budget[ym]={income:null,expense:null};
+  const inc=[],exp=[];
+  for(let i=0;i<W;i++){
+    const iv=parseFloat(document.getElementById('alloc-inc-'+i)?.value);inc.push(!isNaN(iv)&&iv>=0?Math.round(iv):null);
+    const ev=parseFloat(document.getElementById('alloc-exp-'+i)?.value);exp.push(!isNaN(ev)&&ev>=0?Math.round(ev):null);
+  }
+  if(inc.some(v=>v!=null))budget[ym].incomeWeeks=inc;else delete budget[ym].incomeWeeks;
+  if(exp.some(v=>v!=null))budget[ym].expenseWeeks=exp;else delete budget[ym].expenseWeeks;
+  localStorage.setItem('pf_budget',JSON.stringify(budget));_syncToCloud();
+  renderMemos();
+}
+function resetWeekAllocation(){
+  const ym=`${_rptYear}-${String(_rptMonth+1).padStart(2,'0')}`;
+  if(budget[ym]){delete budget[ym].incomeWeeks;delete budget[ym].expenseWeeks;localStorage.setItem('pf_budget',JSON.stringify(budget));_syncToCloud();}
+  renderMemos();
+}
+
+// ── 📆 주차별 실제 체중(health.weeklyActual) ───────────────────
+function toggleRptWeightWk(){_rptWeightWkOpen=!_rptWeightWkOpen;renderMemos();}
+function _fillWeeklyWeightForm(){
+  if(!_rptWeightWkOpen)return;
+  const ym=`${_rptYear}-${String(_rptMonth+1).padStart(2,'0')}`,ov=(health.weeklyActual||{})[ym]||[],W=_rptWeeks(_rptYear,_rptMonth).length;
+  for(let i=0;i<W;i++){const el=document.getElementById('wwk-'+i);if(el)el.value=(ov[i]!=null&&isFinite(ov[i]))?ov[i]:'';} // 직접입력값만 표시(비면 캘린더 자동 폴백)
+}
+function saveWeeklyWeight(){
+  const ym=`${_rptYear}-${String(_rptMonth+1).padStart(2,'0')}`,W=_rptWeeks(_rptYear,_rptMonth).length;
+  if(!health.weeklyActual||typeof health.weeklyActual!=='object')health.weeklyActual={};
+  const arr=[];
+  for(let i=0;i<W;i++){const v=parseFloat(document.getElementById('wwk-'+i)?.value);arr.push(v&&v>0?Math.round(v*10)/10:null);}
+  if(arr.some(v=>v!=null))health.weeklyActual[ym]=arr;else delete health.weeklyActual[ym];
+  localStorage.setItem('pf_health',JSON.stringify(health));_syncToCloud();
+  renderMemos();
+}
+function resetWeeklyWeight(){
+  const ym=`${_rptYear}-${String(_rptMonth+1).padStart(2,'0')}`;
+  if(health.weeklyActual&&health.weeklyActual[ym]){delete health.weeklyActual[ym];localStorage.setItem('pf_health',JSON.stringify(health));_syncToCloud();}
   renderMemos();
 }
 
