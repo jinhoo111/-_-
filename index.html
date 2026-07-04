@@ -795,6 +795,9 @@ body.admin-mode .admin-only{display:inline-flex!important}
   <!-- 홈 상단: 이번 주 경쟁사 브리핑 (renderCompetitorBrief가 채움. 신호 없거나 미로그인 시 숨김) -->
   <div id="competitor-brief-card" style="display:none"></div>
 
+  <!-- 기술 신호 스캐너 (renderTechCard가 채움. 미로그인·종목 없음 시 숨김) -->
+  <div id="tech-signal-card" style="display:none"></div>
+
   <!-- 보유 종목 -->
   <div id="ip-portfolio-stk" class="ipanel on">
     <div class="filter-row">
@@ -1803,8 +1806,9 @@ function _clearLocalUserData(){
   quoteSymbols=['NVDA','AAPL','TSLA','MSFT'];notifyMaster=false;investPhilosophy=[];
   monitorCompanies=[];_monitorCache={};dartKeyStored=false;
   FKEY='';CKEY='';_fhKey='';_dartKey='';
+  _techResults={}; // 기술 신호 스캔 결과(계정 격리)
   ['pf_s','pf_m','pf_ma','pf_ledger','pf_health','pf_budget','pf_impulse','cash_krw','cash_usd','fh_q','pf_notify_master','pf_phil',
-   'monitor_co','pf_is_sample','fhkey_stored','ck_stored','fhkey']
+   'monitor_co','pf_is_sample','fhkey_stored','ck_stored','fhkey','tech_scan']
     .forEach(k=>localStorage.removeItem(k));
   _cloudLoadedFor=null;_apiKeysRestoredFor=null;
   // 이전 계정 화면 잔상 즉시 제거 + 키 입력 UI 초기화
@@ -2461,6 +2465,7 @@ function renderStocks(){
   localStorage.setItem('pf_s',JSON.stringify(stocks));
   _syncToCloud();
   try{renderCompetitorBrief();}catch(e){}
+  try{renderTechCard();}catch(e){}
 }
 
 function _syncCurToggle(){
@@ -2473,6 +2478,144 @@ function setCurMode(m){
   localStorage.setItem('cur_mode',_curMode);
   _syncCurToggle();
   renderStocks();
+}
+
+// ══════════════════════════════════════════════════════════════
+// 기술 신호 스캐너 (Phase 1-A) — 보유·관심·매수 종목의 일봉(Yahoo)만으로
+// 골든크로스·52주 신고가·RSI 과매도·이격도 과열을 클라이언트에서 계산.
+// 신규 API 키 불필요(기존 yahoo-finance 프록시 재사용). 결과는 당일 캐시.
+// 정보 제공용이며 매수·매도 추천이 아님.
+// ══════════════════════════════════════════════════════════════
+let _techResults={},_techScanning=false;
+try{const _tc=JSON.parse(localStorage.getItem('tech_scan')||'null');
+  if(_tc&&_tc.date===new Date().toISOString().slice(0,10))_techResults=_tc.data||{};}catch(e){}
+
+// 이동평균: 배열 끝에서 off개 뒤 지점을 종점으로 하는 n일 단순평균
+function _maAt(a,n,off){const end=a.length-off;if(end<n)return null;let s=0;for(let i=end-n;i<end;i++)s+=a[i];return s/n;}
+// RSI(Wilder 평활)
+function _rsi14(closes,period=14){
+  if(closes.length<period+1)return null;
+  let g=0,l=0;
+  for(let i=1;i<=period;i++){const c=closes[i]-closes[i-1];if(c>=0)g+=c;else l-=c;}
+  let ag=g/period,al=l/period;
+  for(let i=period+1;i<closes.length;i++){
+    const c=closes[i]-closes[i-1];
+    ag=(ag*(period-1)+(c>0?c:0))/period;
+    al=(al*(period-1)+(c<0?-c:0))/period;
+  }
+  if(al===0)return 100;
+  return 100-100/(1+ag/al);
+}
+// 신호 메타(라벨·색톤). tone: up=강세/반등, down=과열/주의, warn=임박
+const TECH_SIG={
+  golden_day :{label:'골든크로스',      tone:'up'},
+  golden_soon:{label:'골든크로스 임박',  tone:'warn'},
+  high52     :{label:'52주 신고가 근접', tone:'up'},
+  rsi_os     :{label:'RSI 과매도',       tone:'up'},
+  disparity  :{label:'이격도 과열',      tone:'down'},
+};
+// 종가/고가/저가 배열 → 신호 배열
+function computeTechnicals(closes,highs){
+  const out=[];
+  if(closes.length<20)return out;
+  const price=closes[closes.length-1];
+  const ma5=_maAt(closes,5,0),ma20=_maAt(closes,20,0);
+  const ma5p=_maAt(closes,5,1),ma20p=_maAt(closes,20,1);
+  if(ma5&&ma20){
+    const gap=(ma5-ma20)/ma20*100;
+    const pgap=(ma5p&&ma20p)?(ma5p-ma20p)/ma20p*100:null;
+    if(pgap!=null&&gap>0&&pgap<=0)out.push({key:'golden_day',detail:'5·20일선 상향 돌파'});
+    // 임박: 5일선이 20일선 1.5% 아래에서 '상승 전환 중'일 때만(정체·데드크로스 노이즈 배제)
+    else if(gap<0&&gap>=-1.5&&ma5p!=null&&ma5>ma5p)out.push({key:'golden_soon',detail:`이격 ${gap.toFixed(1)}%`});
+    if(gap>=10)out.push({key:'disparity',detail:`5-20 이격 +${gap.toFixed(1)}%`});
+  }
+  const rsi=_rsi14(closes);
+  if(rsi!=null&&rsi<=30)out.push({key:'rsi_os',detail:`RSI ${rsi.toFixed(0)}`});
+  const win=highs.slice(-252);
+  const hi52=win.length?Math.max(...win):null;
+  if(hi52){const fromHi=(price-hi52)/hi52*100;if(fromHi>=-1)out.push({key:'high52',detail:`고점 대비 ${fromHi.toFixed(1)}%`});}
+  return out;
+}
+// 1년 일봉 OHLC (Yahoo v8 chart, 기존 proxyFetch 경유). closes와 highs 정렬 유지.
+async function _fetchDailyCandles(ticker){
+  for(const host of['query1','query2']){
+    try{
+      const url=`https://${host}.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(ticker)}?interval=1d&range=1y`;
+      const res=await proxyFetch(url,8000);
+      const r=(await res.json())?.chart?.result?.[0];
+      if(r){
+        const q=r.indicators?.quote?.[0]||{};
+        const cl=q.close||[],hi=q.high||[],lo=q.low||[];
+        const closes=[],highs=[];
+        for(let i=0;i<cl.length;i++){if(cl[i]!=null){closes.push(cl[i]);highs.push(hi[i]??cl[i]);}}
+        if(closes.length>=20)return{closes,highs};
+      }
+    }catch(e){}
+  }
+  return null;
+}
+// 보유·관심·매수(숨김 제외) 종목 스캔
+async function scanTechSignals(){
+  if(_techScanning)return;
+  const targets=stocks.filter(s=>!s.hidden&&['hold','buy','watch'].includes(s.status)&&s.ticker&&s.ticker.trim());
+  if(!targets.length){_techResults={};renderTechCard();return;}
+  _techScanning=true;renderTechCard();
+  const out={};
+  // 병렬 요청. proxyFetch의 세마포어(_ySem)가 동시성을 제한하므로 과도한 부하 없음.
+  await Promise.all(targets.slice(0,50).map(async s=>{
+    try{
+      const c=await _fetchDailyCandles(s.ticker.trim());
+      if(c)out[s.ticker]={name:s.name,ticker:s.ticker,signals:computeTechnicals(c.closes,c.highs)};
+    }catch(e){}
+  }));
+  _techResults=out;_techScanning=false;
+  try{localStorage.setItem('tech_scan',JSON.stringify({date:new Date().toISOString().slice(0,10),data:out}));}catch(e){}
+  renderTechCard();
+}
+function _techChip(key){
+  const m=TECH_SIG[key];if(!m)return'';
+  const col=m.tone==='up'?'var(--color-success)':m.tone==='down'?'var(--color-error)':'var(--color-warning-text)';
+  const bg =m.tone==='up'?'var(--color-success-bg)':m.tone==='down'?'var(--color-error-bg)':'var(--color-warning-bg)';
+  return `<span style="font-size:var(--text-xs);font-weight:700;padding:2px 8px;border-radius:20px;background:${bg};color:${col};white-space:nowrap">${m.label}</span>`;
+}
+function renderTechCard(){
+  const host=document.getElementById('tech-signal-card');
+  if(!host)return;
+  if(!_currentUser){host.style.display='none';return;}
+  const hasStocks=stocks.some(s=>!s.hidden&&['hold','buy','watch'].includes(s.status)&&s.ticker&&s.ticker.trim());
+  if(!hasStocks){host.style.display='none';return;}
+  host.style.display='';
+  const hit=Object.values(_techResults).filter(r=>r.signals&&r.signals.length);
+  // 신호 우선순위 정렬(강한 신호 위로)
+  const order={golden_day:0,high52:1,rsi_os:2,disparity:3,golden_soon:4};
+  hit.sort((a,b)=>Math.min(...a.signals.map(s=>order[s.key]??9))-Math.min(...b.signals.map(s=>order[s.key]??9)));
+  const btn=`<button class="btn" onclick="scanTechSignals()" ${_techScanning?'disabled':''} style="font-weight:600">${_techScanning?'<span class="spin">⟳</span> 스캔 중…':'📡 스캔'}</button>`;
+  const scanned=Object.keys(_techResults).length>0;
+  let bodyHtml;
+  if(_techScanning&&!scanned){
+    bodyHtml=`<div class="empty" style="font-size:var(--text-sm)"><span class="spin">⟳</span> 보유·관심 종목 일봉 분석 중…</div>`;
+  }else if(!scanned){
+    bodyHtml=`<div class="empty" style="font-size:var(--text-sm)">[📡 스캔]을 누르면 보유·관심·매수 종목의 골든크로스·52주 신고가·RSI·이격도 신호를 분석합니다.</div>`;
+  }else if(!hit.length){
+    bodyHtml=`<div class="empty" style="font-size:var(--text-sm)">현재 활성화된 기술 신호가 없습니다.</div>`;
+  }else{
+    bodyHtml=hit.map(r=>{
+      const mkt=_isKRticker(r.ticker)?'국':'미';
+      return `<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:8px 4px;border-bottom:1px solid var(--color-border-default)">
+        <span style="font-size:var(--text-2xs);font-weight:700;padding:1px 5px;border-radius:4px;background:var(--color-bg-badge);color:var(--color-text-placeholder)">${mkt}</span>
+        <b style="font-size:var(--text-sm)">${escapeHtml(r.name)}</b>
+        <span style="font-size:var(--text-xs);color:var(--color-text-tertiary);font-family:monospace">${escapeHtml(r.ticker)}</span>
+        <span style="display:flex;gap:5px;flex-wrap:wrap;margin-left:auto">${r.signals.map(s=>_techChip(s.key)).join('')}</span>
+      </div>`;
+    }).join('');
+  }
+  host.innerHTML=`<div class="cbrief" style="padding:14px 16px">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px">
+      <span style="font-weight:700;font-size:var(--text-base)">📡 기술 신호 스캐너</span>${btn}
+    </div>
+    ${bodyHtml}
+    <div style="font-size:var(--text-2xs);color:var(--color-text-tertiary);margin-top:8px">일봉(전일 종가) 기준 · 정보 제공용이며 매수·매도 추천이 아닙니다.</div>
+  </div>`;
 }
 
 const ACCT_COLOR={
