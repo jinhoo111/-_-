@@ -1309,6 +1309,20 @@ body.admin-mode .admin-only{display:inline-flex!important}
   <div id="sec-summary" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px;margin-bottom:1.25rem"></div>
   <div id="sec-table"></div>
 
+  <!-- 관리자: 회원 계정 관리(누적 가입 통계 + 유형/승인 변경) -->
+  <div style="margin-top:1.75rem;background:var(--color-bg-surface);border:1px solid var(--color-border-default);border-radius:var(--radius-lg);padding:1.1rem 1.25rem">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px">
+      <div>
+        <div style="font-size:var(--text-md);font-weight:700;margin-bottom:2px">👥 회원 계정 관리</div>
+        <div style="font-size:var(--text-sm);color:var(--color-text-tertiary)">누적 가입(개인/기업) 통계 + 계정 유형·승인 변경.</div>
+      </div>
+      <button class="btn" onclick="renderAccountsAdmin()" style="white-space:nowrap;flex-shrink:0">↻ 새로고침</button>
+    </div>
+    <div id="acct-summary" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:10px;margin-bottom:12px"></div>
+    <input id="acct-search" type="search" oninput="setAcctSearch(this.value)" placeholder="🔎 이메일 검색" autocomplete="off" style="width:100%;box-sizing:border-box;margin-bottom:8px;font-size:var(--text-sm);padding:6px 9px;border:1px solid var(--color-border-input);border-radius:7px;font-family:inherit;background:var(--color-bg-surface);color:var(--color-text-primary)"/>
+    <div id="acct-list"><div class="monitor-empty">불러오는 중…</div></div>
+  </div>
+
   <!-- 관리자: 공용 시장 일정 관리(캘린더에 전 사용자 반영) -->
   <div style="margin-top:1.75rem;background:var(--color-bg-surface);border:1px solid var(--color-border-default);border-radius:var(--radius-lg);padding:1.1rem 1.25rem">
     <div style="font-size:var(--text-md);font-weight:700;margin-bottom:2px">📅 공용 시장 일정 관리</div>
@@ -1744,6 +1758,7 @@ async function obSubmit(){
   const isBiz=_ob.type==='business';
   const{error}=await _restUpsert('user_profiles',{
     user_id:user.id,
+    email:user.email,
     user_type:_ob.type,
     age_range:!isBiz?_ob.age:null,
     business_type:isBiz?_ob.biz:null,
@@ -1873,6 +1888,7 @@ async function saveProfile(){
   const marketing=document.getElementById('prof-marketing').checked;
   const{error}=await _restUpsert('user_profiles',{
     user_id:_currentUser.id,
+    email:_currentUser.email,
     user_type:_profType,
     age_range:_profType==='personal'?_profAge:null,
     business_type:_profType==='business'?biz:null,
@@ -4794,7 +4810,7 @@ function goPage(name,btn){
   document.querySelectorAll('.bn-item').forEach(b=>b.classList.toggle('on',b.dataset.page===name));
   localStorage.setItem('cur_page',name);
   if(name==='monitor')initMonitorPage();
-  if(name==='security'){renderSecurityDashboard();renderMarketEventsAdmin();renderVocAdmin();}
+  if(name==='security'){renderSecurityDashboard();renderMarketEventsAdmin();renderVocAdmin();renderAccountsAdmin();}
   if(name==='indices')loadAllIndices();
   if(name==='news')initNewsUI();
   if(name==='memo')switchMemoView('calendar');
@@ -5762,6 +5778,69 @@ async function setVocStatus(id,status){
     if(r.ok&&rows.length){ if(row)row.status=next; renderVocAdmin(); return; }
     if(el)el.insertAdjacentHTML('afterbegin',`<div style="font-size:var(--text-xs);color:var(--color-error-text);margin-bottom:4px">상태 변경 실패(${r.ok?'수정 정책 필요':'권한 '+r.status}).</div>`);
   }catch(e){ if(el)el.insertAdjacentHTML('afterbegin','<div style="font-size:var(--text-xs);color:var(--color-error-text);margin-bottom:4px">상태 변경 오류</div>'); }
+}
+
+// ── 회원 계정 관리(관리자) — 누적 통계 + 유형/승인 변경 ──────────────
+let _acctRows=[],_acctSearch='';
+async function renderAccountsAdmin(){
+  const el=document.getElementById('acct-list'),sum=document.getElementById('acct-summary');
+  if(!el)return;
+  if(!_isAdmin){el.innerHTML='<div class="monitor-empty">관리자 전용입니다.</div>';if(sum)sum.innerHTML='';return;}
+  el.innerHTML='<div class="monitor-empty">불러오는 중…</div>';
+  try{
+    await _safeGetSession();
+    const url=`${SUPA_BASE}/rest/v1/user_profiles?select=user_id,email,user_type,business_approved,is_admin,created_at&order=created_at.desc&limit=2000`;
+    const r=await fetch(url,{headers:_apiHeaders()});
+    if(!r.ok){el.innerHTML=`<div class="monitor-empty">불러오기 실패(${r.status}). 관리자 조회 정책(0004 마이그레이션)이 필요합니다.</div>`;if(sum)sum.innerHTML='';_acctRows=[];return;}
+    _acctRows=await r.json();
+    const biz=_acctRows.filter(a=>a.user_type==='business');
+    const bizAppr=biz.filter(a=>a.business_approved).length;
+    if(sum){
+      const card=(label,val,color)=>`<div style="background:var(--color-bg-subtle);border:1px solid var(--color-border-faint);border-radius:10px;padding:10px 12px"><div style="font-size:var(--text-xs);color:var(--color-text-tertiary)">${label}</div><div style="font-size:var(--text-xl);font-weight:800;color:${color||'var(--color-text-primary)'}">${val}</div></div>`;
+      sum.innerHTML=card('총 회원',_acctRows.length)+card('개인',_acctRows.length-biz.length,'var(--color-info)')+card('기업',biz.length,'var(--color-success-text)')+card('기업 승인',bizAppr,'var(--color-success-text)')+card('기업 대기',biz.length-bizAppr,'var(--color-warning-text)');
+    }
+    _paintAcctList();
+  }catch(e){el.innerHTML='<div class="monitor-empty">오류: '+escapeHtml(e.message||'')+'</div>';_acctRows=[];}
+}
+function setAcctSearch(v){_acctSearch=v;_paintAcctList();}
+function _paintAcctList(){
+  const el=document.getElementById('acct-list');if(!el)return;
+  const q=_acctSearch.trim().toLowerCase();
+  let list=_acctRows.slice();
+  if(q)list=list.filter(a=>(a.email||'').toLowerCase().includes(q));
+  if(!list.length){el.innerHTML=`<div class="monitor-empty">${_acctRows.length?'검색 결과가 없습니다.':'회원이 없습니다.'}</div>`;return;}
+  const fmt=d=>d?new Date(d).toLocaleDateString('ko-KR',{year:'2-digit',month:'2-digit',day:'2-digit'}):'-';
+  el.innerHTML=`<div style="font-size:var(--text-xs);color:var(--color-text-tertiary);margin-bottom:4px">총 ${list.length}명</div>
+  <div style="overflow-x:auto"><table class="voc-table">
+    <thead><tr><th>이메일</th><th>유형</th><th>기업 승인</th><th>가입일</th><th>변경</th></tr></thead>
+    <tbody>${list.map(a=>{
+      const isBiz=a.user_type==='business',uid=a.user_id;
+      const typeBtn=`<button type="button" onclick="setAccountType('${uid}','${isBiz?'personal':'business'}')" class="mc-text-btn" style="color:var(--color-accent-indigo)">${isBiz?'개인 전환':'기업 전환'}</button>`;
+      const apprBtn=isBiz?`<button type="button" onclick="setAccountApproved('${uid}',${a.business_approved?'false':'true'})" class="mc-text-btn" style="color:${a.business_approved?'var(--color-text-tertiary)':'var(--color-success-text)'}">${a.business_approved?'승인 해제':'승인'}</button>`:'';
+      return `<tr>
+        <td>${escapeHtml(a.email||'-')}${a.is_admin?' <span style="font-size:var(--text-xs);color:var(--color-accent-indigo)">관리자</span>':''}</td>
+        <td><span style="font-size:var(--text-xs);font-weight:700;padding:2px 8px;border-radius:20px;background:${isBiz?'var(--color-success-bg)':'var(--color-info-bg)'};color:${isBiz?'var(--color-success-text)':'var(--color-info)'}">${isBiz?'기업':'개인'}</span></td>
+        <td>${isBiz?(a.business_approved?'<span style="color:var(--color-success-text)">승인</span>':'<span style="color:var(--color-warning-text)">대기</span>'):'-'}</td>
+        <td style="white-space:nowrap;color:var(--color-text-tertiary)">${fmt(a.created_at)}</td>
+        <td style="white-space:nowrap"><div style="display:flex;gap:8px">${typeBtn}${apprBtn}</div></td>
+      </tr>`;
+    }).join('')}</tbody>
+  </table></div>`;
+}
+async function _patchProfile(uid,patch){
+  await _safeGetSession();
+  const r=await fetch(`${SUPA_BASE}/rest/v1/user_profiles?user_id=eq.${uid}`,{method:'PATCH',headers:{..._apiHeaders(),'Prefer':'return=representation'},body:JSON.stringify(patch)});
+  const rows=r.ok?await r.json().catch(()=>[]):[];
+  return r.ok&&rows.length;
+}
+function _acctErr(){const el=document.getElementById('acct-list');if(el)el.insertAdjacentHTML('afterbegin','<div style="font-size:var(--text-xs);color:var(--color-error-text);margin-bottom:4px">변경 실패 — 관리자 수정 정책(0004 마이그레이션)이 필요합니다.</div>');}
+async function setAccountType(uid,type){
+  const patch={user_type:type};
+  if(type==='business')patch.business_approved=true;  // 기업 전환 시 즉시 승인
+  (await _patchProfile(uid,patch))?renderAccountsAdmin():_acctErr();
+}
+async function setAccountApproved(uid,val){
+  (await _patchProfile(uid,{business_approved:val}))?renderAccountsAdmin():_acctErr();
 }
 
 // ── 보안 대시보드 (관리자 전용) — security_events 조회 ──────────────
