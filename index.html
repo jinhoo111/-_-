@@ -323,8 +323,8 @@ body.admin-mode .bn-biz,body.admin-mode .bn-personal{display:flex}
 
 /* ── METRICS ── */
 /* 반응형: 폭이 좁아지면 자동 줄바꿈(고정 6열 → auto-fit). 폰트 확대로 인한 라벨 잘림 방지. */
-.metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:16px;margin-bottom:1.75rem}
-.metric{background:var(--color-bg-surface);border:1px solid var(--color-border-default);border-radius:var(--radius-2xl);padding:14px 16px;box-shadow:var(--shadow-card);min-width:0}
+.metrics{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px;margin-bottom:1.75rem}
+.metric{background:var(--color-bg-surface);border:1px solid var(--color-border-default);border-radius:var(--radius-2xl);padding:12px 12px;box-shadow:var(--shadow-card);min-width:0}
 .metric-label{font-size:var(--text-sm);color:var(--color-text-tertiary);margin-bottom:4px;white-space:nowrap}
 .metric-value{font-size:var(--text-xl);font-weight:800;font-family:monospace;letter-spacing:-.4px}
 .metric-sm{max-width:none}
