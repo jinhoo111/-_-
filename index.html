@@ -5952,15 +5952,15 @@ async function _fetchHoldingsYear(corpCode,year){
 const _dartFloat=s=>{const v=parseFloat(String(s==null?'':s).replace(/[^0-9.\-]/g,''));return isNaN(v)?0:v;};
 const _signOf=s=>{const t=String(s==null?'':s);return (/[△▽(]/.test(t)||/^\s*-/.test(t))?-1:1;};
 // 지분공시 rcept_dt는 'YYYY-MM-DD'(하이픈 포함) — 공시(list.json)의 'YYYYMMDD'와 다름. 숫자만 추출해 통일.
-const _ymd=s=>String(s==null?'':s).replace(/[^0-9]/g,'');
+const _ownYmd=s=>String(s==null?'':s).replace(/[^0-9]/g,'');
 const _OWN_WINDOW_DAYS=180; // 최근 6개월(5%룰·임원 보고는 공시보다 빈도가 낮아 90일은 빈 카드가 잦음)
 function _withinOwnWindow(dt){
-  const s=_ymd(dt); if(s.length!==8)return false;
+  const s=_ownYmd(dt); if(s.length!==8)return false;
   const t=new Date(+s.slice(0,4),+s.slice(4,6)-1,+s.slice(6,8)).getTime();
   return (Date.now()-t)<=_OWN_WINDOW_DAYS*864e5;
 }
 // 응답은 오래된순 정렬 → 창 필터 후 최신순으로 재정렬
-const _ownSortDesc=list=>list.sort((a,b)=>_ymd(b.rcept_dt).localeCompare(_ymd(a.rcept_dt)));
+const _ownSortDesc=list=>list.sort((a,b)=>_ownYmd(b.rcept_dt).localeCompare(_ownYmd(a.rcept_dt)));
 async function _fetchMajorStock(cc){
   const d=await callDartDirect('majorstock.json',{corp_code:cc});
   return _ownSortDesc((Array.isArray(d.list)?d.list:[]).filter(r=>_withinOwnWindow(r.rcept_dt)));
@@ -6450,7 +6450,7 @@ function _renderOwnershipBody(cc){
   if(!maj.length&&!ele.length){body.innerHTML='<div class="mc-empty-state">최근 6개월 지분변동 신고가 없습니다.</div>';return;}
   const TAGL={new:'신규',inc:'증가',dec:'감소',exit:'이탈',flat:'유지'};
   const CAP=12; // 그룹별 최대 표시(임원은 건수가 많음)
-  const fmtDate=dt=>{const s=_ymd(dt);return s.length===8?s.slice(4,6)+'/'+s.slice(6,8):'';};
+  const fmtDate=dt=>{const s=_ownYmd(dt);return s.length===8?s.slice(4,6)+'/'+s.slice(6,8):'';};
   const link=no=>`https://dart.fss.or.kr/dsaf001/main.do?rcpNo=${no||''}`;
   const majRows=maj.slice(0,CAP).map(r=>{
     const k=_classifyMajor(r);
