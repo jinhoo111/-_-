@@ -739,6 +739,11 @@ body.admin-mode .admin-only{display:inline-flex!important}
 .mc-own-row.inc .mc-own-detail{color:var(--color-error-text)}
 .mc-own-row.dec .mc-own-detail{color:var(--color-info)}
 .mc-own-row.exit .mc-own-detail{color:var(--color-text-tertiary)}
+/* VoC 관리자 테이블 */
+.voc-table{width:100%;border-collapse:collapse;font-size:var(--text-sm)}
+.voc-table th,.voc-table td{text-align:left;padding:7px 9px;border-bottom:1px solid var(--color-border-faint);vertical-align:top}
+.voc-table th{font-size:var(--text-xs);color:var(--color-text-tertiary);font-weight:700;white-space:nowrap}
+.voc-table td.voc-msg{white-space:pre-wrap;word-break:break-word;min-width:220px;color:var(--color-text-secondary)}
 
 @media(max-width:768px){
   .mc-ht-header,.mc-ht-row{grid-template-columns:2.2fr 1fr 1.3fr}
@@ -791,7 +796,21 @@ body.admin-mode .admin-only{display:inline-flex!important}
   <div class="help-divider"></div>
   <div style="font-size:var(--text-xs);color:var(--color-text-tertiary);margin:2px 0 4px">전체 기능 가이드</div>
   <div id="help-all"></div>
-  <button type="button" class="btn" onclick="toggleHelp();_showOnboarding();" style="width:100%;margin-top:10px">🎬 온보딩 다시 보기</button>
+  <div class="help-divider"></div>
+  <button type="button" class="btn" id="voc-open-btn" onclick="toggleVocForm()" style="width:100%;margin-top:10px">💬 기능 요청·문의하기</button>
+  <div id="voc-form" style="display:none;margin-top:8px">
+    <div id="voc-cat" style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:6px">
+      <button type="button" class="tbtn sel" onclick="_selVocCat('기능요청',this)">기능요청</button>
+      <button type="button" class="tbtn" onclick="_selVocCat('문의',this)">문의</button>
+      <button type="button" class="tbtn" onclick="_selVocCat('버그',this)">버그</button>
+      <button type="button" class="tbtn" onclick="_selVocCat('기타',this)">기타</button>
+    </div>
+    <textarea id="voc-msg" rows="3" placeholder="원하시는 기능이나 문의 내용을 남겨주세요." style="width:100%;box-sizing:border-box;font-size:var(--text-sm);padding:8px 10px;border:1px solid var(--color-border-input);border-radius:8px;background:var(--color-bg-surface);color:var(--color-text-primary);resize:vertical;font-family:inherit;line-height:1.5"></textarea>
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:6px">
+      <span id="voc-status" style="font-size:var(--text-xs);color:var(--color-text-tertiary)"></span>
+      <button type="button" class="btn btn-primary" onclick="submitVoc()" style="flex-shrink:0">보내기</button>
+    </div>
+  </div>
 </div>
 <button id="help-fab" type="button" onclick="toggleHelp()" aria-label="도움말">?</button>
 
@@ -1304,6 +1323,21 @@ body.admin-mode .admin-only{display:inline-flex!important}
     </div>
     <div id="mev-err" style="color:var(--color-error-text);font-size:var(--text-sm);margin-bottom:6px"></div>
     <div id="mev-admin-list"></div>
+  </div>
+
+  <!-- 관리자: VoC(기능 요청·문의) 목록 + 엑셀 다운로드 -->
+  <div style="margin-top:1.75rem;background:var(--color-bg-surface);border:1px solid var(--color-border-default);border-radius:var(--radius-lg);padding:1.1rem 1.25rem">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px">
+      <div>
+        <div style="font-size:var(--text-md);font-weight:700;margin-bottom:2px">💬 기능 요청·문의 (VoC)</div>
+        <div style="font-size:var(--text-sm);color:var(--color-text-tertiary)">사용자가 도움말에서 남긴 요청·문의. 이메일·계정정보 포함.</div>
+      </div>
+      <div style="display:flex;gap:6px;flex-shrink:0">
+        <button class="btn" onclick="renderVocAdmin()" style="white-space:nowrap">↻ 새로고침</button>
+        <button class="btn btn-primary" onclick="exportVocCsv()" style="white-space:nowrap">⬇ 엑셀(CSV) 다운로드</button>
+      </div>
+    </div>
+    <div id="voc-admin-list"><div class="monitor-empty">불러오는 중…</div></div>
   </div>
 </div>
 
@@ -4697,7 +4731,7 @@ function goPage(name,btn){
   document.querySelectorAll('.bn-item').forEach(b=>b.classList.toggle('on',b.dataset.page===name));
   localStorage.setItem('cur_page',name);
   if(name==='monitor')initMonitorPage();
-  if(name==='security'){renderSecurityDashboard();renderMarketEventsAdmin();}
+  if(name==='security'){renderSecurityDashboard();renderMarketEventsAdmin();renderVocAdmin();}
   if(name==='indices')loadAllIndices();
   if(name==='news')initNewsUI();
   if(name==='memo')switchMemoView('calendar');
@@ -4727,6 +4761,30 @@ function toggleHelp(){
   const willOpen=p.classList.contains('hidden');
   p.classList.toggle('hidden');
   if(willOpen){renderHelpContext();renderHelpAll();}
+}
+
+// ── VoC(기능 요청·문의) 수집 — voc_requests 테이블(사용자 INSERT, 관리자 SELECT) ──
+let _vocCat='기능요청';
+function toggleVocForm(){const f=document.getElementById('voc-form');if(f)f.style.display=f.style.display==='none'?'':'none';}
+function _selVocCat(cat,btn){_vocCat=cat;document.querySelectorAll('#voc-cat .tbtn').forEach(b=>b.classList.remove('sel'));btn.classList.add('sel');}
+async function submitVoc(){
+  const ta=document.getElementById('voc-msg'), st=document.getElementById('voc-status');
+  const setSt=(t,ok)=>{if(st){st.textContent=t;st.style.color=ok?'var(--color-success-text)':(ok===false?'var(--color-error-text)':'var(--color-text-tertiary)');}};
+  const msg=(ta?.value||'').trim();
+  if(!msg){setSt('내용을 입력해주세요.',false);ta?.focus();return;}
+  if(!_currentUser){setSt('로그인 후 이용해주세요.',false);return;}
+  setSt('보내는 중…',null);
+  try{
+    await _safeGetSession();
+    const body={user_id:_currentUser.id,email:_currentUser.email,user_type:_userType,category:_vocCat,message:msg};
+    const r=await fetch(`${SUPA_BASE}/rest/v1/voc_requests`,{method:'POST',headers:{..._apiHeaders(),'Prefer':'return=minimal'},body:JSON.stringify(body)});
+    if(!r.ok){
+      const t=await r.text().catch(()=>'');
+      throw new Error((r.status===404||/voc_requests/i.test(t))?'접수 채널 준비 중입니다(관리자 설정 필요).':'전송 실패('+r.status+')');
+    }
+    ta.value='';
+    setSt('소중한 의견 감사합니다! 접수되었습니다.',true);
+  }catch(e){ setSt(e.message||'전송 실패',false); }
 }
 function renderHelpContext(){
   const el=document.getElementById('help-ctx');if(!el)return;
@@ -5562,6 +5620,55 @@ async function _pollMonitor(){
 }
 
 // ── initMonitorPage ───────────────────────
+// ── VoC(기능 요청·문의) 관리자 조회 + 엑셀(CSV) 내보내기 ──────────────
+let _vocRows=[];
+async function renderVocAdmin(){
+  const el=document.getElementById('voc-admin-list');
+  if(!el)return;
+  if(!_isAdmin){el.innerHTML='<div class="monitor-empty">관리자 전용입니다.</div>';return;}
+  el.innerHTML='<div class="monitor-empty">불러오는 중…</div>';
+  try{
+    await _safeGetSession();
+    const url=`${SUPA_BASE}/rest/v1/voc_requests?select=created_at,email,user_type,category,message&order=created_at.desc&limit=1000`;
+    const r=await fetch(url,{headers:_apiHeaders()});
+    if(!r.ok){
+      const t=await r.text().catch(()=>'');
+      el.innerHTML=`<div class="monitor-empty">${(r.status===404||/voc_requests/i.test(t))?'VoC 테이블이 아직 없습니다. 0003 마이그레이션 실행이 필요합니다.':'불러오기 실패('+r.status+')'}</div>`;
+      _vocRows=[];return;
+    }
+    _vocRows=await r.json();
+    if(!_vocRows.length){el.innerHTML='<div class="monitor-empty">접수된 요청·문의가 없습니다.</div>';return;}
+    const fmt=d=>new Date(d).toLocaleString('ko-KR',{year:'2-digit',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'});
+    el.innerHTML=`<div style="font-size:var(--text-xs);color:var(--color-text-tertiary);margin-bottom:6px">총 ${_vocRows.length}건</div>
+    <div style="overflow-x:auto"><table class="voc-table">
+      <thead><tr><th>일시</th><th>이메일</th><th>계정</th><th>분류</th><th>내용</th></tr></thead>
+      <tbody>${_vocRows.map(v=>`<tr>
+        <td style="white-space:nowrap">${fmt(v.created_at)}</td>
+        <td>${escapeHtml(v.email||'-')}</td>
+        <td>${v.user_type==='business'?'기업':'개인'}</td>
+        <td>${escapeHtml(v.category||'-')}</td>
+        <td class="voc-msg">${escapeHtml(v.message||'')}</td>
+      </tr>`).join('')}</tbody>
+    </table></div>`;
+  }catch(e){el.innerHTML='<div class="monitor-empty">오류: '+escapeHtml(e.message||'')+'</div>';_vocRows=[];}
+}
+function exportVocCsv(){
+  if(!_vocRows||!_vocRows.length){const el=document.getElementById('voc-admin-list');if(el)el.insertAdjacentHTML('afterbegin','<div style="font-size:var(--text-xs);color:var(--color-error-text);margin-bottom:4px">내보낼 데이터가 없습니다. 먼저 새로고침하세요.</div>');return;}
+  const esc=s=>'"'+String(s==null?'':s).replace(/"/g,'""')+'"';
+  const head=['일시','이메일','계정유형','분류','내용'];
+  const lines=[head.map(esc).join(',')].concat(_vocRows.map(v=>[
+    new Date(v.created_at).toLocaleString('ko-KR'),
+    v.email, v.user_type==='business'?'기업':'개인', v.category, v.message
+  ].map(esc).join(',')));
+  const csv='﻿'+lines.join('\r\n'); // BOM: Excel 한글 깨짐 방지
+  const blob=new Blob([csv],{type:'text/csv;charset=utf-8'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download='voc_'+new Date().toISOString().slice(0,10)+'.csv';
+  document.body.appendChild(a);a.click();a.remove();
+  setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+}
+
 // ── 보안 대시보드 (관리자 전용) — security_events 조회 ──────────────
 async function renderSecurityDashboard(){
   const sumEl=document.getElementById('sec-summary');
