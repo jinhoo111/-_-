@@ -5905,8 +5905,9 @@ async function loadCompanyData(corpCode){
   if(ownRes.status==='fulfilled'){
     _monitorCache[corpCode].ownershipMajor=ownRes.value.major;
     _monitorCache[corpCode].ownershipEle=ownRes.value.ele;
+    _monitorCache[corpCode].ownCounts=_ownCounts(ownRes.value.major,ownRes.value.ele);
     _monitorCache[corpCode].ownershipLoaded=true;
-    _sigAdded+=_ingestOwnershipSignals(co,ownRes.value.major,ownRes.value.ele).length;
+    _sigAdded+=_ingestOwnershipSignals(co,ownRes.value.major).length;
   }
   // 새 시그널 있으면 계정별 클라우드 저장(1회)
   if(_sigAdded){localStorage.setItem('monitor_co',JSON.stringify(monitorCompanies));_syncToCloud();}
@@ -6016,6 +6017,13 @@ function _classifyMajor(r){
 function _classifyEle(r){
   const d=_signOf(r.sp_stock_lmp_irds_cnt)*Math.abs(_dartNum(r.sp_stock_lmp_irds_cnt));
   return d>0?'inc':d<0?'dec':'flat';
+}
+// 요약칩용 카운트를 로드 시 1회 계산(카드 렌더마다 전체 재분류 방지)
+function _ownCounts(maj,ele){
+  let cNew=0,cInc=0,cDec=0;
+  (maj||[]).forEach(r=>{const k=_classifyMajor(r);if(k==='new')cNew++;else if(k==='inc')cInc++;else if(k==='dec'||k==='exit')cDec++;});
+  (ele||[]).forEach(r=>{const k=_classifyEle(r);if(k==='inc')cInc++;else if(k==='dec')cDec++;});
+  return{cNew,cInc,cDec};
 }
 
 async function loadHoldings(corpCode){
@@ -6254,7 +6262,7 @@ function _ingestSignals(co,disclosures){
   return added;
 }
 // 지분변동을 레이더 신호로 승격: 신규 대량보유·5% 이탈(높음), 임원 매도(중간)만 적재(노이즈 억제)
-function _ingestOwnershipSignals(co,major,ele){
+function _ingestOwnershipSignals(co,major){
   if(!co)return[];
   co.signals=co.signals||[];
   const seen=new Set(co.signals.map(s=>s.rcept_no));
@@ -6419,10 +6427,7 @@ function _renderChangesBody(corpCode){
 function _ownershipSectionHTML(co){
   const cc=co.corp_code;
   const cache=_monitorCache[cc]||{};
-  const maj=cache.ownershipMajor||[], ele=cache.ownershipEle||[];
-  let cNew=0,cInc=0,cDec=0;
-  maj.forEach(r=>{const k=_classifyMajor(r);if(k==='new')cNew++;else if(k==='inc')cInc++;else if(k==='dec'||k==='exit')cDec++;});
-  ele.forEach(r=>{const k=_classifyEle(r);if(k==='inc')cInc++;else if(k==='dec')cDec++;});
+  const {cNew,cInc,cDec}=cache.ownCounts||{cNew:0,cInc:0,cDec:0};
   let chips='';
   if(cache.ownershipLoaded){
     const parts=[];
@@ -6464,10 +6469,11 @@ async function loadOwnership(cc){
     const own=await _fetchOwnership(cc);
     _monitorCache[cc].ownershipMajor=own.major;
     _monitorCache[cc].ownershipEle=own.ele;
+    _monitorCache[cc].ownCounts=_ownCounts(own.major,own.ele);
     _monitorCache[cc].ownershipLoaded=true;
-    if(_ingestOwnershipSignals(co,own.major,own.ele).length){localStorage.setItem('monitor_co',JSON.stringify(monitorCompanies));_syncToCloud();}
+    if(_ingestOwnershipSignals(co,own.major).length){localStorage.setItem('monitor_co',JSON.stringify(monitorCompanies));_syncToCloud();}
   }catch(e){
-    _monitorCache[cc].ownershipMajor=[];_monitorCache[cc].ownershipEle=[];_monitorCache[cc].ownershipLoaded=true;
+    _monitorCache[cc].ownershipMajor=[];_monitorCache[cc].ownershipEle=[];_monitorCache[cc].ownCounts={cNew:0,cInc:0,cDec:0};_monitorCache[cc].ownershipLoaded=true;
   }
   _renderOwnershipBody(cc);
 }
@@ -6480,6 +6486,7 @@ function _renderOwnershipBody(cc){
   const CAP=12; // 그룹별 최대 표시(임원은 건수가 많음)
   const fmtDate=dt=>{const s=_ownYmd(dt);return s.length===8?s.slice(4,6)+'/'+s.slice(6,8):'';};
   const link=no=>`https://dart.fss.or.kr/dsaf001/main.do?rcpNo=${no||''}`;
+  const _valid=v=>v&&v!=='-';
   const majRows=maj.slice(0,CAP).map(r=>{
     const k=_classifyMajor(r);
     const rate=Math.abs(_dartFloat(r.stkrt)), irds=_signOf(r.stkrt_irds)*Math.abs(_dartFloat(r.stkrt_irds));
@@ -6499,7 +6506,6 @@ function _renderOwnershipBody(cc){
   const eleRows=ele.slice(0,CAP).map(r=>{
     const k=_classifyEle(r);
     const d=_signOf(r.sp_stock_lmp_irds_cnt)*Math.abs(_dartNum(r.sp_stock_lmp_irds_cnt));
-    const _valid=v=>v&&v!=='-';
     const roleTxt=_valid(r.isu_exctv_ofcps)?r.isu_exctv_ofcps:(_valid(r.isu_main_shrholdr)?r.isu_main_shrholdr:'');
     const ofcps=roleTxt?`<span class="mc-own-role">${escapeHtml(roleTxt)}</span>`:'';
     const label=k==='inc'?'매수':k==='dec'?'매도':'변동';
