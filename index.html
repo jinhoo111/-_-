@@ -715,6 +715,30 @@ body.admin-mode .admin-only{display:inline-flex!important}
 .mc-stock-code-sm{font-size:var(--text-xs);color:var(--color-text-tertiary)}
 .mc-disc-cell{max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--color-text-secondary)}
 .mc-change-badge{background:var(--color-warning-bg);color:var(--color-warning-text);font-size:var(--text-xs);padding:4px 9px;border-radius:var(--radius-pill)}
+/* 지분변동 섹션 — 기존 보유변동 색 언어 계승(신규=녹색·증가=빨강·감소/매도=파랑·이탈=회색) */
+.mc-own-chips{display:flex;gap:5px;flex-wrap:wrap}
+.mc-own-chip{font-size:var(--text-xs);font-weight:700;padding:2px 8px;border-radius:var(--radius-pill);white-space:nowrap}
+.mc-own-chip.new{background:var(--color-success-bg);color:var(--color-success-text)}
+.mc-own-chip.inc{background:var(--color-error-bg);color:var(--color-error-text)}
+.mc-own-chip.dec{background:var(--color-info-bg);color:var(--color-info)}
+.mc-own-none{font-size:var(--text-xs);color:var(--color-text-tertiary)}
+.mc-own-sub{font-size:var(--text-xs);font-weight:700;letter-spacing:.02em;color:var(--color-text-tertiary);margin:6px 0 2px;display:flex;align-items:center;gap:6px}
+.mc-own-sub-n{font-weight:600;color:var(--color-text-muted)}
+.mc-own-row{display:flex;align-items:center;gap:9px;padding:7px 0;border-bottom:1px solid var(--color-border-faint)}
+.mc-own-row:last-child{border-bottom:none}
+.mc-own-date{font-size:var(--text-xs);color:var(--color-text-tertiary);flex-shrink:0;width:40px;font-variant-numeric:tabular-nums}
+.mc-own-tag{font-size:var(--text-xs);font-weight:700;padding:2px 7px;border-radius:var(--radius-pill);flex-shrink:0}
+.mc-own-tag.new{background:var(--color-success-bg);color:var(--color-success-text)}
+.mc-own-tag.inc{background:var(--color-error-bg);color:var(--color-error-text)}
+.mc-own-tag.dec{background:var(--color-info-bg);color:var(--color-info)}
+.mc-own-tag.exit,.mc-own-tag.flat{background:var(--color-bg-overlay);color:var(--color-text-tertiary)}
+.mc-own-who{flex:1;min-width:0;font-size:var(--text-sm);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mc-own-role{font-weight:400;color:var(--color-text-tertiary);font-size:var(--text-xs)}
+.mc-own-detail{font-size:var(--text-xs);font-weight:700;flex-shrink:0;text-align:right;font-variant-numeric:tabular-nums}
+.mc-own-row.new .mc-own-detail{color:var(--color-success-text)}
+.mc-own-row.inc .mc-own-detail{color:var(--color-error-text)}
+.mc-own-row.dec .mc-own-detail{color:var(--color-info)}
+.mc-own-row.exit .mc-own-detail{color:var(--color-text-tertiary)}
 
 @media(max-width:768px){
   .mc-ht-header,.mc-ht-row{grid-template-columns:2.2fr 1fr 1.3fr}
@@ -5837,18 +5861,27 @@ async function loadCompanyData(corpCode){
   const co=monitorCompanies.find(c=>c.corp_code===corpCode);
   if(!co)return;
   _monitorCache[corpCode]=_monitorCache[corpCode]||{};
-  const[priceRes,discRes]=await Promise.allSettled([
+  const[priceRes,discRes,ownRes]=await Promise.allSettled([
     _fetchCompanyPrice(co.stock_code,co.market),
-    _fetchDartDisclosures(corpCode)
+    _fetchDartDisclosures(corpCode),
+    _fetchOwnership(corpCode)   // ① 지분변동: 카드 로드 시 1회 (30분 폴링에는 미포함)
   ]);
   if(priceRes.status==='fulfilled')_monitorCache[corpCode].price=priceRes.value;
+  let _sigAdded=0;
   if(discRes.status==='fulfilled'){
     _monitorCache[corpCode].disclosures=discRes.value;
     _monitorCache[corpCode].disclosureFilter='all';
-    // 공시 열람만으로도 레이더 시그널 적재(알림은 폴링에서만) — 새 시그널 있으면 계정별 클라우드 저장
-    const ns=_ingestSignals(co,discRes.value);
-    if(ns.length){localStorage.setItem('monitor_co',JSON.stringify(monitorCompanies));_syncToCloud();}
+    // 공시 열람만으로도 레이더 시그널 적재(알림은 폴링에서만)
+    _sigAdded+=_ingestSignals(co,discRes.value).length;
   }
+  if(ownRes.status==='fulfilled'){
+    _monitorCache[corpCode].ownershipMajor=ownRes.value.major;
+    _monitorCache[corpCode].ownershipEle=ownRes.value.ele;
+    _monitorCache[corpCode].ownershipLoaded=true;
+    _sigAdded+=_ingestOwnershipSignals(co,ownRes.value.major,ownRes.value.ele).length;
+  }
+  // 새 시그널 있으면 계정별 클라우드 저장(1회)
+  if(_sigAdded){localStorage.setItem('monitor_co',JSON.stringify(monitorCompanies));_syncToCloud();}
   _monitorCache[corpCode].loaded=true;
   _renderCardContent(corpCode);
   if(monitorView==='table')renderMonitorTable();
@@ -5912,6 +5945,49 @@ const _validHoldings=list=>(Array.isArray(list)?list:[]).filter(h=>h.inv_prm&&h.
 async function _fetchHoldingsYear(corpCode,year){
   const d=await callDartDirect('otrCprInvstmntSttus.json',{corp_code:corpCode,bsns_year:String(year),reprt_code:'11011'});
   return _validHoldings(d.list);
+}
+
+// ── 지분변동: 5%룰 대량보유(majorstock) · 임원·주요주주(elestock) ──
+// DART 문자열 부호 판별(음수: '-'/'△'/'▽'/괄호) — 증감 필드가 부호표기일 수 있어 방어적으로 처리
+const _dartFloat=s=>{const v=parseFloat(String(s==null?'':s).replace(/[^0-9.\-]/g,''));return isNaN(v)?0:v;};
+const _signOf=s=>{const t=String(s==null?'':s);return (/[△▽(]/.test(t)||/^\s*-/.test(t))?-1:1;};
+// 지분공시 rcept_dt는 'YYYY-MM-DD'(하이픈 포함) — 공시(list.json)의 'YYYYMMDD'와 다름. 숫자만 추출해 통일.
+const _ymd=s=>String(s==null?'':s).replace(/[^0-9]/g,'');
+const _OWN_WINDOW_DAYS=180; // 최근 6개월(5%룰·임원 보고는 공시보다 빈도가 낮아 90일은 빈 카드가 잦음)
+function _withinOwnWindow(dt){
+  const s=_ymd(dt); if(s.length!==8)return false;
+  const t=new Date(+s.slice(0,4),+s.slice(4,6)-1,+s.slice(6,8)).getTime();
+  return (Date.now()-t)<=_OWN_WINDOW_DAYS*864e5;
+}
+// 응답은 오래된순 정렬 → 창 필터 후 최신순으로 재정렬
+const _ownSortDesc=list=>list.sort((a,b)=>_ymd(b.rcept_dt).localeCompare(_ymd(a.rcept_dt)));
+async function _fetchMajorStock(cc){
+  const d=await callDartDirect('majorstock.json',{corp_code:cc});
+  return _ownSortDesc((Array.isArray(d.list)?d.list:[]).filter(r=>_withinOwnWindow(r.rcept_dt)));
+}
+async function _fetchEleStock(cc){
+  const d=await callDartDirect('elestock.json',{corp_code:cc});
+  return _ownSortDesc((Array.isArray(d.list)?d.list:[]).filter(r=>_withinOwnWindow(r.rcept_dt)));
+}
+async function _fetchOwnership(cc){
+  const[maj,ele]=await Promise.allSettled([_fetchMajorStock(cc),_fetchEleStock(cc)]);
+  return {major:maj.status==='fulfilled'?maj.value:[], ele:ele.status==='fulfilled'?ele.value:[]};
+}
+// 5%룰 행 분류: new(신규 5%진입) / exit(5%이탈) / inc(증가) / dec(감소)
+function _classifyMajor(r){
+  const irds=_signOf(r.stkrt_irds)*Math.abs(_dartFloat(r.stkrt_irds));
+  const rate=Math.abs(_dartFloat(r.stkrt));
+  const tp=String(r.report_tp||'')+String(r.report_resn||'');
+  if(rate>0&&rate<5&&(rate-irds)>=5)return'exit';
+  if(/신규/.test(tp)||(rate>=5&&(rate-irds)<5))return'new';
+  if(irds>0)return'inc';
+  if(irds<0)return'dec';
+  return'flat';
+}
+// 임원 행 분류: inc(매수) / dec(매도)
+function _classifyEle(r){
+  const d=_signOf(r.sp_stock_lmp_irds_cnt)*Math.abs(_dartNum(r.sp_stock_lmp_irds_cnt));
+  return d>0?'inc':d<0?'dec':'flat';
 }
 
 async function loadHoldings(corpCode){
@@ -6049,6 +6125,7 @@ function _buildCardHeaderHTML(co){
       <div class="mc-filter-bar">${filterHtml}</div>
       <div id="mc-disc-${co.corp_code}">${discHtml}</div>
     </div>
+    ${_ownershipSectionHTML(co)}
     <div class="mc-section">
       <div class="mc-section-header mc-expandable" onclick="toggleHoldingsSection('${co.corp_code}')">
         <span class="mc-section-title">📦 보유 주식 현황 <span style="font-size:var(--text-xs);font-weight:400;color:var(--color-text-tertiary)">(타법인 출자 지분)</span></span>
@@ -6106,7 +6183,8 @@ const SIGNAL_CATS={
   order:{label:'수주',weight:'mid',color:'var(--color-info)'},
   funding:{label:'자금조달',weight:'mid',color:'var(--color-info)'},
   governance:{label:'지배구조',weight:'mid',color:'var(--color-info)'},
-  earnings:{label:'실적',weight:'mid',color:'var(--color-info)'}
+  earnings:{label:'실적',weight:'mid',color:'var(--color-info)'},
+  ownership:{label:'지분변동',weight:'high',color:'var(--color-accent)'}
 };
 // 순서 중요(겹치는 키워드는 앞 규칙 우선). '자기주식'은 manda 정규식(양수/양도 필요)에 안 걸리고 governance로 분류됨.
 const _SIGNAL_RULES=[
@@ -6141,6 +6219,31 @@ function _ingestSignals(co,disclosures){
     const rec={rcept_no:no,date:d.rcept_dt||'',report_nm:d.report_nm||'',category:sig.category,weight:sig.weight};
     co.signals.push(rec);added.push(rec);
   }
+  if(added.length){
+    co.signals.sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+    if(co.signals.length>50)co.signals=co.signals.slice(0,50);
+  }
+  return added;
+}
+// 지분변동을 레이더 신호로 승격: 신규 대량보유·5% 이탈(높음), 임원 매도(중간)만 적재(노이즈 억제)
+function _ingestOwnershipSignals(co,major,ele){
+  if(!co)return[];
+  co.signals=co.signals||[];
+  const seen=new Set(co.signals.map(s=>s.rcept_no));
+  const added=[];
+  const add=(r,nm,weight)=>{
+    const no=r.rcept_no||'';
+    if(!no||seen.has(no))return;
+    seen.add(no);
+    const rec={rcept_no:no,date:r.rcept_dt||'',report_nm:nm,category:'ownership',weight};
+    co.signals.push(rec);added.push(rec);
+  };
+  // 5%룰 신규·이탈만 레이더 신호로(희소·고가치). 임원 보고는 건수가 많아 노이즈라 카드에만 표시.
+  (major||[]).forEach(r=>{
+    const k=_classifyMajor(r);
+    if(k==='new')add(r,`신규 대량보유 ${Math.abs(_dartFloat(r.stkrt)).toFixed(2)}% · ${r.repror||''}`,'high');
+    else if(k==='exit')add(r,`5% 대량보유 이탈 · ${r.repror||''}`,'high');
+  });
   if(added.length){
     co.signals.sort((a,b)=>(b.date||'').localeCompare(a.date||''));
     if(co.signals.length>50)co.signals=co.signals.slice(0,50);
@@ -6282,6 +6385,111 @@ function _renderChangesBody(corpCode){
       <span class="mc-change-detail">${c.detail}</span>
       <button class="mc-change-memo-btn" onclick="openDisclosureMemo('${corpCode}','${escapeHtml(_jsStr(c.name+' '+c.detail))}','')">메모</button>
     </div>`).join('');
+}
+
+// ── 지분변동 섹션 (5%룰·임원) ───────────────
+function _ownershipSectionHTML(co){
+  const cc=co.corp_code;
+  const cache=_monitorCache[cc]||{};
+  const maj=cache.ownershipMajor||[], ele=cache.ownershipEle||[];
+  let cNew=0,cInc=0,cDec=0;
+  maj.forEach(r=>{const k=_classifyMajor(r);if(k==='new')cNew++;else if(k==='inc')cInc++;else if(k==='dec'||k==='exit')cDec++;});
+  ele.forEach(r=>{const k=_classifyEle(r);if(k==='inc')cInc++;else if(k==='dec')cDec++;});
+  let chips='';
+  if(cache.ownershipLoaded){
+    const parts=[];
+    if(cNew)parts.push(`<span class="mc-own-chip new">🆕 신규 ${cNew}</span>`);
+    if(cInc)parts.push(`<span class="mc-own-chip inc">▲ 증가 ${cInc}</span>`);
+    if(cDec)parts.push(`<span class="mc-own-chip dec">▼ 매도 ${cDec}</span>`);
+    chips=parts.length?`<span class="mc-own-chips">${parts.join('')}</span>`:`<span class="mc-own-none">변동 없음</span>`;
+  }
+  return`
+    <div class="mc-section">
+      <div class="mc-section-header mc-expandable" onclick="toggleOwnershipSection('${cc}')">
+        <span class="mc-section-title">🧬 지분변동 <span style="font-size:var(--text-xs);font-weight:400;color:var(--color-text-tertiary)">(5%룰·임원)</span></span>
+        <span style="display:flex;align-items:center;gap:8px;margin-left:auto">${chips}<span class="mc-expand-icon" id="mc-oi-${cc}">▶</span></span>
+      </div>
+      <div id="mc-own-body-${cc}" style="display:none"></div>
+    </div>`;
+}
+function toggleOwnershipSection(cc){
+  const body=document.getElementById('mc-own-body-'+cc);
+  const icon=document.getElementById('mc-oi-'+cc);
+  if(!body)return;
+  const open=body.style.display!=='none';
+  body.style.display=open?'none':'';
+  if(icon)icon.textContent=open?'▶':'▼';
+  if(!open){
+    if(!_monitorCache[cc]?.ownershipLoaded){
+      body.innerHTML='<div class="mc-loading">지분공시 로딩 중...</div>';
+      loadOwnership(cc);
+    }else{
+      _renderOwnershipBody(cc);
+    }
+  }
+}
+async function loadOwnership(cc){
+  const co=monitorCompanies.find(c=>c.corp_code===cc);
+  if(!co)return;
+  _monitorCache[cc]=_monitorCache[cc]||{};
+  try{
+    const own=await _fetchOwnership(cc);
+    _monitorCache[cc].ownershipMajor=own.major;
+    _monitorCache[cc].ownershipEle=own.ele;
+    _monitorCache[cc].ownershipLoaded=true;
+    if(_ingestOwnershipSignals(co,own.major,own.ele).length){localStorage.setItem('monitor_co',JSON.stringify(monitorCompanies));_syncToCloud();}
+  }catch(e){
+    _monitorCache[cc].ownershipMajor=[];_monitorCache[cc].ownershipEle=[];_monitorCache[cc].ownershipLoaded=true;
+  }
+  _renderOwnershipBody(cc);
+}
+function _renderOwnershipBody(cc){
+  const body=document.getElementById('mc-own-body-'+cc);
+  if(!body||body.style.display==='none')return;
+  const maj=_monitorCache[cc]?.ownershipMajor||[], ele=_monitorCache[cc]?.ownershipEle||[];
+  if(!maj.length&&!ele.length){body.innerHTML='<div class="mc-empty-state">최근 6개월 지분변동 신고가 없습니다.</div>';return;}
+  const TAGL={new:'신규',inc:'증가',dec:'감소',exit:'이탈',flat:'유지'};
+  const CAP=12; // 그룹별 최대 표시(임원은 건수가 많음)
+  const fmtDate=dt=>{const s=_ymd(dt);return s.length===8?s.slice(4,6)+'/'+s.slice(6,8):'';};
+  const link=no=>`https://dart.fss.or.kr/dsaf001/main.do?rcpNo=${no||''}`;
+  const majRows=maj.slice(0,CAP).map(r=>{
+    const k=_classifyMajor(r);
+    const rate=Math.abs(_dartFloat(r.stkrt)), irds=_signOf(r.stkrt_irds)*Math.abs(_dartFloat(r.stkrt_irds));
+    let detail;
+    if(k==='new')detail=`신규 ${rate.toFixed(2)}%`;
+    else if(k==='exit')detail=`${(rate-irds).toFixed(2)} → ${rate.toFixed(2)}% (5%↓)`;
+    else if(k==='flat')detail=`${rate.toFixed(2)}% (변동없음)`;
+    else detail=`${(rate-irds).toFixed(2)} → ${rate.toFixed(2)}% (${irds>=0?'▲':'▼'}${Math.abs(irds).toFixed(2)}%p)`;
+    return`<div class="mc-own-row ${k}">
+      <span class="mc-own-date">${fmtDate(r.rcept_dt)}</span>
+      <span class="mc-own-tag ${k}">${TAGL[k]}</span>
+      <span class="mc-own-who">${escapeHtml(r.repror||'-')}</span>
+      <span class="mc-own-detail">${detail}</span>
+      <a class="mc-disc-link" href="${link(r.rcept_no)}" target="_blank" rel="noopener">↗</a>
+    </div>`;
+  }).join('');
+  const eleRows=ele.slice(0,CAP).map(r=>{
+    const k=_classifyEle(r);
+    const d=_signOf(r.sp_stock_lmp_irds_cnt)*Math.abs(_dartNum(r.sp_stock_lmp_irds_cnt));
+    const _valid=v=>v&&v!=='-';
+    const roleTxt=_valid(r.isu_exctv_ofcps)?r.isu_exctv_ofcps:(_valid(r.isu_main_shrholdr)?r.isu_main_shrholdr:'');
+    const ofcps=roleTxt?`<span class="mc-own-role">${escapeHtml(roleTxt)}</span>`:'';
+    const label=k==='inc'?'매수':k==='dec'?'매도':'변동';
+    const detail=d?`${d>0?'▲':'▼'}${Math.abs(d).toLocaleString()}주`:'-';
+    return`<div class="mc-own-row ${k}">
+      <span class="mc-own-date">${fmtDate(r.rcept_dt)}</span>
+      <span class="mc-own-tag ${k}">${label}</span>
+      <span class="mc-own-who">${escapeHtml(r.repror||'-')} ${ofcps}</span>
+      <span class="mc-own-detail">${detail}</span>
+      <a class="mc-disc-link" href="${link(r.rcept_no)}" target="_blank" rel="noopener">↗</a>
+    </div>`;
+  }).join('');
+  const more=(n)=>n>CAP?`<div class="mc-holdings-label">외 ${n-CAP}건 더</div>`:'';
+  body.innerHTML=
+    `<div class="mc-own-sub">🏛️ 5%룰 대량보유 <span class="mc-own-sub-n">${maj.length}</span></div>`+
+    (maj.length?majRows+more(maj.length):'<div class="mc-empty-state">해당 없음</div>')+
+    `<div class="mc-own-sub" style="margin-top:10px">👤 임원·주요주주 <span class="mc-own-sub-n">${ele.length}</span></div>`+
+    (ele.length?eleRows+more(ele.length):'<div class="mc-empty-state">해당 없음</div>');
 }
 
 // ── 비교 테이블 뷰 ────────────────────────

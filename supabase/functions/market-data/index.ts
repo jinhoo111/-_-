@@ -428,7 +428,7 @@ serve(async (req: Request) => {
     // 범용 DART 프록시: 브라우저가 _dartKey 없을 때(기업 사용자 등) 서버 경유로 호출
     if (action === "dart-proxy") {
       const { endpoint, params = {} } = body;
-      const ALLOWED = ["company.json", "list.json", "otrCprInvstmntSttus.json"];
+      const ALLOWED = ["company.json", "list.json", "otrCprInvstmntSttus.json", "majorstock.json", "elestock.json"];
       if (!ALLOWED.includes(endpoint)) return err("endpoint_not_allowed");
       const data = await callDart(endpoint, params as Record<string, string>);
       if (data._err) return err(data._err, data._err === "auth_required" ? 401 : 400);
