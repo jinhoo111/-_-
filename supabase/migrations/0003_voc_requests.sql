@@ -45,3 +45,14 @@ create policy voc_admin_read on public.voc_requests
       where p.user_id = auth.uid() and p.is_admin = true
     )
   );
+
+-- 관리자: DELETE (처리 완료·스팸 정리용)
+drop policy if exists voc_admin_delete on public.voc_requests;
+create policy voc_admin_delete on public.voc_requests
+  for delete
+  using (
+    exists (
+      select 1 from public.user_profiles p
+      where p.user_id = auth.uid() and p.is_admin = true
+    )
+  );
