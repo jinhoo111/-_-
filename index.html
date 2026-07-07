@@ -1322,6 +1322,10 @@ body.admin-mode .admin-only{display:inline-flex!important}
       <button class="btn btn-primary" onclick="adminAddMarketEvent()" style="flex-shrink:0;white-space:nowrap">추가</button>
     </div>
     <div id="mev-err" style="color:var(--color-error-text);font-size:var(--text-sm);margin-bottom:6px"></div>
+    <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:8px">
+      <input id="mev-search" type="search" oninput="setMevSearch(this.value)" placeholder="🔎 일정 검색 (제목·유형·날짜)" autocomplete="off" style="flex:1;min-width:150px;font-size:var(--text-sm);padding:6px 9px;border:1px solid var(--color-border-input);border-radius:7px;font-family:inherit;background:var(--color-bg-surface);color:var(--color-text-primary)"/>
+      <button id="mev-sort-btn" class="btn" onclick="toggleMevSort()" style="white-space:nowrap" title="작성(등록) 시간순 정렬 전환">📝 최신 등록순 ↓</button>
+    </div>
     <div id="mev-admin-list"></div>
   </div>
 
@@ -3671,11 +3675,34 @@ async function loadSharedMarketEvents(){
     }
   }catch(e){}
 }
+let _mevSort='desc',_mevSearch='';   // 작성(등록) 시간순: id 기준. desc=최신 등록순
+function setMevSearch(v){_mevSearch=v;_paintMevList();}
+function toggleMevSort(){
+  _mevSort=_mevSort==='desc'?'asc':'desc';
+  const b=document.getElementById('mev-sort-btn');
+  if(b)b.textContent=_mevSort==='desc'?'📝 최신 등록순 ↓':'📝 오래된 등록순 ↑';
+  _paintMevList();
+}
+// 이미 로드된 _sharedMarketEvents를 검색·정렬만 다시 그림(네트워크 재요청 없음 → 입력 포커스 유지)
+function _paintMevList(){
+  const el=document.getElementById('mev-admin-list');
+  if(!el)return;
+  const q=_mevSearch.trim().toLowerCase();
+  let list=_sharedMarketEvents.slice();
+  if(q)list=list.filter(e=>((e.title||'')+' '+(e.type||'')+' '+(e.date||'')).toLowerCase().includes(q));
+  list.sort((a,b)=>_mevSort==='desc'?((b._sid||0)-(a._sid||0)):((a._sid||0)-(b._sid||0)));
+  if(!list.length){
+    el.innerHTML=`<div style="font-size:var(--text-sm);color:var(--color-text-tertiary)">${_sharedMarketEvents.length?'검색 결과가 없습니다.':'등록된 공용 시장 일정이 없습니다.'}</div>`;
+    return;
+  }
+  el.innerHTML=`<div style="font-size:var(--text-xs);color:var(--color-text-tertiary);margin-bottom:4px">총 ${list.length}건</div>`+
+    list.map(e=>`<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--color-bg-overlay);font-size:var(--text-sm)"><span style="font-family:monospace">${escapeHtml(e.date)}</span><span style="padding:1px 7px;border-radius:20px;background:var(--color-bg-muted)">${escapeHtml(e.type)}</span><span style="flex:1">${escapeHtml(e.title)}</span><button class="mc-text-btn" onclick="adminDeleteMarketEvent(${e._sid})" style="color:var(--color-error)">삭제</button></div>`).join('');
+}
 async function renderMarketEventsAdmin(){
   const el=document.getElementById('mev-admin-list');
   if(!el)return;
   await loadSharedMarketEvents();
-  el.innerHTML=_sharedMarketEvents.length?_sharedMarketEvents.map(e=>`<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--color-bg-overlay);font-size:var(--text-sm)"><span style="font-family:monospace">${escapeHtml(e.date)}</span><span style="padding:1px 7px;border-radius:20px;background:var(--color-bg-muted)">${escapeHtml(e.type)}</span><span style="flex:1">${escapeHtml(e.title)}</span><button class="mc-text-btn" onclick="adminDeleteMarketEvent(${e._sid})" style="color:var(--color-error)">삭제</button></div>`).join(''):'<div style="font-size:var(--text-sm);color:var(--color-text-tertiary)">등록된 공용 시장 일정이 없습니다.</div>';
+  _paintMevList();
 }
 async function adminAddMarketEvent(){
   const date=document.getElementById('mev-date')?.value;
