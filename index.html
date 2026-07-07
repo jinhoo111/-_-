@@ -1889,7 +1889,7 @@ async function saveProfile(){
 // 같은 브라우저에서 계정 전환 시 이전 계정 데이터가 새 계정으로 새는 것을 방지.
 function _clearLocalUserData(){
   clearTimeout(_syncTimer); // 이전 계정의 지연 동기화가 빈 데이터를 덮어쓰지 않도록 취소
-  stocks=[];memos=[];memoArchive=[];ledger=[];health={goal:null,entries:[],monthlyGoals:{},weeklyActual:{}};budget={};impulseTrades=[];cashKRW=0;cashUSD=0;
+  stocks=[];memos=[];memoArchive=[];ledger=[];health={goal:null,entries:[],monthlyGoals:{},weeklyActual:{},workouts:{}};budget={};impulseTrades=[];cashKRW=0;cashUSD=0;
   quoteSymbols=['NVDA','AAPL','TSLA','MSFT'];notifyMaster=false;investPhilosophy=[];
   monitorCompanies=[];_monitorCache={};dartKeyStored=false;
   FKEY='';CKEY='';_fhKey='';_dartKey='';
@@ -1960,7 +1960,7 @@ async function _loadFromCloud(user){
     localStorage.setItem('pf_ledger',JSON.stringify(ledger));
   }
   if(data.health&&typeof data.health==='object'&&!Array.isArray(data.health)){
-    health={goal:(data.health.goal!=null?data.health.goal:null),entries:Array.isArray(data.health.entries)?data.health.entries:[],monthlyGoals:(data.health.monthlyGoals&&typeof data.health.monthlyGoals==='object'&&!Array.isArray(data.health.monthlyGoals))?data.health.monthlyGoals:{},weeklyActual:(data.health.weeklyActual&&typeof data.health.weeklyActual==='object'&&!Array.isArray(data.health.weeklyActual))?data.health.weeklyActual:{}};
+    health={goal:(data.health.goal!=null?data.health.goal:null),entries:Array.isArray(data.health.entries)?data.health.entries:[],monthlyGoals:(data.health.monthlyGoals&&typeof data.health.monthlyGoals==='object'&&!Array.isArray(data.health.monthlyGoals))?data.health.monthlyGoals:{},weeklyActual:(data.health.weeklyActual&&typeof data.health.weeklyActual==='object'&&!Array.isArray(data.health.weeklyActual))?data.health.weeklyActual:{},workouts:(data.health.workouts&&typeof data.health.workouts==='object'&&!Array.isArray(data.health.workouts))?data.health.workouts:{}};
     localStorage.setItem('pf_health',JSON.stringify(health));
   }
   if(data.budget&&typeof data.budget==='object'&&!Array.isArray(data.budget)){
@@ -2271,7 +2271,7 @@ let investPhilosophy=[];
 try{investPhilosophy=JSON.parse(localStorage.getItem('pf_phil')||'[]')}catch(e){}
 let stocks=[],memos=[],memoArchive=[],memoView='calendar',selTagV='general',memoEditTag='general',archiveTagFilter='all',archiveViewMode='list',archiveSearch='',FKEY='',newsCat='general',quoteSymbols=['NVDA','AAPL','TSLA','MSFT'],stkFilter='all',stkMarket='all',stkStyle='all',stkSort='',stkSortDir='desc',fxRate=1400;
 let ledger=[];  // 가계부: {id,date:'YYYY-MM-DD',type:'income'|'expense',amount,cat,memo}
-let health={goal:null,entries:[],monthlyGoals:{},weeklyActual:{}};  // 몸무게: entries=[{date,kg}], goal=기본목표, monthlyGoals={'YYYY-MM':kg}, weeklyActual={'YYYY-MM':[kg|null,...주차]}(주차별 실제체중 직접입력 override)
+let health={goal:null,entries:[],monthlyGoals:{},weeklyActual:{},workouts:{}};  // 몸무게: entries=[{date,kg}], goal=기본목표, monthlyGoals={'YYYY-MM':kg}, weeklyActual={'YYYY-MM':[kg|null,...주차]}(주차별 실제체중 직접입력 override)
 let budget={};  // 월별 예산: {'YYYY-MM':{income,expense,incomeWeeks?:[..주차],expenseWeeks?:[..주차]}} (주차 배열 없으면 월÷주수 균등분할 폴백)
 let impulseTrades=[];  // 뇌동매매: [{id,date:'YYYY-MM-DD',reason,createdAt}] (하루 1건, 투자철학 '절대 금지'에 자동 반영)
 let _impulseSort='desc';  // 뇌동매매 정렬: 'desc'=최신순 / 'asc'=오래된순
@@ -2326,7 +2326,7 @@ stocks=stocks.map(s=>{
 try{memos=JSON.parse(localStorage.getItem('pf_m')||'[]')}catch(e){}
 try{memoArchive=JSON.parse(localStorage.getItem('pf_ma')||'[]')}catch(e){}
 try{ledger=JSON.parse(localStorage.getItem('pf_ledger')||'[]')}catch(e){}
-try{const _h=JSON.parse(localStorage.getItem('pf_health')||'{}');health={goal:(_h.goal!=null?_h.goal:null),entries:Array.isArray(_h.entries)?_h.entries:[],monthlyGoals:(_h.monthlyGoals&&typeof _h.monthlyGoals==='object'&&!Array.isArray(_h.monthlyGoals))?_h.monthlyGoals:{},weeklyActual:(_h.weeklyActual&&typeof _h.weeklyActual==='object'&&!Array.isArray(_h.weeklyActual))?_h.weeklyActual:{}};}catch(e){}
+try{const _h=JSON.parse(localStorage.getItem('pf_health')||'{}');health={goal:(_h.goal!=null?_h.goal:null),entries:Array.isArray(_h.entries)?_h.entries:[],monthlyGoals:(_h.monthlyGoals&&typeof _h.monthlyGoals==='object'&&!Array.isArray(_h.monthlyGoals))?_h.monthlyGoals:{},weeklyActual:(_h.weeklyActual&&typeof _h.weeklyActual==='object'&&!Array.isArray(_h.weeklyActual))?_h.weeklyActual:{},workouts:(_h.workouts&&typeof _h.workouts==='object'&&!Array.isArray(_h.workouts))?_h.workouts:{}};}catch(e){}
 try{const _b=JSON.parse(localStorage.getItem('pf_budget')||'{}');budget=(_b&&typeof _b==='object'&&!Array.isArray(_b))?_b:{};}catch(e){}
 try{impulseTrades=JSON.parse(localStorage.getItem('pf_impulse')||'[]')}catch(e){}
 _migrateActiveMemos();
@@ -3804,6 +3804,35 @@ function stepWeight(delta){
   const v=Math.max(0,Math.round((base+delta)*10)/10);
   el.value=v.toFixed(1);el.focus();
 }
+// ── 운동 기록: health.workouts[date]='done'(운동함) | 'off'(안 함). 없으면 미기록 ──
+function _workoutByDay(y,mo){
+  const pre=`${y}-${String(mo+1).padStart(2,'0')}-`,by={};
+  Object.entries(health.workouts||{}).forEach(([date,v])=>{if(date.startsWith(pre))by[parseInt(date.slice(8,10),10)]=v;});
+  return by;
+}
+function setWorkout(d,val){
+  const date=_ymd(_calYear,_calMonth,d);
+  if(!health.workouts||typeof health.workouts!=='object')health.workouts={};
+  if(health.workouts[date]===val)delete health.workouts[date]; // 같은 값 재클릭 → 미기록으로 해제
+  else health.workouts[date]=val;
+  localStorage.setItem('pf_health',JSON.stringify(health));_syncToCloud();
+  renderMemos();_calSelectedDay=null;selectCalDay(d);
+}
+function _renderWorkoutSection(d){
+  const cur=(health.workouts||{})[_ymd(_calYear,_calMonth,d)];
+  const btn=(val,emoji,label,onBg,onC)=>{
+    const on=cur===val;
+    return `<button type="button" onclick="setWorkout(${d},'${val}')" style="flex:1;font-size:var(--text-sm);font-weight:700;padding:7px 10px;border:1px solid ${on?onC:'var(--color-border-input)'};border-radius:8px;background:${on?onBg:'var(--color-bg-surface)'};color:${on?onC:'var(--color-text-tertiary)'};cursor:pointer;font-family:inherit">${emoji} ${label}</button>`;
+  };
+  const pill=cur?`<span class="pill" style="background:${cur==='done'?'var(--color-success-bg)':'var(--color-bg-overlay)'};color:${cur==='done'?'var(--color-success-text)':'var(--color-text-muted)'}">${cur==='done'?'💪 운동함':'🛌 안 함'}</span>`:'';
+  return `<div class="ledger-sec">
+    <div class="ledger-head"><span style="font-weight:700">운동</span>${pill}</div>
+    <div style="display:flex;gap:6px;margin-top:6px">
+      ${btn('done','💪','운동함','var(--color-success-bg)','var(--color-success-text)')}
+      ${btn('off','🛌','안 함','var(--color-bg-overlay)','var(--color-text-secondary)')}
+    </div>
+  </div>`;
+}
 function _renderWeightSection(d){
   const date=_ymd(_calYear,_calMonth,d);
   const cur=(health.entries||[]).find(e=>e.date===date);
@@ -4291,6 +4320,8 @@ function renderArchiveCalendar(el){
   const wByDay=_healthByDay(y,mo);
   // 뇌동매매 일별
   const impByDay=_impulseByDay(y,mo);
+  // 운동 일별
+  const woByDay=_workoutByDay(y,mo);
 
   const DOW=['일','월','화','수','목','금','토'];
   const dowHtml=DOW.map(d=>`<div class="arc-cal-dow">${d}</div>`).join('');
@@ -4304,7 +4335,8 @@ function renderArchiveCalendar(el){
     let dexp=0,dinc=0;dl.forEach(e=>{if(e.type==='income')dinc+=(+e.amount||0);else dexp+=(+e.amount||0);});
     const wkg=wByDay[d];
     const imp=impByDay[d];
-    const hasAny=dayMemos.length||dayEvents.length||dl.length||wkg||imp;
+    const wo=woByDay[d];
+    const hasAny=dayMemos.length||dayEvents.length||dl.length||wkg||imp||wo;
     const isToday=today.getFullYear()===y&&today.getMonth()===mo&&today.getDate()===d;
     const dow=(firstDay+d-1)%7;
     const cls=['arc-cal-day','clickable',hasAny?'has-memo':'',isToday?'today':'',dow===0?'sun':dow===6?'sat':''].filter(Boolean).join(' ');
@@ -4325,10 +4357,13 @@ function renderArchiveCalendar(el){
     else if(dinc>0)ledgerChip=`<span class="arc-tag-chip" style="background:var(--color-success-bg);color:var(--color-success-text)">💰 ${_fmtWon(dinc)}</span>`;
     const weightChip=wkg?`<span class="arc-tag-chip" style="background:var(--color-info-bg);color:var(--color-info)">⚖️ ${wkg}</span>`:'';
     const impulseChip=imp?`<span class="arc-tag-chip" style="background:var(--color-error-bg);color:var(--color-error-text);font-weight:700">🧨 뇌동매매</span>`:'';
+    const workoutChip=wo?(wo==='done'
+      ?`<span class="arc-tag-chip" style="background:var(--color-success-bg);color:var(--color-success-text)">💪 운동</span>`
+      :`<span class="arc-tag-chip" style="background:var(--color-bg-overlay);color:var(--color-text-muted)">🛌 휴식</span>`):'';
 
     cells.push(`<div class="${cls}" id="cal-day-${d}" onclick="selectCalDay(${d})">
       <span class="arc-cal-num">${d}</span>
-      <div>${evChips}${memoChips}${impulseChip}${ledgerChip}${weightChip}</div>
+      <div>${evChips}${memoChips}${impulseChip}${ledgerChip}${weightChip}${workoutChip}</div>
     </div>`);
   }
 
@@ -4451,6 +4486,7 @@ function _renderCalDetail(d){
     ${_renderImpulseSection(d)}
     ${_renderLedgerSection(d)}
     ${_renderWeightSection(d)}
+    ${_renderWorkoutSection(d)}
   </div>`;
 }
 
