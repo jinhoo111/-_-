@@ -3879,6 +3879,8 @@ function _healthByDay(y,mo){
   (health.entries||[]).forEach(e=>{if((e.date||'').startsWith(pre)&&e.kg>0)by[parseInt(e.date.slice(8,10),10)]=e.kg;});
   return by;
 }
+// 해당 월(YYYY-MM)의 목표 체중 — 월별 저장(monthlyGoals). 전역 goal은 더 이상 사용 안 함(월마다 독립)
+function _monthGoal(y,mo){const g=(health.monthlyGoals||{})[`${y}-${String(mo+1).padStart(2,'0')}`];return g!=null?+g:null;}
 function _healthStats(y,mo){
   const pre=`${y}-${String(mo+1).padStart(2,'0')}`;
   const es=(health.entries||[]).filter(e=>(e.date||'').startsWith(pre)&&e.kg>0).sort((a,b)=>a.date.localeCompare(b.date));
@@ -3886,8 +3888,9 @@ function _healthStats(y,mo){
   const start=es[0].kg,latest=es[es.length-1].kg,diff=latest-start,pct=start?diff/start*100:0;
   const dod=es.length>=2?latest-es[es.length-2].kg:null;
   let goalRemain=null,goalPct=null;
-  if(health.goal!=null){goalRemain=latest-health.goal;if(start!==health.goal)goalPct=Math.max(0,Math.min(100,(start-latest)/(start-health.goal)*100));}
-  return{start,latest,diff,pct,dod,goal:health.goal,goalRemain,goalPct};
+  const mGoal=_monthGoal(y,mo);
+  if(mGoal!=null){goalRemain=latest-mGoal;if(start!==mGoal)goalPct=Math.max(0,Math.min(100,(start-latest)/(start-mGoal)*100));}
+  return{start,latest,diff,pct,dod,goal:mGoal,goalRemain,goalPct};
 }
 function saveWeight(d){
   const v=parseFloat(document.getElementById('wt-amt')?.value);
@@ -3906,7 +3909,10 @@ function deleteWeight(d){
 }
 function saveWeightGoal(){
   const v=parseFloat(document.getElementById('wt-goal')?.value);
-  health.goal=(v&&v>0)?Math.round(v*10)/10:null;
+  const ym=`${_calYear}-${String(_calMonth+1).padStart(2,'0')}`;
+  if(!health.monthlyGoals||typeof health.monthlyGoals!=='object')health.monthlyGoals={};
+  if(v&&v>0)health.monthlyGoals[ym]=Math.round(v*10)/10;
+  else delete health.monthlyGoals[ym]; // 비우면 이번 달 목표 삭제
   localStorage.setItem('pf_health',JSON.stringify(health));_syncToCloud();
   renderMemos();
 }
@@ -3952,7 +3958,7 @@ function _renderWeightSection(d){
   const before=(health.entries||[]).filter(e=>e.date<date&&e.kg>0).sort((a,b)=>a.date.localeCompare(b.date));
   const prevKg=before.length?before[before.length-1].kg:null;
   const ym=`${_calYear}-${String(_calMonth+1).padStart(2,'0')}`;
-  const goal=((health.monthlyGoals||{})[ym]!=null)?+health.monthlyGoals[ym]:(health.goal!=null?+health.goal:null);
+  const goal=((health.monthlyGoals||{})[ym]!=null)?+health.monthlyGoals[ym]:null;
   const startVal=cur?cur.kg:(prevKg!=null?prevKg:'');
   const infoBits=[];
   if(cur&&prevKg!=null){const dd=cur.kg-prevKg;infoBits.push(`<span class="${dd<=0?'up':'down'}" style="font-weight:700">전일 대비 ${dd>=0?'+':''}${dd.toFixed(1)}kg</span>`);}
@@ -4202,7 +4208,7 @@ function renderReport(el){
     ?'충동적으로 원칙을 어긴 매매 빈도입니다. 0에 가까울수록 좋습니다. 기록은 캘린더에서 추가합니다.'
     :'아직 뇌동매매 기록이 없어 <b>예시</b>로 표시됩니다. (좋은 상태!) 기록은 캘린더에서 추가합니다.';
   // 건강관리 주차별: 각 주의 일요일(주 마지막일) 체중 자동 반영 (없으면 그 주 마지막 기록)
-  const gMonthly=(health.monthlyGoals||{})[ym],gVal=gMonthly!=null?+gMonthly:(health.goal!=null?health.goal:null);
+  const gMonthly=(health.monthlyGoals||{})[ym],gVal=gMonthly!=null?+gMonthly:null;
   const wkWeight=_weeklyWeights(year,mo,weeks); // 주차별 실제(직접입력 override 우선, 없으면 캘린더 자동)
   const wHasData=wkWeight.some(v=>v!=null)||gVal!=null;
   const chart3=wHasData
@@ -4483,7 +4489,7 @@ function renderArchiveCalendar(el){
   const netCls=_lt.net>=0?'up':'down';
   const summaryBar=`<div class="ledger-summary">💰 이번 달 수입 <b class="up">${_fmtWon(_lt.inc)}</b> · 지출 <b class="down">${_fmtWon(_lt.exp)}</b> · 순액 <b class="${netCls}">${_lt.net>=0?'+':'-'}${_fmtWon(_lt.net)}</b></div>`;
   // 몸무게 요약(등락률 종합) + 목표 설정
-  const goalVal=health.goal!=null?health.goal:'';
+  const _mg=_monthGoal(_calYear,_calMonth);const goalVal=_mg!=null?_mg:'';
   const sgn=v=>v>=0?'+':'';
   let wLine;
   if(_ws){
