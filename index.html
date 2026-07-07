@@ -1146,11 +1146,16 @@ body.admin-mode .admin-only{display:inline-flex!important}
         <button class="tbtn" onclick="setArchiveFilter('general',this)">메모</button>
         <button class="tbtn" onclick="setArchiveFilter('buy',this)">매수</button>
         <button class="tbtn" onclick="setArchiveFilter('sell',this)">매도</button>
+        <button class="tbtn" onclick="setArchiveFilter('monitor',this)">기업모니터</button>
       </div>
       <div class="archive-view-toggle">
-        <button class="av-btn on" id="avbtn-card" onclick="setArchiveView('card')" title="카드 뷰">☰ 카드</button>
-        <button class="av-btn"    id="avbtn-list" onclick="setArchiveView('list')" title="리스트 뷰">≡ 리스트</button>
+        <button class="av-btn"    id="avbtn-card" onclick="setArchiveView('card')" title="카드 뷰">☰ 카드</button>
+        <button class="av-btn on" id="avbtn-list" onclick="setArchiveView('list')" title="리스트 뷰">≡ 리스트</button>
       </div>
+    </div>
+    <div style="margin-top:6px">
+      <input id="archive-search" type="search" oninput="setArchiveSearch(this.value)" placeholder="🔎 메모 내용 검색" autocomplete="off"
+        style="width:100%;box-sizing:border-box;font-size:var(--text-md);padding:8px 11px;border:1px solid var(--color-border-input);border-radius:8px;background:var(--color-bg-surface);color:var(--color-text-primary);font-family:inherit"/>
     </div>
   </div>
   <div id="memo-list"></div>
@@ -2206,7 +2211,7 @@ async function proxyFetchDirect(url,ms=5000){await _nSem.get();try{return await 
 
 let investPhilosophy=[];
 try{investPhilosophy=JSON.parse(localStorage.getItem('pf_phil')||'[]')}catch(e){}
-let stocks=[],memos=[],memoArchive=[],memoView='calendar',selTagV='general',memoEditTag='general',archiveTagFilter='all',archiveViewMode='card',FKEY='',newsCat='general',quoteSymbols=['NVDA','AAPL','TSLA','MSFT'],stkFilter='all',stkMarket='all',stkStyle='all',stkSort='',stkSortDir='desc',fxRate=1400;
+let stocks=[],memos=[],memoArchive=[],memoView='calendar',selTagV='general',memoEditTag='general',archiveTagFilter='all',archiveViewMode='list',archiveSearch='',FKEY='',newsCat='general',quoteSymbols=['NVDA','AAPL','TSLA','MSFT'],stkFilter='all',stkMarket='all',stkStyle='all',stkSort='',stkSortDir='desc',fxRate=1400;
 let ledger=[];  // 가계부: {id,date:'YYYY-MM-DD',type:'income'|'expense',amount,cat,memo}
 let health={goal:null,entries:[],monthlyGoals:{},weeklyActual:{}};  // 몸무게: entries=[{date,kg}], goal=기본목표, monthlyGoals={'YYYY-MM':kg}, weeklyActual={'YYYY-MM':[kg|null,...주차]}(주차별 실제체중 직접입력 override)
 let budget={};  // 월별 예산: {'YYYY-MM':{income,expense,incomeWeeks?:[..주차],expenseWeeks?:[..주차]}} (주차 배열 없으면 월÷주수 균등분할 폴백)
@@ -3160,6 +3165,8 @@ function switchMemoView(view){
     filterRow.style.display=view==='archive'?'':'none';
     if(view==='archive'){
       archiveTagFilter='all';
+      archiveSearch='';
+      const sIn=document.getElementById('archive-search');if(sIn)sIn.value='';
       filterRow.querySelectorAll('#archive-tag-filter .tbtn').forEach((b,i)=>{
         b.classList.toggle('sel',i===0);
         b.style.background=i===0?'var(--color-bg-overlay)':'';
@@ -3351,11 +3358,33 @@ function setArchiveView(mode){
   renderMemos();
 }
 
+let _archiveSearchT=null;
+function setArchiveSearch(v){
+  archiveSearch=v;
+  clearTimeout(_archiveSearchT);
+  _archiveSearchT=setTimeout(()=>{ if(memoView==='archive')renderMemos(); },180);
+}
+
+// 아카이브 목록: 태그 필터 + 키워드 검색 공통 적용 (최신순 memoArchive 순서 유지)
+function _archiveFiltered(){
+  let list=archiveTagFilter==='all'?memoArchive:memoArchive.filter(m=>(m.tag||'general')===archiveTagFilter);
+  const q=archiveSearch.trim().toLowerCase();
+  if(q)list=list.filter(m=>(m.text||'').toLowerCase().includes(q));
+  return list;
+}
+function _archiveEmptyMsg(){
+  if(archiveSearch.trim())return '검색 결과가 없습니다.';
+  return archiveTagFilter==='all'?'저장된 일지가 없습니다.':'해당 태그의 아카이브가 없습니다.';
+}
+function _archiveCountBar(n){
+  return `<div style="font-size:var(--text-sm);color:var(--color-text-tertiary);padding:2px 0 8px">총 <b style="color:var(--color-text-secondary)">${n}</b>건</div>`;
+}
+
 function renderArchive(el){
   if(archiveViewMode==='list'){renderArchiveList(el);return;}
-  const list=archiveTagFilter==='all'?memoArchive:memoArchive.filter(m=>(m.tag||'general')===archiveTagFilter);
+  const list=_archiveFiltered();
   if(!list.length){
-    el.innerHTML=`<div style="color:var(--color-text-tertiary);font-size:var(--text-md);padding:.5rem 0">${archiveTagFilter==='all'?'완료 처리된 일지가 없습니다.':'해당 태그의 아카이브가 없습니다.'}</div>`;
+    el.innerHTML=`<div style="color:var(--color-text-tertiary);font-size:var(--text-md);padding:.5rem 0">${_archiveEmptyMsg()}</div>`;
     return;
   }
   const grp={};
@@ -3364,7 +3393,7 @@ function renderArchive(el){
     if(!grp[k])grp[k]=[];
     grp[k].push(m);
   });
-  el.innerHTML=Object.entries(grp).map(([d,items])=>`
+  el.innerHTML=_archiveCountBar(list.length)+Object.entries(grp).map(([d,items])=>`
     <div style="font-size:var(--text-sm);font-weight:600;color:var(--color-text-tertiary);text-transform:uppercase;letter-spacing:.05em;padding:10px 0 6px;border-top:1px solid var(--color-border-default);margin-top:4px">${d}</div>
     ${items.map(m=>{
       const c=TAG[m.tag]||TAG.general;
@@ -3389,12 +3418,11 @@ function renderArchive(el){
 }
 
 function renderArchiveList(el){
-  const list=archiveTagFilter==='all'?memoArchive:memoArchive.filter(m=>(m.tag||'general')===archiveTagFilter);
+  const list=_archiveFiltered();
   if(!list.length){
-    el.innerHTML=`<div style="color:var(--color-text-tertiary);font-size:var(--text-md);padding:.5rem 0">${archiveTagFilter==='all'?'완료 처리된 일지가 없습니다.':'해당 태그의 아카이브가 없습니다.'}</div>`;
+    el.innerHTML=`<div style="color:var(--color-text-tertiary);font-size:var(--text-md);padding:.5rem 0">${_archiveEmptyMsg()}</div>`;
     return;
   }
-  let expandedId=null;
   const rows=list.map(m=>{
     const c=TAG[m.tag]||TAG.general;
     const dt=new Date(m.completedAt||m.time);
@@ -3409,7 +3437,7 @@ function renderArchiveList(el){
       <td style="text-align:center;font-size:var(--text-base)">${imp?'⭐':''}</td>
     </tr>`;
   }).join('');
-  el.innerHTML=`<table class="arc-list-wrap">
+  el.innerHTML=_archiveCountBar(list.length)+`<table class="arc-list-wrap">
     <thead><tr>
       <th>날짜</th><th>태그</th><th>내용</th><th>중요</th>
     </tr></thead>
