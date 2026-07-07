@@ -26,6 +26,9 @@ create table if not exists public.voc_requests (
 
 create index if not exists idx_voc_created on public.voc_requests (created_at desc);
 
+-- 처리 상태(관리자 표기): 완료 | 진행중 | 보류 | (null = 미지정)
+alter table public.voc_requests add column if not exists status text;
+
 -- ── RLS: 쓰기는 본인만, 읽기는 관리자만 ──────────────────────────────────
 alter table public.voc_requests enable row level security;
 
@@ -44,6 +47,19 @@ create policy voc_admin_read on public.voc_requests
       select 1 from public.user_profiles p
       where p.user_id = auth.uid() and p.is_admin = true
     )
+  );
+
+-- 관리자: UPDATE (처리 상태 표기 — 완료/진행중/보류)
+drop policy if exists voc_admin_update on public.voc_requests;
+create policy voc_admin_update on public.voc_requests
+  for update
+  using (
+    exists (select 1 from public.user_profiles p
+            where p.user_id = auth.uid() and p.is_admin = true)
+  )
+  with check (
+    exists (select 1 from public.user_profiles p
+            where p.user_id = auth.uid() and p.is_admin = true)
   );
 
 -- 관리자: DELETE (처리 완료·스팸 정리용)
