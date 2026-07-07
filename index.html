@@ -2791,7 +2791,7 @@ function renderTechCard(){
     }).join('');
   }
   // 결과에 실제 등장한 신호 유형만 골라 '산출 기준' 범례 구성
-  const presentKeys=[...new Set(hit.flatMap(r=>r.signals.map(s=>s.key)))].sort((a,b)=>(order[a]??9)-(order[b]??9));
+  const presentKeys=[...new Set(hit.flatMap(r=>r.signals.map(s=>s.key)))].filter(k=>TECH_SIG[k]).sort((a,b)=>(order[a]??9)-(order[b]??9));
   const legendHtml=presentKeys.length?`<div style="margin-top:10px;padding-top:8px;border-top:1px solid var(--color-border-default)">
       <div style="font-size:var(--text-2xs);font-weight:700;color:var(--color-text-secondary);margin-bottom:4px">📋 산출 기준</div>
       ${presentKeys.map(k=>`<div style="font-size:var(--text-2xs);color:var(--color-text-tertiary);line-height:1.7"><b style="color:var(--color-text-secondary)">${TECH_SIG[k].label}</b> — ${TECH_SIG[k].basis}</div>`).join('')}
