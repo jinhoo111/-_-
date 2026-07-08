@@ -256,7 +256,61 @@
 }
 
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:'Pretendard',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:var(--color-text-primary);background:var(--color-bg-base);min-height:100vh}
+body{font-family:'Pretendard',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:var(--color-text-primary);background:var(--color-bg-base);min-height:100vh;font-variant-numeric:tabular-nums}
+
+/* ════════════════════════════════════════════════════════════════
+   RICHHUB COMPONENT LIBRARY  (Phase 3 · designsystem_richhub.md §4)
+   ─ 모두 .rh- 접두사(기존 클래스와 충돌 0). 지금은 미사용 → 화면 무변.
+     Phase 4~5에서 화면 재배치 시 이 클래스들을 붙여 적용한다.
+   ════════════════════════════════════════════════════════════════ */
+/* 숫자 정렬 유틸 */
+.rh-num{font-variant-numeric:tabular-nums;font-family:var(--font-mono)}
+
+/* Button */
+.rh-btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:44px;padding:0 18px;border:1px solid transparent;border-radius:var(--rh-radius-md);font-family:inherit;font-size:var(--text-md);font-weight:var(--fw-semibold);cursor:pointer;transition:background .15s,border-color .15s,opacity .15s,transform .05s;line-height:1}
+.rh-btn:active{transform:scale(.98)}
+.rh-btn:disabled{opacity:.45;cursor:not-allowed}
+.rh-btn-sm{min-height:36px;padding:0 14px;font-size:var(--text-sm)}
+.rh-btn-lg{min-height:52px;padding:0 24px;font-size:var(--text-lg)}
+.rh-btn-primary{background:var(--color-accent-primary);color:var(--color-accent-on)}
+.rh-btn-primary:hover{background:var(--color-accent-hover)}
+.rh-btn-secondary{background:var(--color-secondary);color:#04211d}
+.rh-btn-secondary:hover{filter:brightness(1.08)}
+.rh-btn-ghost{background:transparent;color:var(--color-text-secondary);border-color:var(--color-border-default)}
+.rh-btn-ghost:hover{background:var(--color-bg-subtle);color:var(--color-text-primary)}
+.rh-btn-danger{background:var(--color-error);color:#fff}
+.rh-btn-danger:hover{filter:brightness(1.08)}
+
+/* Card */
+.rh-card{background:var(--color-bg-surface);border:1px solid var(--color-border-default);border-radius:var(--rh-radius-md);padding:var(--space-4);box-shadow:var(--shadow-sm)}
+.rh-card-interactive{cursor:pointer;transition:border-color .15s,box-shadow .15s}
+.rh-card-interactive:hover{border-color:var(--color-border-strong);box-shadow:var(--shadow-md)}
+/* 일지(차분) 카드: 큰 radius·여백 */
+.rh-card-journal{background:var(--color-bg-surface);border:1px solid var(--color-border-default);border-radius:var(--rh-radius-lg);padding:var(--space-6);line-height:var(--lh-relaxed)}
+
+/* List Item (좌: 종목/아이콘 · 우: 숫자/시각) */
+.rh-list-item{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px var(--space-4);border-bottom:1px solid var(--color-border-faint)}
+.rh-list-item:last-child{border-bottom:none}
+
+/* Metric block (큰 숫자 + 등락 배지) */
+.rh-metric{font-family:var(--font-mono);font-variant-numeric:tabular-nums;font-weight:var(--fw-bold);line-height:var(--lh-tight)}
+.rh-metric-delta{font-variant-numeric:tabular-nums;font-weight:var(--fw-semibold);font-size:var(--text-md)}
+/* 한국 관례: 상승=빨강▲ / 하락=파랑▼ / 보합 */
+.rh-metric-up{color:var(--color-up)}
+.rh-metric-up::before{content:'▲ ';font-size:.85em}
+.rh-metric-down{color:var(--color-down)}
+.rh-metric-down::before{content:'▼ ';font-size:.85em}
+.rh-metric-flat{color:var(--color-flat)}
+.rh-metric-flat::before{content:'– ';font-size:.85em}
+
+/* Input / Textarea(일지 몰입형) */
+.rh-input{width:100%;min-height:44px;padding:10px 12px;border:1px solid var(--color-border-input);border-radius:var(--rh-radius-md);background:var(--color-bg-surface);color:var(--color-text-primary);font-family:inherit;font-size:var(--text-md);outline:none;transition:border-color .15s,box-shadow .15s}
+.rh-input::placeholder{color:var(--color-text-placeholder)}
+.rh-input:focus{border-color:var(--color-accent-primary);box-shadow:0 0 0 3px var(--color-accent-bg)}
+.rh-input:disabled{opacity:.5;cursor:not-allowed}
+.rh-textarea-journal{width:100%;min-height:160px;padding:var(--space-5);border:1px solid var(--color-border-default);border-radius:var(--rh-radius-lg);background:var(--color-bg-surface);color:var(--color-text-primary);font-family:inherit;font-size:var(--text-lg);line-height:var(--lh-relaxed);resize:vertical;outline:none;transition:border-color .15s}
+.rh-textarea-journal::placeholder{color:var(--color-text-placeholder)}
+.rh-textarea-journal:focus{border-color:var(--color-secondary)}
 
 /* ── AUTH OVERLAY ── */
 .auth-overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:2000;display:flex;align-items:center;justify-content:center;padding:16px}
