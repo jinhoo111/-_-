@@ -435,8 +435,8 @@ body.admin-mode .bn-biz,body.admin-mode .bn-personal{display:flex}
 
 /* ── COMMON COMPONENTS ── */
 .up{color:var(--color-success)}.down{color:var(--color-error)}.neu{color:var(--color-text-tertiary)}
-/* 투자종목관리 손익 색상(한국식): 수익=빨강, 손실=파랑 */
-.pl-up{color:var(--color-error)}.pl-down{color:var(--color-info)}
+/* 투자종목관리 손익 색상(한국식): 수익=빨강, 손실=파랑 (RichHub 등락 토큰) */
+.pl-up{color:var(--color-up)}.pl-down{color:var(--color-down)}
 /* ═══ 버튼 규격 시스템 ═══════════════════════════════════════════
    .btn        = 기본(md, height 40) · .btn-sm(34)/.btn-lg(48)
    .btn-primary= 강조(브랜드 채움). 높이는 height 토큰으로 통일, 상하 여백은
@@ -495,6 +495,9 @@ tr:hover td{background:var(--color-bg-subtle)}
 .idx-name{font-size:var(--text-md);font-weight:600;margin-bottom:2px}
 .idx-val{font-size:var(--text-2xl);font-weight:700;font-family:monospace}
 .idx-chg{font-size:var(--text-sm);margin-top:1px}
+/* 지수·환율·코인 등락(한국 관례 통일): 상승=빨강▲ / 하락=파랑▼. 바 .up/.down(체중·가계부)은 유지 */
+.idx-val.up,.idx-chg.up{color:var(--color-up)}
+.idx-val.down,.idx-chg.down{color:var(--color-down)}
 
 
 /* ── MEMO ── */
@@ -793,8 +796,8 @@ body.admin-mode .admin-only{display:inline-flex!important}
 .mc-price-row{display:flex;align-items:baseline;gap:10px}
 .mc-price{font-size:var(--text-3xl);font-weight:800;letter-spacing:-.4px}
 .mc-change{font-size:var(--text-md);font-weight:700}
-.mc-change.up,.mc-chg-up{color:var(--color-error-text)}
-.mc-change.down,.mc-chg-down{color:var(--color-info)}
+.mc-change.up,.mc-chg-up{color:var(--color-up)}
+.mc-change.down,.mc-chg-down{color:var(--color-down)}
 .mc-price-loading{color:var(--color-text-tertiary);font-size:var(--text-sm)}
 .mc-section{margin-top:.875rem;padding-top:.875rem;border-top:1px solid var(--color-border-faint)}
 .mc-section-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:.5rem}
