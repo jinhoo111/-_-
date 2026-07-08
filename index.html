@@ -499,11 +499,12 @@ tr:hover td{background:var(--color-bg-subtle)}
 .cal-compose{margin-top:10px;border:1px solid var(--color-border-default);border-radius:10px;padding:12px;background:var(--color-bg-surface)}
 .cal-compose textarea{width:100%;box-sizing:border-box;min-height:70px;resize:vertical;border:1px solid var(--color-border-input);border-radius:8px;padding:8px 10px;font-family:inherit;font-size:var(--text-md);color:var(--color-text-primary);background:var(--color-bg-surface)}
 .cal-compose textarea:focus{outline:none;border-color:var(--color-border-strong)}
-.arc-cal-day.today .arc-cal-num{background:var(--color-text-primary);color:var(--color-bg-surface);border-radius:50%;width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center;font-size:var(--text-sm)}
 .arc-cal-num{font-size:var(--text-sm);font-weight:600;color:var(--color-text-muted);display:inline-block;margin-bottom:3px}
 .arc-cal-day.has-memo .arc-cal-num{color:var(--color-text-primary)}
 .arc-cal-day.sun .arc-cal-num{color:var(--color-error)}
 .arc-cal-day.sat .arc-cal-num{color:var(--color-info)}
+/* 오늘 표시: 브랜드 블루 원 + 흰 숫자. 위 has-memo/sun/sat보다 뒤라 color가 항상 이김 → 숫자 안 묻힘 */
+.arc-cal-day.today .arc-cal-num{background:var(--color-accent-primary);color:var(--color-accent-on);border-radius:50%;width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center;font-size:var(--text-sm)}
 .arc-tag-chip{display:inline-block;font-size:10px;font-weight:700;padding:1px 5px;border-radius:10px;margin:1px 1px 0 0;line-height:1.5}
 .arc-cal-detail{margin-top:12px;border-top:1px solid var(--color-border-default);padding-top:10px}
 
