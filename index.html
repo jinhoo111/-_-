@@ -103,37 +103,37 @@
 }
 
 :root {
-  /* ── Text ── */
-  --color-text-primary:       #1a1a1a;
-  --color-text-secondary:     #555;
-  --color-text-subtle:        #666;
-  --color-text-tertiary:      #888;
-  --color-text-muted:         #bbb;
-  --color-text-disabled:      #aaa;
-  --color-text-strong:        #333;
-  --color-text-secondary-alt: #374151;
-  --color-text-warm:          #44403c;
-  --color-text-placeholder:   #9ca3af;
+  /* ── Text ──  (RichHub 다크: 값이 밝을수록 강조. 라이트는 [data-theme=light]에서 복원) */
+  --color-text-primary:       #F8FAFC;
+  --color-text-secondary:     #C0CAD8;
+  --color-text-subtle:        #A6B2C2;
+  --color-text-tertiary:      #94A3B8;
+  --color-text-muted:         #6B7688;
+  --color-text-disabled:      #556173;
+  --color-text-strong:        #FFFFFF;
+  --color-text-secondary-alt: #B4BECD;
+  --color-text-warm:          #CFC8C1;
+  --color-text-placeholder:   #64748B;
 
-  /* ── Surface ── */
-  --color-bg-base:     #f2f4f6;
-  --color-bg-surface:  #fff;
-  --color-bg-subtle:   #fafafa;
-  --color-bg-muted:    #f5f5f3;
-  --color-bg-overlay:  #f0efec;
-  --color-bg-archive:  #f8f8f8;
-  --color-bg-badge:    #f3f4f6;
-  --color-edit-highlight: #fffef0;
-  --color-bg-primary:  #fff;   /* alias: 드롭다운 등 패널 배경 (= surface) */
+  /* ── Surface ──  (RichHub 다크) */
+  --color-bg-base:     #0F1620;
+  --color-bg-surface:  #1A2332;
+  --color-bg-subtle:   #202B3D;
+  --color-bg-muted:    #202B3D;
+  --color-bg-overlay:  #232F42;
+  --color-bg-archive:  #1C2736;
+  --color-bg-badge:    #263248;
+  --color-edit-highlight: #2C2A17;
+  --color-bg-primary:  #1A2332;   /* alias: 드롭다운 등 패널 배경 (= surface) */
 
-  /* ── Border ── */
-  --color-border-default: #e8e8e8;
-  --color-border:         #e8e8e8;   /* alias: 기업 모니터링 등에서 사용 (= default) */
-  --color-border-input:   #ddd;
-  --color-border-strong:  #999;
-  --color-border-subtle:  #e5e7eb;
-  --color-border-muted:   #e5e5e5;
-  --color-border-faint:   #f5f5f5;
+  /* ── Border ──  (RichHub 다크) */
+  --color-border-default: #2A3648;
+  --color-border:         #2A3648;   /* alias: 기업 모니터링 등에서 사용 (= default) */
+  --color-border-input:   #38465C;
+  --color-border-strong:  #4A5A73;
+  --color-border-subtle:  #2A3648;
+  --color-border-muted:   #253044;
+  --color-border-faint:   #1E2A3A;
 
   /* ── Success ── */
   --color-success:         #0a8a57;
@@ -163,26 +163,26 @@
   --color-warning-subtle: #fffbeb;
   --color-warning-border: #fde68a;
 
-  /* ── Info ── */
-  --color-info:          #1e40af;
+  /* ── Info ──  (솔리드만 다크에서 밝게; -bg/-text 페일 페어는 유지=가독 핀칩) */
+  --color-info:          #60A5FA;
   --color-info-text:     #1e3a8a;
   --color-info-deep:     #075985;
   --color-info-bg:       #dbeafe;
   --color-info-border:   #bfdbfe;
   --color-trade-long-bg: #eff6ff;
 
-  /* ── Accent / Purple ── */
-  --color-accent:             #6b21a8;
-  --color-accent-dark:        #5b21b6;
-  --color-accent-mid:         #6d28d9;
-  --color-accent-deeper:      #4c1d95;
-  --color-accent-indigo:      #4f46e5;
-  --color-accent-soft:        #6366f1;
-  --color-accent-bg:          #f3e8ff;
-  --color-accent-bg-soft:     #ede9fe;
-  --color-accent-subtle:      #eef2ff;
-  --color-accent-border:      #c4b5fd;
-  --color-accent-border-soft: #c7d2fe;
+  /* ── Accent / Purple ──  (RichHub 다크: 텍스트 퍼플은 밝게, 배경 틴트는 어둡게) */
+  --color-accent:             #B794F4;
+  --color-accent-dark:        #A78BFA;
+  --color-accent-mid:         #A78BFA;
+  --color-accent-deeper:      #C4B5FD;
+  --color-accent-indigo:      #818CF8;
+  --color-accent-soft:        #818CF8;
+  --color-accent-bg:          #2A2140;
+  --color-accent-bg-soft:     #241E38;
+  --color-accent-subtle:      #1E2440;
+  --color-accent-border:      #4C3F73;
+  --color-accent-border-soft: #3A3A6B;
 
   /* ── Trade Type ── */
   --color-trade-short-bg:   #fff7ed;
@@ -241,11 +241,11 @@
   --btn-h-md: 40px;
   --btn-h-lg: 48px;
 
-  /* ── Accent (브랜드 — 토스풍 파랑. 가격 등락 색과 별개: 버튼/탭/포커스 등 인터랙션용) ── */
-  --color-accent-primary: #3182f6;
-  --color-accent-hover:   #1b64da;
-  --color-accent-bg:      #e8f0fe;
-  --color-accent-weak:    #4593fc;
+  /* ── Accent (브랜드 — RichHub 블루. 가격 등락 색과 별개: 버튼/탭/포커스 등 인터랙션용) ── */
+  --color-accent-primary: #3B82F6;
+  --color-accent-hover:   #2563EB;
+  --color-accent-bg:      #17263F;   /* 다크: 포커스 글로우/선택 배경 (은은한 블루) */
+  --color-accent-weak:    #60A5FA;
   --color-accent-on:      #ffffff;
 
   /* ── Shadow (토스풍 소프트 섀도우) ── */
@@ -710,7 +710,7 @@ body.admin-mode .admin-only{display:inline-flex!important}
 .report-card{background:var(--color-bg-surface);border:1px solid var(--color-border-default);border-radius:var(--radius-card);padding:1.25rem 1.35rem;margin-bottom:1.75rem}
 .report-title{font-size:var(--text-md);font-weight:700;margin-bottom:10px}
 /* 플로팅 도움말 위젯 */
-#help-fab{position:fixed;right:20px;bottom:24px;z-index:1500;width:48px;height:48px;border-radius:50%;border:1px solid var(--color-border-default);background:#fff;color:#111;font-size:26px;font-weight:700;line-height:1;cursor:pointer;box-shadow:0 4px 14px rgba(60,80,110,.24);display:flex;align-items:center;justify-content:center;transition:filter .15s}
+#help-fab{position:fixed;right:20px;bottom:24px;z-index:1500;width:48px;height:48px;border-radius:50%;border:1px solid var(--color-border-default);background:var(--color-bg-surface);color:var(--color-text-primary);font-size:26px;font-weight:700;line-height:1;cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center;transition:filter .15s}
 #help-fab:hover{filter:brightness(.97)}
 .help-pop{position:fixed;right:20px;bottom:84px;z-index:1500;width:320px;max-width:calc(100vw - 32px);max-height:70vh;overflow-y:auto;background:var(--color-bg-surface);border:1px solid var(--color-border-default);border-radius:var(--radius-xl);box-shadow:0 16px 48px rgba(0,0,0,.2);padding:16px}
 .help-pop.hidden{display:none}
