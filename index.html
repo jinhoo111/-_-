@@ -479,6 +479,19 @@ body.admin-mode .bn-biz,body.admin-mode .bn-personal{display:flex}
 
 /* ── TABLE ── */
 .tbl-wrap{overflow-x:auto}
+/* ── 보유 종목 표 = RichHub 카드 정리 (스코프: .tbl-wrap 전용, 다른 표 영향 X) ── */
+.tbl-wrap{background:var(--color-bg-surface);border:1px solid var(--color-border-default);border-radius:var(--rh-radius-md)}
+.tbl-wrap th{background:var(--color-bg-subtle);color:var(--color-text-tertiary);font-size:var(--text-xs);font-weight:600;letter-spacing:.02em;padding:11px 10px;border-bottom:1px solid var(--color-border-default)}
+.tbl-wrap td{padding:12px 10px;border-bottom:1px solid var(--color-border-faint)}
+.tbl-wrap tbody tr:last-child td{border-bottom:none}
+.tbl-wrap tbody tr:hover td{background:var(--color-bg-subtle)}
+/* 숫자 컬럼(매수가·현재가·수량·평가금액·수익률·비중) 우측 정렬 + 자릿수 정렬 */
+.tbl-wrap th:nth-child(3),.tbl-wrap td:nth-child(3),
+.tbl-wrap th:nth-child(4),.tbl-wrap td:nth-child(4),
+.tbl-wrap th:nth-child(5),.tbl-wrap td:nth-child(5),
+.tbl-wrap th:nth-child(6),.tbl-wrap td:nth-child(6),
+.tbl-wrap th:nth-child(7),.tbl-wrap td:nth-child(7),
+.tbl-wrap th:nth-child(8),.tbl-wrap td:nth-child(8){text-align:right;font-variant-numeric:tabular-nums}
 table{width:100%;border-collapse:collapse;font-size:var(--text-table)}
 th{font-size:var(--text-sm);font-weight:600;color:var(--color-text-tertiary);padding:6px 8px;border-bottom:1px solid var(--color-border-default);text-align:left;white-space:nowrap;background:var(--color-bg-subtle)}
 td{padding:9px 8px;border-bottom:1px solid var(--color-border-faint);vertical-align:middle;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
