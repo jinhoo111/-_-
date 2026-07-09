@@ -793,6 +793,13 @@ body.admin-mode .admin-only{display:inline-flex!important}
 .cur-seg{display:inline-flex;border:1px solid var(--color-border);border-radius:6px;overflow:hidden;vertical-align:middle;margin-left:6px}
 .cur-seg-btn{border:none;background:var(--color-bg-muted);color:var(--color-text-tertiary);font-size:var(--text-xs);font-weight:700;height:26px;padding:0 11px;display:inline-flex;align-items:center;cursor:pointer;font-family:inherit}
 .cur-seg-btn.on{background:var(--color-info);color:#fff}
+/* 홈 상단 좌/우 2열: 경쟁사 브리핑 + 기술 신호 스캐너.
+   한쪽 숨김(display:none) 시 나머지가 flex:1로 전체폭, 좁은 화면에선 자동 세로 정렬.
+   두 카드는 등높이(stretch)로 맞춰 빈 여백이 카드 안쪽에 자연스럽게 들어가게 함. */
+.home-top-grid{display:flex;gap:12px;flex-wrap:wrap;align-items:stretch;margin-bottom:1.25rem}
+.home-top-grid>div{flex:1 1 340px;min-width:0;display:flex}
+.home-top-grid>div>.cbrief{flex:1;margin-bottom:0}
+
 /* 홈 경쟁사 브리핑 카드 */
 .cbrief{background:var(--color-bg-surface);border:1px solid var(--color-border-default);border-radius:var(--radius-2xl);padding:1.1rem 1.25rem;margin-bottom:1.25rem;box-shadow:var(--shadow-card)}
 .cbrief-head{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px}
@@ -1073,11 +1080,13 @@ function toggleTheme(){
     </div>
   </div>
 
-  <!-- 홈 상단: 이번 주 경쟁사 브리핑 (renderCompetitorBrief가 채움. 신호 없거나 미로그인 시 숨김) -->
-  <div id="competitor-brief-card" style="display:none"></div>
-
-  <!-- 기술 신호 스캐너 (renderTechCard가 채움. 미로그인·종목 없음 시 숨김) -->
-  <div id="tech-signal-card" style="display:none"></div>
+  <!-- 홈 상단: 경쟁사 브리핑 + 기술 신호 스캐너 (좌/우 2열 · JS는 각 div를 ID로 채움) -->
+  <div class="home-top-grid">
+    <!-- 이번 주 경쟁사 브리핑 (renderCompetitorBrief가 채움. 신호 없거나 미로그인 시 숨김) -->
+    <div id="competitor-brief-card" style="display:none"></div>
+    <!-- 기술 신호 스캐너 (renderTechCard가 채움. 미로그인·종목 없음 시 숨김) -->
+    <div id="tech-signal-card" style="display:none"></div>
+  </div>
 
   <!-- 보유 종목 -->
   <div id="ip-portfolio-stk" class="ipanel on">
