@@ -100,6 +100,30 @@
   --text-tertiary:  #94A3B8;
   --border-default: #E2E8F0;
   --border-strong:  #CBD5E1;
+
+  /* ── 라이트 모드 복원: 앱 원래 --color-* 값(다크에서 리매핑한 것들을 되돌림) ── */
+  --color-text-primary:#1a1a1a; --color-text-secondary:#555; --color-text-subtle:#666;
+  --color-text-tertiary:#888; --color-text-muted:#bbb; --color-text-disabled:#aaa;
+  --color-text-strong:#333; --color-text-secondary-alt:#374151; --color-text-warm:#44403c;
+  --color-text-placeholder:#9ca3af;
+
+  --color-bg-base:#f2f4f6; --color-bg-surface:#fff; --color-bg-subtle:#fafafa;
+  --color-bg-muted:#f5f5f3; --color-bg-overlay:#f0efec; --color-bg-archive:#f8f8f8;
+  --color-bg-badge:#f3f4f6; --color-edit-highlight:#fffef0; --color-bg-primary:#fff;
+
+  --color-border-default:#e8e8e8; --color-border:#e8e8e8; --color-border-input:#ddd;
+  --color-border-strong:#999; --color-border-subtle:#e5e7eb; --color-border-muted:#e5e5e5;
+  --color-border-faint:#f5f5f5;
+
+  --color-accent:#6b21a8; --color-accent-dark:#5b21b6; --color-accent-mid:#6d28d9;
+  --color-accent-deeper:#4c1d95; --color-accent-indigo:#4f46e5; --color-accent-soft:#6366f1;
+  --color-accent-bg-soft:#ede9fe; --color-accent-subtle:#eef2ff; --color-accent-border:#c4b5fd;
+  --color-accent-border-soft:#c7d2fe;
+
+  --color-accent-primary:#3182f6; --color-accent-hover:#1b64da; --color-accent-bg:#e8f0fe;
+  --color-accent-weak:#4593fc;
+
+  --color-info:#1e40af;
 }
 
 :root {
@@ -943,6 +967,7 @@ body.admin-mode .admin-only{display:inline-flex!important}
     <button class="nav-tab admin-only" onclick="goPage('security',this)">🛡️ 보안</button>
   </div>
   <div class="nav-right" id="nav-right">
+    <button id="theme-toggle" class="nav-icon-btn" onclick="toggleTheme()" title="라이트 모드로" aria-label="다크/라이트 테마 전환">🌙</button>
     <button id="nav-login-btn" class="nav-login-btn" onclick="openAuthModal()">로그인</button>
     <div id="nav-account" class="nav-user-info" style="display:none">
       <span id="nav-user-dot" style="width:7px;height:7px;border-radius:50%;background:var(--color-success);flex-shrink:0"></span>
@@ -952,6 +977,27 @@ body.admin-mode .admin-only{display:inline-flex!important}
     </div>
   </div>
 </nav>
+
+<!-- RichHub Phase 6: 다크/라이트 테마 토글 (다크 기본, localStorage 유지) -->
+<script>
+function _rhSyncThemeBtn(){
+  var b=document.getElementById('theme-toggle');if(!b)return;
+  var dark=(document.body.getAttribute('data-theme')||'dark')==='dark';
+  b.textContent=dark?'🌙':'☀️';
+  b.title=dark?'라이트 모드로':'다크 모드로';
+}
+function toggleTheme(){
+  var cur=document.body.getAttribute('data-theme')||'dark';
+  var next=cur==='dark'?'light':'dark';
+  document.body.setAttribute('data-theme',next);
+  try{localStorage.setItem('rh_theme',next);}catch(e){}
+  _rhSyncThemeBtn();
+}
+(function(){
+  try{var t=localStorage.getItem('rh_theme');if(t==='light'||t==='dark')document.body.setAttribute('data-theme',t);}catch(e){}
+  _rhSyncThemeBtn();
+})();
+</script>
 
 <!-- 모바일 하단 탭바 (데스크톱 숨김 · 기존 goPage 핸들러 재사용) -->
 <nav class="bottom-nav" id="bottom-nav" aria-label="모바일 탭 네비게이션">
