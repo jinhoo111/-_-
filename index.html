@@ -3463,8 +3463,10 @@ function fhKeyErr(feedId){
 
 function setKeyStatus(state,msg){const el=document.getElementById('key-status');const dc=state==='live'?'dot-live':state==='err'?'dot-err':'dot-wait';const tc=state==='live'?'var(--color-success)':state==='err'?'var(--color-error-text)':'var(--color-text-tertiary)';el.innerHTML=`<span class="${dc}"></span><span style="color:${tc}">${msg}</span>`;}
 
-// 로딩 스켈레톤: 카드형(뉴스·데이터) n개. 메타·제목·요약 라인 모사.
+// 로딩 스켈레톤 헬퍼: 카드형(뉴스·데이터) / 지수카드형 / 텍스트라인형.
 function _skCards(n){return Array.from({length:n||4}).map(()=>'<div class="sk-card"><div class="sk sk-line sk-w30" style="height:10px"></div><div class="sk sk-line sk-w70" style="height:15px"></div><div class="sk sk-line sk-w50"></div></div>').join('');}
+function _skIdx(n){return Array.from({length:n||1}).map(()=>'<div class="idx-card"><div class="sk sk-line sk-w40" style="height:9px;margin:2px 0 9px"></div><div class="sk sk-line sk-w70" style="height:19px;margin:0"></div><div class="sk sk-line sk-w30" style="height:9px;margin-top:8px"></div></div>').join('');}
+function _skLines(n){return '<div style="padding:6px 0">'+Array.from({length:n||3}).map((_,i)=>`<div class="sk sk-line ${['sk-w70','','sk-w50'][i%3]}"></div>`).join('')+'</div>';}
 
 async function loadMarketNews(){
   if(!FKEY){document.getElementById('news-feed').innerHTML='<div class="empty">🔑 API 키 연결 필요</div>';return;}
@@ -5399,8 +5401,7 @@ async function loadYahooBatch(syms){
 async function loadGroup(items,elId,sec,batch={}){
   const el=document.getElementById(elId);
   if(!el)return;
-  const cards=items.map(()=>`<div class="idx-card"><div class="idx-val neu"><span class="spin">⟳</span></div></div>`);
-  el.innerHTML=cards.join('');
+  el.innerHTML=_skIdx(items.length);
   await Promise.allSettled(items.map(async(item,i)=>{
     let d=null;
     if(item.naver)d=await loadNaverIndex(item.naver);
@@ -5467,7 +5468,7 @@ function _ycCard(market,src,y2,y10,note){
 }
 async function loadYieldCurve(batch={}){
   const el=document.getElementById('idx-rates');if(!el)return;
-  el.innerHTML=`<div class="idx-card"><div class="idx-val neu"><span class="spin">⟳</span></div></div><div class="idx-card"><div class="idx-val neu">—</div></div>`;
+  el.innerHTML=_skIdx(1);
   // 미국: Yahoo ^TNX(10년물) + 2YY=F(2년물) — 기존 프록시 경로 재사용
   const [us10,us2]=await Promise.all([
     batch['^TNX']?.val!=null?Promise.resolve(batch['^TNX']):loadYahoo('^TNX'),
@@ -5519,7 +5520,7 @@ function _loadRegCache(){
 }
 async function loadRegRSS(){
   const dot=document.getElementById('reg-live-dot'),txt=document.getElementById('reg-upd-txt'),usEl=document.getElementById('reg-feed-us'),krEl=document.getElementById('reg-feed-kr');
-  const spin='<div class="empty" style="font-size:var(--text-sm)"><span class="spin">⟳</span> 로딩 중...</div>';
+  const spin=_skCards(4);
   dot.style.background='var(--color-warning)';txt.textContent='로딩 중...';usEl.innerHTML=spin;krEl.innerHTML=spin;
   const [usRes,krRes]=await Promise.all([
     Promise.allSettled(REG_FEEDS_US.map(async f=>_parseRSSItems(await _fetchRSSProxy(f.url),f))),
@@ -5575,7 +5576,7 @@ async function regKeywordSearch(){
   if(!kw)return;
   const rr=document.getElementById('reg-search-results'),dv=document.getElementById('reg-default-view'),cl=document.getElementById('reg-search-clear');
   if(dv)dv.style.display='none';if(cl)cl.style.display='';
-  if(rr){rr.style.display='';rr.innerHTML='<div class="empty" style="font-size:var(--text-sm)"><span class="spin">⟳</span> 최신 규제 뉴스 검색 중...</div>';}
+  if(rr){rr.style.display='';rr.innerHTML=_skCards(3);}
   const krUrl=`https://news.google.com/rss/search?q=${encodeURIComponent(kw+' 규제')}&hl=ko&gl=KR&ceid=KR:ko`;
   const usUrl=`https://news.google.com/rss/search?q=${encodeURIComponent(kw+' regulation')}&hl=en-US&gl=US&ceid=US:en`;
   const kf={key:'kw-kr',name:'검색',label:'KR',color:'var(--color-warning-text)',bg:'var(--color-warning-bg)'};
@@ -6742,7 +6743,7 @@ function _buildCardHeaderHTML(co){
           <a class="mc-disc-link" href="https://dart.fss.or.kr/dsaf001/main.do?rcpNo=${d.rcept_no||''}" target="_blank" rel="noopener">↗</a>
         </div>`;
       }).join(''):'<div class="mc-empty-state">최근 30일 공시가 없습니다.</div>')
-    :'<div class="mc-loading">공시 로딩 중...</div>';
+    :_skLines(3);
   const memosHtml=(co.memos||[]).map(m=>`
     <div class="mc-memo-item" id="mmi-${co.corp_code}-${m.id}">
       <div class="mc-memo-text">${escapeHtml(m.text)}</div>
@@ -6972,7 +6973,7 @@ function toggleHoldingsSection(corpCode){
   body.style.display=open?'none':'';
   if(icon)icon.textContent=open?'▶':'▼';
   if(!open&&!_monitorCache[corpCode]?.holdings){
-    body.innerHTML='<div class="mc-loading">보유 현황 로딩 중...</div>';
+    body.innerHTML=_skLines(3);
     loadHoldings(corpCode);
   }
 }
@@ -6985,7 +6986,7 @@ function toggleChangesSection(corpCode){
   body.style.display=open?'none':'';
   if(icon)icon.textContent=open?'▶':'▼';
   if(!open&&!_monitorCache[corpCode]?.holdingChanges){
-    body.innerHTML='<div class="mc-loading">변동 이력 로딩 중...</div>';
+    body.innerHTML=_skLines(3);
     loadHoldingChanges(corpCode);
   }
 }
@@ -7063,7 +7064,7 @@ function toggleOwnershipSection(cc){
   if(icon)icon.textContent=open?'▶':'▼';
   if(!open){
     if(!_monitorCache[cc]?.ownershipLoaded){
-      body.innerHTML='<div class="mc-loading">지분공시 로딩 중...</div>';
+      body.innerHTML=_skLines(3);
       loadOwnership(cc);
     }else{
       _renderOwnershipBody(cc);
