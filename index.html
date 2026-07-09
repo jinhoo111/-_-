@@ -492,6 +492,13 @@ body.admin-mode .bn-biz,body.admin-mode .bn-personal{display:flex}
 .err-box{background:var(--color-error-subtle);color:var(--color-error-text);border-radius:8px;padding:9px 12px;font-size:var(--text-base);margin-top:8px;border:1px solid var(--color-error-border);line-height:1.5}
 .info-box{background:var(--color-trade-long-bg);color:var(--color-info);border-radius:8px;padding:9px 12px;font-size:var(--text-base);margin-bottom:10px;border:1px solid var(--color-info-border);line-height:1.6}
 .empty{text-align:center;padding:2rem 1rem;color:var(--color-text-tertiary);font-size:var(--text-md)}
+/* ── 로딩 스켈레톤 (데이터=카드형 / 텍스트=라인형) · 다크·라이트 공용 ── */
+@keyframes sk-shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+.sk{background:linear-gradient(90deg,var(--color-bg-subtle) 25%,var(--color-border-default) 50%,var(--color-bg-subtle) 75%);background-size:200% 100%;animation:sk-shimmer 1.4s linear infinite;border-radius:6px}
+@media (prefers-reduced-motion:reduce){.sk{animation:none}}
+.sk-line{height:12px;margin:9px 0}
+.sk-w70{width:70%}.sk-w50{width:50%}.sk-w40{width:40%}.sk-w30{width:30%}
+.sk-card{border:1px solid var(--color-border-default);border-radius:var(--rh-radius-md);padding:14px 16px;margin-bottom:8px;background:var(--color-bg-surface)}
 
 /* ── METRICS ── */
 /* 반응형: 폭이 좁아지면 자동 줄바꿈(고정 6열 → auto-fit). 폰트 확대로 인한 라벨 잘림 방지. */
@@ -3456,9 +3463,12 @@ function fhKeyErr(feedId){
 
 function setKeyStatus(state,msg){const el=document.getElementById('key-status');const dc=state==='live'?'dot-live':state==='err'?'dot-err':'dot-wait';const tc=state==='live'?'var(--color-success)':state==='err'?'var(--color-error-text)':'var(--color-text-tertiary)';el.innerHTML=`<span class="${dc}"></span><span style="color:${tc}">${msg}</span>`;}
 
+// 로딩 스켈레톤: 카드형(뉴스·데이터) n개. 메타·제목·요약 라인 모사.
+function _skCards(n){return Array.from({length:n||4}).map(()=>'<div class="sk-card"><div class="sk sk-line sk-w30" style="height:10px"></div><div class="sk sk-line sk-w70" style="height:15px"></div><div class="sk sk-line sk-w50"></div></div>').join('');}
+
 async function loadMarketNews(){
   if(!FKEY){document.getElementById('news-feed').innerHTML='<div class="empty">🔑 API 키 연결 필요</div>';return;}
-  document.getElementById('news-feed').innerHTML='<div class="empty"><span class="spin">⟳</span> 로딩 중...</div>';
+  document.getElementById('news-feed').innerHTML=_skCards(5);
   try{
     const data=await proxyApiCall('finnhub','news',{category:newsCat});
     displayNews(data);
@@ -3479,7 +3489,7 @@ async function loadCompanyNews(){
   const sym=document.getElementById('company-sym').value.trim().toUpperCase();if(!sym)return;
   localStorage.setItem('news_company_sym',sym);
   if(!FKEY){document.getElementById('company-feed').innerHTML='<div class="empty">🔑 API 키 연결 필요</div>';return;}
-  document.getElementById('company-feed').innerHTML='<div class="empty"><span class="spin">⟳</span> 로딩...</div>';
+  document.getElementById('company-feed').innerHTML=_skCards(4);
   const today=new Date().toISOString().split('T')[0];const from=new Date(Date.now()-7*86400000).toISOString().split('T')[0];
   try{
     const data=await proxyApiCall('finnhub','company-news',{symbol:sym,from,to:today});
@@ -3496,7 +3506,7 @@ async function loadAnalystRating(sym){
   const input=sym||document.getElementById('analyst-sym').value.trim().toUpperCase();if(!input)return;
   localStorage.setItem('news_analyst_sym',input);
   if(!FKEY){document.getElementById('analyst-feed').innerHTML='<div class="empty">🔑 API 키 연결 필요</div>';return;}
-  document.getElementById('analyst-feed').innerHTML='<div class="empty"><span class="spin">⟳</span> 조회 중...</div>';
+  document.getElementById('analyst-feed').innerHTML=_skCards(2);
   try{const [recR,ptR]=await Promise.allSettled([proxyApiCall('finnhub','stock/recommendation',{symbol:input}),proxyApiCall('finnhub','stock/price-target',{symbol:input})]);if(recR.status==='rejected'&&recR.reason?.message==='fh_auth'){fhKeyErr('analyst-feed');return;}const rec=recR.status==='fulfilled'?recR.value:[];const pt=ptR.status==='fulfilled'?ptR.value:null;const feed=document.getElementById('analyst-feed');if(!rec?.length){feed.innerHTML=`<div class="empty">${input} 데이터 없음 (미국 상장 종목만)</div>`;return;}const l=rec[0];const tot=(l.buy||0)+(l.hold||0)+(l.sell||0)+(l.strongBuy||0)+(l.strongSell||0);const bt=(l.buy||0)+(l.strongBuy||0);const ht=l.hold||0;const st=(l.sell||0)+(l.strongSell||0);const bp=tot?Math.round(bt/tot*100):0;const hp=tot?Math.round(ht/tot*100):0;const sp=tot?Math.round(st/tot*100):0;const con=bp>=60?{l:'Strong Buy',bg:'var(--color-success-bg)',c:'var(--color-success-text)'}:bp>=40?{l:'Buy',bg:'var(--color-success-bg-soft)',c:'var(--color-success-deep)'}:hp>=50?{l:'Hold',bg:'var(--color-warning-bg)',c:'var(--color-warning-text)'}:{l:'Sell',bg:'var(--color-error-bg)',c:'var(--color-error-text)'};let html=`<div style="background:var(--color-bg-surface);border:1px solid var(--color-border-default);border-radius:12px;padding:14px 16px;margin-bottom:8px"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><div><div style="font-size:var(--text-2xl);font-weight:700">${input}</div><div style="font-size:var(--text-sm);color:var(--color-text-tertiary)">${l.period||''} · 총 ${tot}개 기관</div></div><span style="background:${con.bg};color:${con.c};font-size:var(--text-base);font-weight:700;padding:4px 12px;border-radius:20px">${con.l}</span></div><div class="consensus-bar"><div class="cb-buy" style="width:${bp}%"></div><div class="cb-hold" style="width:${hp}%"></div><div class="cb-sell" style="width:${sp}%"></div></div><div style="display:flex;gap:12px;font-size:var(--text-sm);color:var(--color-text-subtle);margin-bottom:6px"><span style="color:var(--color-success)">매수 ${bp}% (${bt})</span><span style="color:var(--color-warning)">보유 ${hp}% (${ht})</span><span style="color:var(--color-error)">매도 ${sp}% (${st})</span></div>`;if(pt?.targetMean){html+=`<div style="font-size:var(--text-base);color:var(--color-text-subtle);border-top:1px solid var(--color-bg-muted);padding-top:8px;display:flex;gap:16px;flex-wrap:wrap"><span>평균 목표가 <strong style="color:var(--color-text-primary)">$${pt.targetMean.toFixed(2)}</strong></span><span>최고 <strong style="color:var(--color-success)">$${pt.targetHigh?.toFixed(2)}</strong></span><span>최저 <strong style="color:var(--color-error)">$${pt.targetLow?.toFixed(2)}</strong></span></div>`;}html+='</div>';if(rec.length>1){html+=rec.slice(0,3).map(r=>{const t2=(r.buy||0)+(r.strongBuy||0);const t3=(r.sell||0)+(r.strongSell||0);const t4=r.hold||0;const tot=t2+t3+t4;const bp=tot?Math.round(t2/tot*100):0;const hp=tot?Math.round(t4/tot*100):0;return`<div style="background:var(--color-bg-surface);border:1px solid var(--color-border-default);border-radius:12px;padding:11px 14px;margin-bottom:6px"><div style="display:flex;justify-content:space-between;font-size:var(--text-base);margin-bottom:6px"><span style="font-weight:600">${r.period}</span><span style="color:var(--color-text-tertiary)">총 ${tot}개</span></div><div class="consensus-bar"><div class="cb-buy" style="width:${bp}%"></div><div class="cb-hold" style="width:${hp}%"></div><div class="cb-sell" style="width:${tot?Math.round(t3/tot*100):0}%"></div></div><div style="font-size:var(--text-sm);margin-top:4px;display:flex;gap:10px"><span style="color:var(--color-success)">매수 ${t2}</span><span style="color:var(--color-warning)">보유 ${t4}</span><span style="color:var(--color-error)">매도 ${t3}</span></div></div>`}).join('');}feed.innerHTML=html;}catch(e){document.getElementById('analyst-feed').innerHTML=`<div class="err-box">${e.message}</div>`;}
 }
 
