@@ -518,17 +518,18 @@ tr:hover td{background:var(--color-bg-subtle)}
 
 
 /* ── MEMO ── */
-.memo-card{background:var(--color-bg-surface);border:1px solid var(--color-border-default);border-radius:10px;padding:10px 12px;margin-bottom:6px}
-.memo-card.important{border-color:var(--color-warning-bright);background:var(--color-warning-subtle)}
-.memo-meta{display:flex;justify-content:space-between;margin-bottom:4px}
+/* ── 일지 기록 카드 = Day One 차분 무드(넉넉한 여백·둥근모서리·넓은 줄간격) ── */
+.memo-card{background:var(--color-bg-surface);border:1px solid var(--color-border-default);border-radius:var(--rh-radius-lg);padding:16px 18px;margin-bottom:10px}
+.memo-card.important{border-color:var(--color-warning-bright);background:rgba(245,158,11,.08)}
+.memo-meta{display:flex;justify-content:space-between;margin-bottom:6px}
 .memo-time{font-size:var(--text-sm);color:var(--color-text-muted)}
-.memo-text{font-size:var(--text-md);line-height:1.65;white-space:pre-wrap;word-break:break-word}
+.memo-text{font-size:var(--text-md);line-height:1.75;white-space:pre-wrap;word-break:break-word}
 .tag-btns{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:6px}
 .tbtn{font-size:var(--text-sm);height:var(--btn-h-sm);padding:0 14px;display:inline-flex;align-items:center;box-sizing:border-box;border-radius:var(--radius-pill);border:1px solid var(--color-border-input);background:transparent;cursor:pointer;color:var(--color-text-tertiary);font-family:inherit}
 .tbtn.sel{font-weight:700}
 .memo-compose{display:flex;gap:7px;margin-top:6px}
 .memo-compose textarea{flex:1;font-size:var(--text-md);padding:8px 10px;border:1px solid var(--color-border-input);border-radius:8px;background:var(--color-bg-surface);color:var(--color-text-primary);resize:none;height:54px;font-family:inherit;line-height:1.5}
-.memo-compose textarea:focus{outline:none;border-color:var(--color-accent-primary);box-shadow:0 0 0 3px var(--color-accent-bg)}
+.memo-compose textarea:focus{outline:none;border-color:var(--color-secondary);box-shadow:0 0 0 3px rgba(20,184,166,.15)}
 /* 공통 텍스트 입력 포커스 링 (토스풍 파랑) */
 .monitor-search-input:focus,.monitor-key-input:focus,.key-row input:focus,.mc-memo-form textarea:focus,.ob-select:focus,#dart-key-input:focus,#ticker-search:focus{outline:none;border-color:var(--color-accent-primary);box-shadow:0 0 0 3px var(--color-accent-bg)}
 .important-preview{background:var(--color-warning-subtle);border:1px solid var(--color-warning-bright);border-radius:10px;padding:10px 12px;margin-bottom:10px}
@@ -537,7 +538,7 @@ tr:hover td{background:var(--color-bg-subtle)}
 .important-preview-item:hover{opacity:.8}
 .memo-view-tabs{display:flex;gap:6px;margin-bottom:.75rem}
 .memo-vtab{font-size:var(--text-md);height:var(--btn-h-md);padding:0 18px;display:inline-flex;align-items:center;box-sizing:border-box;border-radius:var(--radius-pill);border:1px solid var(--color-border-input);background:var(--color-bg-surface);cursor:pointer;color:var(--color-text-tertiary);font-family:inherit;font-weight:500}
-.memo-vtab.active{background:var(--color-accent-primary);color:var(--color-accent-on);border-color:var(--color-accent-primary);font-weight:700}
+.memo-vtab.active{background:var(--color-secondary);color:#04211d;border-color:var(--color-secondary);font-weight:700}
 .archive-card{background:var(--color-bg-archive);border:1px solid var(--color-border-default);border-radius:10px;padding:10px 12px;margin-bottom:6px}
 .philo-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
 .philo-card{background:var(--color-bg-surface);border:1px solid var(--color-border-default);border-radius:10px;padding:12px 14px;margin-bottom:8px}
