@@ -6560,7 +6560,13 @@ async function loadCompanyData(corpCode){
     _fetchDartDisclosures(corpCode),
     _fetchOwnership(corpCode)   // ① 지분변동: 카드 로드 시 1회 (30분 폴링에는 미포함)
   ]);
-  if(priceRes.status==='fulfilled')_monitorCache[corpCode].price=priceRes.value;
+  if(priceRes.status==='fulfilled'&&priceRes.value)_monitorCache[corpCode].price=priceRes.value;
+  else if(!_monitorCache[corpCode].price&&(_monitorCache[corpCode]._priceRetries||0)<2){
+    // 최초 대량 로드 시 프록시 경합/일시 실패로 가격만 못 받는 경우: loaded=true라 재조회가 막혀
+    // '가격 조회 중'에 고착됨 → 경합이 풀리도록 잠깐 뒤 가격만 가볍게 재시도(최대 2회).
+    _monitorCache[corpCode]._priceRetries=(_monitorCache[corpCode]._priceRetries||0)+1;
+    setTimeout(()=>_retryCompanyPrice(corpCode),1500);
+  }
   let _sigAdded=0;
   if(discRes.status==='fulfilled'){
     _monitorCache[corpCode].disclosures=discRes.value;
@@ -6580,6 +6586,21 @@ async function loadCompanyData(corpCode){
   _monitorCache[corpCode].loaded=true;
   _renderCardContent(corpCode);
   if(monitorView==='table')renderMonitorTable();
+}
+
+// 가격만 가볍게 재조회(공시·지분 재요청 없이). loadCompanyData에서 가격 실패 시 호출.
+async function _retryCompanyPrice(corpCode){
+  const co=monitorCompanies.find(c=>c.corp_code===corpCode);
+  if(!co||!_monitorCache[corpCode]||_monitorCache[corpCode].price)return;
+  try{
+    const p=await _fetchCompanyPrice(co.stock_code,co.market);
+    if(p){ _monitorCache[corpCode].price=p; _renderCardContent(corpCode); if(monitorView==='table')renderMonitorTable(); return; }
+  }catch(e){}
+  // 아직 실패 & 재시도 여유 있으면 한 번 더(총 2회)
+  if((_monitorCache[corpCode]._priceRetries||0)<2){
+    _monitorCache[corpCode]._priceRetries=(_monitorCache[corpCode]._priceRetries||0)+1;
+    setTimeout(()=>_retryCompanyPrice(corpCode),2000);
+  }
 }
 
 // 종목코드 → Yahoo 심볼 접미사 (KOSPI=.KS, KOSDAQ/KONEX=.KQ)
