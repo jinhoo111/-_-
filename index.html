@@ -494,6 +494,16 @@ body.admin-mode .bn-biz,body.admin-mode .bn-personal{display:flex}
 .err-retry:hover{filter:brightness(1.08)}
 /* ── 접근성: 키보드 포커스 링(:focus-visible → 마우스 클릭엔 안 뜨고 Tab 탐색 시만) ── */
 button:focus-visible,a:focus-visible,[role="button"]:focus-visible,select:focus-visible,[tabindex]:focus-visible{outline:2px solid var(--color-accent-primary);outline-offset:2px;border-radius:4px}
+/* ── 서비스 공지 배너(관리자 게시 → 전 사용자 상단 1회 노출) ── */
+.svc-banner{max-width:960px;width:calc(100% - 24px);margin:12px auto 0;padding:12px 16px;border-radius:var(--rh-radius-md);display:flex;align-items:flex-start;gap:10px;font-size:var(--text-md);line-height:1.5}
+.svc-banner.info{background:rgba(59,130,246,.10);border:1px solid var(--color-accent-primary)}
+.svc-banner.warn{background:rgba(245,158,11,.12);border:1px solid var(--color-warning-bright)}
+.svc-banner-ico{font-size:18px;flex-shrink:0;line-height:1.4}
+.svc-banner-body{flex:1;min-width:0}
+.svc-banner-title{font-weight:700;color:var(--color-text-primary);margin-bottom:2px}
+.svc-banner-msg{color:var(--color-text-secondary);white-space:pre-wrap;word-break:break-word}
+.svc-banner-x{flex-shrink:0;background:none;border:none;cursor:pointer;color:var(--color-text-tertiary);font-size:16px;padding:2px 5px;line-height:1;font-family:inherit;border-radius:4px}
+.svc-banner-x:hover{color:var(--color-text-primary);background:var(--color-bg-subtle)}
 .info-box{background:var(--color-trade-long-bg);color:var(--color-info);border-radius:8px;padding:9px 12px;font-size:var(--text-base);margin-bottom:10px;border:1px solid var(--color-info-border);line-height:1.6}
 .empty{text-align:center;padding:2.5rem 1rem;color:var(--color-text-tertiary);font-size:var(--text-md)}
 /* ── 빈 상태(Empty): 아이콘 + 안내 + CTA ── */
@@ -1000,6 +1010,9 @@ body.admin-mode .admin-only{display:inline-flex!important}
     </div>
   </div>
 </nav>
+
+<!-- 서비스 공지 배너 (get_service_notice → 활성 공지 있고 미열람 시 표시) -->
+<div id="svc-notice-banner"></div>
 
 <!-- RichHub Phase 6: 다크/라이트 테마 토글 (다크 기본, localStorage 유지) -->
 <script>
@@ -1568,6 +1581,25 @@ function toggleTheme(){
     <div id="acct-list"><div class="monitor-empty">불러오는 중…</div></div>
   </div>
 
+  <!-- 관리자: 서비스 공지(전 사용자 상단 배너) -->
+  <div style="margin-top:1.75rem;background:var(--color-bg-surface);border:1px solid var(--color-border-default);border-radius:var(--radius-lg);padding:1.1rem 1.25rem">
+    <div style="font-size:var(--text-md);font-weight:700;margin-bottom:2px">📢 서비스 공지</div>
+    <div style="font-size:var(--text-sm);color:var(--color-text-tertiary);margin-bottom:10px">게시하면 모든 사용자의 화면 상단에 배너로 노출됩니다(사용자가 닫으면 그 공지는 다시 안 뜸).</div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:8px">
+      <select id="svc-type" style="font-size:var(--text-base);padding:5px 8px;border:1px solid var(--color-border-input);border-radius:7px;font-family:inherit;color:var(--color-text-primary);background:var(--color-bg-surface)">
+        <option value="info">ℹ️ 정보</option><option value="warn">⚠️ 주의</option>
+      </select>
+      <input type="text" id="svc-title" placeholder="공지 제목 (예: 정기 점검 안내)" style="flex:1;min-width:180px;font-size:var(--text-base);padding:5px 8px;border:1px solid var(--color-border-input);border-radius:7px;font-family:inherit;color:var(--color-text-primary);background:var(--color-bg-surface)"/>
+    </div>
+    <textarea id="svc-body" rows="2" placeholder="공지 내용" style="width:100%;box-sizing:border-box;font-size:var(--text-base);padding:8px 10px;border:1px solid var(--color-border-input);border-radius:7px;font-family:inherit;color:var(--color-text-primary);background:var(--color-bg-surface);resize:vertical;line-height:1.5"></textarea>
+    <div style="display:flex;gap:8px;align-items:center;margin-top:8px;flex-wrap:wrap">
+      <label style="display:flex;align-items:center;gap:6px;font-size:var(--text-sm);cursor:pointer"><input type="checkbox" id="svc-active"/> 게시(활성화)</label>
+      <button class="btn btn-primary" onclick="saveServiceNotice()" style="margin-left:auto;flex-shrink:0">저장</button>
+      <button class="btn" onclick="clearServiceNotice()" style="flex-shrink:0">공지 내리기</button>
+    </div>
+    <div id="svc-admin-status" style="font-size:var(--text-sm);color:var(--color-text-tertiary);margin-top:8px;min-height:18px"></div>
+  </div>
+
   <!-- 관리자: 공용 시장 일정 관리(캘린더에 전 사용자 반영) -->
   <div style="margin-top:1.75rem;background:var(--color-bg-surface);border:1px solid var(--color-border-default);border-radius:var(--radius-lg);padding:1.1rem 1.25rem">
     <div style="font-size:var(--text-md);font-weight:700;margin-bottom:2px">📅 공용 시장 일정 관리</div>
@@ -1671,6 +1703,14 @@ async function _restUpsert(table,row){
     if(!res.ok)return{error:{message:'rest_'+res.status}};
     return{error:null};
   }catch(e){return{error:{message:String(e)}};}
+}
+// REST RPC 호출(보안definer 함수 등). 실패 시 null.
+async function _restRpc(fn,args){
+  try{
+    const res=await fetch(`${SUPA_BASE}/rest/v1/rpc/${fn}`,{method:'POST',headers:_apiHeaders(),body:JSON.stringify(args||{})});
+    if(!res.ok)return null;
+    return await res.json();
+  }catch(e){return null;}
 }
 // getSession()이 교착돼도 onAuthStateChange가 유지하는 _currentSession으로 폴백.
 async function _safeGetSession(ms=800){
@@ -5140,7 +5180,7 @@ function goPage(name,btn){
   document.querySelectorAll('.bn-item').forEach(b=>b.classList.toggle('on',b.dataset.page===name));
   localStorage.setItem('cur_page',name);
   if(name==='monitor')initMonitorPage();
-  if(name==='security'){renderSecurityDashboard();renderMarketEventsAdmin();renderVocAdmin();renderAccountsAdmin();}
+  if(name==='security'){renderSecurityDashboard();renderMarketEventsAdmin();renderVocAdmin();renderAccountsAdmin();renderServiceNoticeAdmin();}
   if(name==='indices')loadAllIndices();
   if(name==='news')initNewsUI();
   if(name==='memo')switchMemoView('calendar');
@@ -7425,8 +7465,70 @@ if(stocks.length)fetchPrices().then(()=>checkAndAutoFetch());
 else checkAndAutoFetch();
 setInterval(checkAndAutoFetch,60000);
 // ─ Auth 세션 확인 → 페이지 복원 순서 보장 (Finnhub가 user JWT 필요하므로 세션 확인 이후 복원)
+// ════════════════════════════════════════
+// 서비스 공지(관리자 게시 → 전 사용자 상단 배너 1회 노출)
+// ════════════════════════════════════════
+let _svcNotice=null;
+async function loadServiceNotice(){
+  const n=await _restRpc('get_service_notice');
+  _svcNotice=(n&&typeof n==='object'&&!Array.isArray(n))?n:(Array.isArray(n)?(n[0]||null):null);
+  _renderSvcBanner();
+}
+function _renderSvcBanner(){
+  const host=document.getElementById('svc-notice-banner');if(!host)return;
+  const n=_svcNotice;
+  if(!n||!n.active||!(n.title||n.body)){host.innerHTML='';return;}
+  if(localStorage.getItem('svc_notice_dismissed')===String(n.id)){host.innerHTML='';return;}
+  const type=n.type==='warn'?'warn':'info';const ico=type==='warn'?'⚠️':'ℹ️';
+  host.innerHTML=`<div class="svc-banner ${type}" role="status">
+    <span class="svc-banner-ico">${ico}</span>
+    <div class="svc-banner-body">${n.title?`<div class="svc-banner-title">${escapeHtml(n.title)}</div>`:''}${n.body?`<div class="svc-banner-msg">${escapeHtml(n.body)}</div>`:''}</div>
+    <button class="svc-banner-x" onclick="dismissServiceNotice()" aria-label="공지 닫기" title="닫기">✕</button>
+  </div>`;
+}
+function dismissServiceNotice(){
+  if(_svcNotice&&_svcNotice.id!=null){try{localStorage.setItem('svc_notice_dismissed',String(_svcNotice.id));}catch(e){}}
+  const host=document.getElementById('svc-notice-banner');if(host)host.innerHTML='';
+}
+async function saveServiceNotice(){
+  if(!_isAdmin||!_currentUser)return;
+  const st=document.getElementById('svc-admin-status');
+  const setSt=(t,c)=>{if(st){st.textContent=t;st.style.color=c;}};
+  const title=(document.getElementById('svc-title').value||'').trim();
+  const body=(document.getElementById('svc-body').value||'').trim();
+  const type=document.getElementById('svc-type').value==='warn'?'warn':'info';
+  const active=!!document.getElementById('svc-active').checked;
+  if(!title&&!body){setSt('제목이나 내용을 입력하세요.','var(--color-error-text)');return;}
+  setSt('저장 중…','var(--color-text-tertiary)');
+  const notice={id:Date.now().toString(),title,body,type,active};
+  const{error}=await _restUpsert('user_profiles',{user_id:_currentUser.id,service_notice:notice});
+  if(error){setSt('저장 실패: '+error.message,'var(--color-error-text)');return;}
+  setSt(active?'✅ 게시됐습니다. 전 사용자 상단에 노출됩니다.':'✅ 저장됨(비게시 상태).','var(--color-success-text)');
+}
+async function clearServiceNotice(){
+  if(!_isAdmin||!_currentUser)return;
+  const st=document.getElementById('svc-admin-status');
+  const{error}=await _restUpsert('user_profiles',{user_id:_currentUser.id,service_notice:{id:Date.now().toString(),title:'',body:'',type:'info',active:false}});
+  if(st){st.textContent=error?('실패: '+error.message):'✅ 공지를 내렸습니다.';st.style.color=error?'var(--color-error-text)':'var(--color-success-text)';}
+  const a=document.getElementById('svc-active');if(a)a.checked=false;
+}
+async function renderServiceNoticeAdmin(){
+  if(!_isAdmin||!_currentUser)return;
+  try{
+    const row=await _restSelectRow(`user_profiles?user_id=eq.${_currentUser.id}&select=service_notice`);
+    const n=row&&row.service_notice;
+    if(n&&typeof n==='object'){
+      document.getElementById('svc-title').value=n.title||'';
+      document.getElementById('svc-body').value=n.body||'';
+      document.getElementById('svc-type').value=n.type==='warn'?'warn':'info';
+      document.getElementById('svc-active').checked=!!n.active;
+    }
+  }catch(e){}
+}
+
 // 새로고침 즉시성: 로그인/클라우드 로드를 기다리지 않고 localStorage 캐시로 먼저 렌더
 try{renderStocks();renderMemos();updateCashDisplay();}catch(e){}
+try{loadServiceNotice();}catch(e){}
 (async()=>{
   const session=await _safeGetSession();
   if(session?.user){
