@@ -5454,7 +5454,10 @@ async function loadYahooBatch(syms){
 async function loadGroup(items,elId,sec,batch={}){
   const el=document.getElementById(elId);
   if(!el)return;
-  el.innerHTML=_skIdx(items.length);
+  // 각 셀을 스켈레톤으로 초기화(이후 로드된 카드로 하나씩 교체). cards 배열 필수 —
+  // 없으면 아래 루프의 cards[i]가 ReferenceError로 죽어 스켈레톤에 고착됨.
+  const cards=items.map(()=>_skIdx(1));
+  el.innerHTML=cards.join('');
   await Promise.allSettled(items.map(async(item,i)=>{
     let d=null;
     if(item.naver)d=await loadNaverIndex(item.naver);
