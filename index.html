@@ -492,6 +492,8 @@ body.admin-mode .bn-biz,body.admin-mode .bn-personal{display:flex}
 .err-box{background:var(--color-error-subtle);color:var(--color-error-text);border-radius:8px;padding:11px 13px;font-size:var(--text-base);margin-top:8px;border:1px solid var(--color-error-border);line-height:1.5;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .err-retry{margin-left:auto;font-size:var(--text-sm);padding:4px 12px;border:none;border-radius:6px;background:var(--color-error);color:#fff;cursor:pointer;font-family:inherit;font-weight:600}
 .err-retry:hover{filter:brightness(1.08)}
+/* ── 접근성: 키보드 포커스 링(:focus-visible → 마우스 클릭엔 안 뜨고 Tab 탐색 시만) ── */
+button:focus-visible,a:focus-visible,[role="button"]:focus-visible,select:focus-visible,[tabindex]:focus-visible{outline:2px solid var(--color-accent-primary);outline-offset:2px;border-radius:4px}
 .info-box{background:var(--color-trade-long-bg);color:var(--color-info);border-radius:8px;padding:9px 12px;font-size:var(--text-base);margin-bottom:10px;border:1px solid var(--color-info-border);line-height:1.6}
 .empty{text-align:center;padding:2.5rem 1rem;color:var(--color-text-tertiary);font-size:var(--text-md)}
 /* ── 빈 상태(Empty): 아이콘 + 안내 + CTA ── */
@@ -3700,8 +3702,8 @@ function renderPhilosophy(el){
     <div class="philo-card">
       <div style="font-size:var(--text-md);color:var(--color-text-primary);line-height:1.65;margin-bottom:8px;white-space:pre-wrap">${escapeHtml(p.text)}</div>
       <div style="display:flex;gap:5px;justify-content:flex-end">
-        <button onclick="movePhilosophy(${p.id},'up')" ${i===0?'disabled':''} style="${s}color:${i===0?'var(--color-text-placeholder)':'var(--color-text-secondary)'}">↑</button>
-        <button onclick="movePhilosophy(${p.id},'down')" ${i===items.length-1?'disabled':''} style="${s}color:${i===items.length-1?'var(--color-text-placeholder)':'var(--color-text-secondary)'}">↓</button>
+        <button onclick="movePhilosophy(${p.id},'up')" ${i===0?'disabled':''} aria-label="위로 이동" title="위로 이동" style="${s}color:${i===0?'var(--color-text-placeholder)':'var(--color-text-secondary)'}">↑</button>
+        <button onclick="movePhilosophy(${p.id},'down')" ${i===items.length-1?'disabled':''} aria-label="아래로 이동" title="아래로 이동" style="${s}color:${i===items.length-1?'var(--color-text-placeholder)':'var(--color-text-secondary)'}">↓</button>
         <button onclick="removePhilosophy(${p.id})" style="${s}border-color:var(--color-error-border);color:var(--color-error)">삭제</button>
       </div>
     </div>`).join('');
@@ -6768,8 +6770,8 @@ function _buildCardHeaderHTML(co){
         <span class="mc-market">${escapeHtml(co.market)}</span>
       </div>
       <div class="mc-header-actions">
-        <button class="mc-alert-btn${co.alert?' active':''}" onclick="toggleMonitorAlert('${co.corp_code}')" title="${co.alert?'알림 ON':'알림 OFF'}">🔔</button>
-        <button class="mc-refresh-btn" onclick="refreshCompanyData('${co.corp_code}')">↻</button>
+        <button class="mc-alert-btn${co.alert?' active':''}" onclick="toggleMonitorAlert('${co.corp_code}')" aria-label="${co.alert?'알림 끄기':'알림 켜기'}" title="${co.alert?'알림 ON':'알림 OFF'}">🔔</button>
+        <button class="mc-refresh-btn" onclick="refreshCompanyData('${co.corp_code}')" aria-label="새로고침" title="새로고침">↻</button>
         <button class="mc-delete-btn" onclick="removeMonitorCompany('${co.corp_code}')">삭제</button>
       </div>
     </div>
@@ -7738,7 +7740,7 @@ try{renderStocks();renderMemos();updateCashDisplay();}catch(e){}
   <div class="profile-modal">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px">
       <div class="profile-title" style="margin-bottom:0">프로필 설정</div>
-      <button onclick="closeProfileModal()" style="background:none;border:none;cursor:pointer;font-size:18px;color:var(--color-text-tertiary)">✕</button>
+      <button onclick="closeProfileModal()" aria-label="닫기" title="닫기" style="background:none;border:none;cursor:pointer;font-size:18px;color:var(--color-text-tertiary)">✕</button>
     </div>
     <div class="profile-section">
       <div class="profile-label">계정 이메일</div>
