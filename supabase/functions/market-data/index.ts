@@ -808,7 +808,7 @@ serve(async (req: Request) => {
       const id = String(body.id || "brk");
       const inst = INSTITUTIONS.find((i) => i.id === id);
       if (!inst) return err("institution_not_found", 404);
-      const key = `sec:13f:${id}`;
+      const key = `sec:13f:v2:${id}`;
       const cached = await cacheGet(key, 24 * 3600_000);   // 분기 데이터 → 하루 캐시로 충분
       if (cached) return ok(cached, 200, CACHE_HIT);
       try {
@@ -816,10 +816,16 @@ serve(async (req: Request) => {
         if (!sr.ok) throw new Error(`sec_${sr.status}`);
         const sub = await sr.json();
         const rec = sub.filings?.recent ?? {};
-        const f13: { acc: string; date: string }[] = [];
+        // reportDate = 분기말 기준일(예: 2026-03-31). filingDate(제출일)와 구분해야 한다.
+        // 13F는 "그 시점의 보유 스냅샷"이라 매매 날짜·매입단가는 존재하지 않는다.
+        const f13: { acc: string; date: string; period: string }[] = [];
         for (let i = 0; i < (rec.form?.length || 0) && f13.length < 2; i++) {
           if (String(rec.form[i]).startsWith("13F-HR")) {
-            f13.push({ acc: rec.accessionNumber[i], date: rec.filingDate[i] });
+            f13.push({
+              acc: rec.accessionNumber[i],
+              date: rec.filingDate[i],
+              period: rec.reportDate?.[i] || "",
+            });
           }
         }
         if (!f13.length) return err("no_13f", 404);
@@ -829,32 +835,45 @@ serve(async (req: Request) => {
         const prev = f13[1] ? await fetch13fHoldings(inst.cik, f13[1].acc) : null;
 
         const total = Object.values(cur).reduce((s, h) => s + h.value, 0);
+        // 13F의 value는 "분기말 시가 평가액"이지 매입 원가가 아니다.
+        // value/shares = 분기말 주당 평가액(= 사실상 분기말 종가). 매입 단가로 오해되지 않도록
+        // 필드명을 endPrice로 두고, 화면에서도 '분기말'을 명시한다.
+        const endPrice = (h: { value: number; shares: number }) =>
+          h.shares ? Number((h.value / h.shares).toFixed(2)) : 0;
+
         const top = Object.entries(cur)
           .map(([cusip, h]) => ({ cusip, name: h.name, value: h.value, shares: h.shares,
+            endPrice: endPrice(h),
             weight: total ? Number((h.value / total * 100).toFixed(1)) : 0 }))
           .sort((a, b) => b.value - a.value).slice(0, 15);
 
         let added: any[] = [], exited: any[] = [], changed: any[] = [];
         if (prev) {
           added = Object.entries(cur).filter(([c]) => !prev[c])
-            .map(([c, h]) => ({ cusip: c, name: h.name, value: h.value, shares: h.shares }))
+            .map(([c, h]) => ({ cusip: c, name: h.name, value: h.value, shares: h.shares,
+              endPrice: endPrice(h) }))
             .sort((a, b) => b.value - a.value).slice(0, 10);
           exited = Object.entries(prev).filter(([c]) => !cur[c])
-            .map(([c, h]) => ({ cusip: c, name: h.name, prevValue: h.value, prevShares: h.shares }))
+            .map(([c, h]) => ({ cusip: c, name: h.name, prevValue: h.value, prevShares: h.shares,
+              prevEndPrice: endPrice(h) }))
             .sort((a, b) => b.prevValue - a.prevValue).slice(0, 10);
           changed = Object.entries(cur).filter(([c]) => prev[c] && prev[c].shares !== cur[c].shares)
             .map(([c, h]) => {
               const p = prev[c];
               const diff = h.shares - p.shares;
               return { cusip: c, name: h.name, shares: h.shares, diff,
-                pct: p.shares ? Number((diff / p.shares * 100).toFixed(1)) : 0, value: h.value };
+                pct: p.shares ? Number((diff / p.shares * 100).toFixed(1)) : 0,
+                value: h.value, endPrice: endPrice(h) };
             })
             .sort((a, b) => Math.abs(b.pct) - Math.abs(a.pct)).slice(0, 10);
         }
 
         const data = {
           inst: { id: inst.id, name: inst.name, who: inst.who },
-          filedAt: f13[0].date, prevFiledAt: f13[1]?.date || "",
+          filedAt: f13[0].date,            // 제출일
+          period: f13[0].period,           // 보유 기준일(분기말)
+          prevFiledAt: f13[1]?.date || "",
+          prevPeriod: f13[1]?.period || "", // 직전 분기말 → 매매는 이 두 날짜 사이에 발생
           totalValue: total, count: Object.keys(cur).length,
           top, added, exited, changed,
         };

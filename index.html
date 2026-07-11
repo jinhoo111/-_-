@@ -533,7 +533,9 @@ button:focus-visible,a:focus-visible,[role="button"]:focus-visible,select:focus-
 @media(max-width:640px){.flow-head,.flow-row{grid-template-columns:1fr 110px}.flow-price{display:none}.flow-head span:nth-child(2){display:none}.flow-mine-box .flow-row{grid-template-columns:1fr 1fr}}
 /* ── 기관 보유(13F) ── */
 .f13-sec{margin-bottom:14px;background:var(--color-bg-surface);border:1px solid var(--color-border-default);border-radius:var(--radius-lg);padding:10px 13px}
-.f13-sec-title{font-weight:700;margin-bottom:6px;font-size:var(--text-md)}
+.f13-sec-title{font-weight:700;margin-bottom:2px;font-size:var(--text-md)}
+.f13-sec-sub{font-size:var(--text-xs);color:var(--color-text-tertiary);margin-bottom:8px;line-height:1.5}
+.f13-sub{display:block;font-size:var(--text-xs);color:var(--color-text-tertiary);font-weight:400}
 .f13-sec-title.buy{color:var(--color-error-text)}
 .f13-sec-title.sell{color:var(--color-info)}
 .f13-row{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid var(--color-border-subtle,var(--color-bg-overlay));font-size:var(--text-base)}
@@ -1306,7 +1308,7 @@ function toggleTheme(){
   <div class="inner-tab-bar">
     <button class="itab on" onclick="swInner('krflow','flow',this)">🇰🇷 국내 수급</button>
     <button class="itab"    onclick="swInner('usinsider','flow',this)">🇺🇸 미국 내부자</button>
-    <button class="itab"    onclick="swInner('inst13f','flow',this)">🏛️ 기관 보유(13F)</button>
+    <button class="itab"    onclick="swInner('inst13f','flow',this)">🏛️ 스마트머니 보유(13F)</button>
   </div>
 
   <!-- ── 국내 수급 ── -->
@@ -1365,14 +1367,18 @@ function toggleTheme(){
   <div id="ip-flow-inst13f" class="ipanel">
     <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:.875rem">
       <div>
-        <div style="font-size:var(--text-lg);font-weight:700">🏛️ 기관 보유 (SEC 13F)</div>
-        <div style="font-size:var(--text-sm);color:var(--color-text-tertiary)" id="f13-meta">기관을 선택하세요</div>
+        <div style="font-size:var(--text-lg);font-weight:700">🏛️ 스마트머니 보유 현황 (SEC 13F)</div>
+        <div style="font-size:var(--text-sm);color:var(--color-text-tertiary)" id="f13-meta">투자자를 선택하세요</div>
       </div>
     </div>
 
     <div class="info-box" style="margin-bottom:10px">
-      13F는 <b>분기 종료 후 45일 이내</b> 제출됩니다. 실시간이 아니라 <b>지난 분기에 무엇을 사고 팔았는지</b>를 보는 자료입니다.
-      "지금 기관이 사는 종목"은 무료 데이터로 알 수 없습니다 — 즉시성이 필요하면 <b>미국 내부자</b> 탭을 보세요.
+      워런 버핏·마이클 버리 같은 <b>유명 투자자(스마트머니)</b>가 운용사를 통해 제출한 <b>분기말 보유 내역</b>입니다.
+      <b>실시간 매매가 아닙니다</b> — 13F는 분기 종료 후 45일 이내 제출되는 <b>스냅샷</b>이라,
+      "지난 분기말과 비교해 무엇이 늘고 줄었는지"만 알 수 있습니다.<br>
+      ⚠️ 13F에는 <b>매매 날짜와 매입 단가가 담기지 않습니다.</b> 아래 금액은 <b>매입가가 아니라 분기말 평가액</b>이며,
+      매매 시점도 <b>두 분기말 사이 구간</b>으로만 표시됩니다.
+      정확한 거래일·체결 단가를 보시려면 <b>🇺🇸 미국 내부자</b> 탭을 이용하세요.
     </div>
 
     <div id="f13-insts" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px"></div>
@@ -3767,23 +3773,37 @@ const _f13Money=v=>v>=1e9?`$${(v/1e9).toFixed(1)}B`:v>=1e6?`$${(v/1e6).toFixed(0
 
 function renderF13(d){
   const body=document.getElementById('f13-body');
+  const per=d.period||d.filedAt;
+  // 13F는 스냅샷이라 "매매일"이 없다. 신규 편입/전량 매도가 일어난 시점은
+  // 직전 분기말 ~ 이번 분기말 사이라는 구간으로만 말할 수 있다.
+  const span=d.prevPeriod?`${d.prevPeriod} ~ ${per} 사이`:'최근 분기 중';
   document.getElementById('f13-meta').textContent=
-    `${d.filedAt} 제출 · 보유 ${d.count}종목 · 총 ${_f13Money(d.totalValue)}${d.prevFiledAt?` · 직전 ${d.prevFiledAt} 대비`:''}`;
-  const sec=(title,rows,fn,cls)=>rows&&rows.length
-    ?`<div class="f13-sec"><div class="f13-sec-title ${cls||''}">${title}</div>${rows.map(fn).join('')}</div>`:'';
+    `${per} 기준 보유 (${d.filedAt} 제출) · ${d.count}종목 · 분기말 평가액 합계 ${_f13Money(d.totalValue)}`;
+  // 부제: 각 섹션이 "언제의 무엇"인지 못 박아 오해를 막는다
+  const sec=(title,sub,rows,fn,cls)=>rows&&rows.length
+    ?`<div class="f13-sec">
+        <div class="f13-sec-title ${cls||''}">${title}</div>
+        <div class="f13-sec-sub">${sub}</div>
+        ${rows.map(fn).join('')}
+      </div>`:'';
+  const px=v=>v?`주당 $${Number(v).toLocaleString(undefined,{maximumFractionDigits:2})}`:'';
   body.innerHTML=
-    sec('🆕 신규 편입',d.added,x=>`<div class="f13-row">
+    sec('🆕 신규 편입','매수 시점: '+span+' · 금액은 매입가가 아닌 <b>'+per+' 평가액</b>',d.added,
+      x=>`<div class="f13-row">
         <span class="f13-name">${escapeHtml(x.name)}</span>
-        <span class="f13-val buy">${_f13Money(x.value)} · ${x.shares.toLocaleString()}주</span></div>`,'buy')
-   +sec('🚪 전량 매도',d.exited,x=>`<div class="f13-row">
+        <span class="f13-val buy">${_f13Money(x.value)} · ${x.shares.toLocaleString()}주<span class="f13-sub">${px(x.endPrice)}</span></span></div>`,'buy')
+   +sec('🚪 전량 매도','매도 시점: '+span+' · 금액은 <b>직전 분기말('+(d.prevPeriod||'—')+') 평가액</b>',d.exited,
+      x=>`<div class="f13-row">
         <span class="f13-name">${escapeHtml(x.name)}</span>
-        <span class="f13-val sell">직전 ${_f13Money(x.prevValue)}</span></div>`,'sell')
-   +sec('🔀 비중 변화',d.changed,x=>`<div class="f13-row">
+        <span class="f13-val sell">${_f13Money(x.prevValue)} · ${x.prevShares.toLocaleString()}주<span class="f13-sub">${px(x.prevEndPrice)}</span></span></div>`,'sell')
+   +sec('🔀 비중 변화','증감 시점: '+span+' · 주식 수 기준',d.changed,
+      x=>`<div class="f13-row">
         <span class="f13-name">${escapeHtml(x.name)}</span>
-        <span class="f13-val ${x.diff>=0?'buy':'sell'}">${x.diff>=0?'+':''}${x.pct}% (${x.diff>=0?'+':''}${x.diff.toLocaleString()}주)</span></div>`)
-   +sec('📊 상위 보유',d.top,x=>`<div class="f13-row">
+        <span class="f13-val ${x.diff>=0?'buy':'sell'}">${x.diff>=0?'+':''}${x.pct}% (${x.diff>=0?'+':''}${x.diff.toLocaleString()}주)<span class="f13-sub">보유 ${x.shares.toLocaleString()}주</span></span></div>`)
+   +sec('📊 상위 보유',per+' 기준 · 비중은 분기말 평가액 기준',d.top,
+      x=>`<div class="f13-row">
         <span class="f13-name">${escapeHtml(x.name)}</span>
-        <span class="f13-val">${x.weight}% · ${_f13Money(x.value)}</span></div>`);
+        <span class="f13-val">${x.weight}% · ${_f13Money(x.value)}<span class="f13-sub">${px(x.endPrice)}</span></span></div>`);
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -5515,7 +5535,8 @@ const HELP_CONTENT={
     '<b>연속 매수/매도 N일</b> 배지로 흐름의 지속성을 확인하세요',
     '로그인하면 <b>내 보유 종목의 수급</b>과 기관 연속 순매도 경고가 함께 표시됩니다',
     '<b>미국 내부자</b>: CEO·임원이 자기 회사 주식을 사고 판 내역 (거래 후 2영업일 내 신고 → 거의 실시간)',
-    '<b>기관 보유(13F)</b>: 버핏·버리 등 대가들의 분기별 포지션 변화 (45일 지연 자료)',
+    '<b>스마트머니 보유(13F)</b>: 버핏·버리 등 유명 투자자의 <b>분기말 보유 스냅샷</b>',
+    '13F에는 매매 날짜·매입 단가가 없습니다 — 금액은 <b>분기말 평가액</b>, 시점은 <b>분기 구간</b>으로 표시',
     '로그인 없이도 볼 수 있어요'
   ]},
   research:{label:'🔍 리서치·규제',tips:['규제기관 RSS 실시간 모니터링','키워드로 최신 규제 뉴스 검색']},
