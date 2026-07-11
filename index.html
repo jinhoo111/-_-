@@ -531,6 +531,17 @@ button:focus-visible,a:focus-visible,[role="button"]:focus-visible,select:focus-
 .flow-warn{background:var(--color-warning-bg);color:var(--color-warning-text);border-radius:8px;padding:7px 10px;margin-bottom:8px;font-size:var(--text-sm)}
 .flow-mine-box .flow-row{grid-template-columns:1fr 150px 150px}
 @media(max-width:640px){.flow-head,.flow-row{grid-template-columns:1fr 110px}.flow-price{display:none}.flow-head span:nth-child(2){display:none}.flow-mine-box .flow-row{grid-template-columns:1fr 1fr}}
+/* ── 기관 보유(13F) ── */
+.f13-sec{margin-bottom:14px;background:var(--color-bg-surface);border:1px solid var(--color-border-default);border-radius:var(--radius-lg);padding:10px 13px}
+.f13-sec-title{font-weight:700;margin-bottom:6px;font-size:var(--text-md)}
+.f13-sec-title.buy{color:var(--color-error-text)}
+.f13-sec-title.sell{color:var(--color-info)}
+.f13-row{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid var(--color-border-subtle,var(--color-bg-overlay));font-size:var(--text-base)}
+.f13-row:last-child{border-bottom:none}
+.f13-name{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.f13-val{flex-shrink:0;font-variant-numeric:tabular-nums;color:var(--color-text-secondary);font-size:var(--text-sm)}
+.f13-val.buy{color:var(--color-error-text);font-weight:600}
+.f13-val.sell{color:var(--color-info);font-weight:600}
 /* ── 미국 내부자 거래 카드 ── */
 .ins-card{background:var(--color-bg-surface);border:1px solid var(--color-border-default);border-left:3px solid var(--color-border-default);border-radius:var(--radius-md);padding:10px 13px;margin-bottom:8px}
 .ins-card.sell{border-left-color:var(--color-info)}
@@ -1290,6 +1301,7 @@ function toggleTheme(){
   <div class="inner-tab-bar">
     <button class="itab on" onclick="swInner('krflow','flow',this)">🇰🇷 국내 수급</button>
     <button class="itab"    onclick="swInner('usinsider','flow',this)">🇺🇸 미국 내부자</button>
+    <button class="itab"    onclick="swInner('inst13f','flow',this)">🏛️ 기관 보유(13F)</button>
   </div>
 
   <!-- ── 국내 수급 ── -->
@@ -1342,6 +1354,24 @@ function toggleTheme(){
     </div>
 
     <div id="ins-list"></div>
+  </div>
+
+  <!-- ── 기관 보유(13F) ── -->
+  <div id="ip-flow-inst13f" class="ipanel">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:.875rem">
+      <div>
+        <div style="font-size:var(--text-lg);font-weight:700">🏛️ 기관 보유 (SEC 13F)</div>
+        <div style="font-size:var(--text-sm);color:var(--color-text-tertiary)" id="f13-meta">기관을 선택하세요</div>
+      </div>
+    </div>
+
+    <div class="info-box" style="margin-bottom:10px">
+      13F는 <b>분기 종료 후 45일 이내</b> 제출됩니다. 실시간이 아니라 <b>지난 분기에 무엇을 사고 팔았는지</b>를 보는 자료입니다.
+      "지금 기관이 사는 종목"은 무료 데이터로 알 수 없습니다 — 즉시성이 필요하면 <b>미국 내부자</b> 탭을 보세요.
+    </div>
+
+    <div id="f13-insts" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px"></div>
+    <div id="f13-body"></div>
   </div>
 </div>
 
@@ -3687,6 +3717,70 @@ function renderInsider(){
   }).join('');
 }
 
+// ── 기관 보유(13F) — 대가들의 분기별 포지션 변화 ───────────────
+// 종목 매칭은 서버에서 CUSIP 기준(이름 기준은 표기 변경 때문에 오탐 발생).
+let _f13Inst='brk',_f13Cache={};
+const _f13Insts=[
+  {id:'brk',name:'버크셔 해서웨이',who:'워런 버핏'},
+  {id:'ark',name:'ARK Invest',who:'캐시 우드'},
+  {id:'psq',name:'퍼싱 스퀘어',who:'빌 애크먼'},
+  {id:'scion',name:'사이언',who:'마이클 버리'},
+  {id:'bw',name:'브리지워터',who:'레이 달리오'},
+  {id:'tiger',name:'타이거 글로벌',who:'체이스 콜먼'},
+  {id:'duq',name:'듀케인',who:'드러켄밀러'},
+  {id:'app',name:'아팔루사',who:'데이비드 테퍼'},
+];
+function renderF13Insts(){
+  const host=document.getElementById('f13-insts');if(!host)return;
+  host.innerHTML=_f13Insts.map(i=>
+    `<button class="fbtn${_f13Inst===i.id?' on':''}" onclick="selectF13('${i.id}')">${escapeHtml(i.name)}<span style="opacity:.65;font-size:var(--text-xs)"> · ${escapeHtml(i.who)}</span></button>`
+  ).join('');
+}
+function selectF13(id){_f13Inst=id;renderF13Insts();loadF13();}
+
+async function loadF13(){
+  renderF13Insts();
+  const body=document.getElementById('f13-body');if(!body)return;
+  const meta=document.getElementById('f13-meta');
+  if(_f13Cache[_f13Inst]){renderF13(_f13Cache[_f13Inst]);return;}
+  body.innerHTML=_skCards(4);
+  meta.textContent='불러오는 중…';
+  try{
+    const r=await fetch(DART_PROXY_URL,{method:'POST',headers:_apiHeaders(),
+      body:JSON.stringify({action:'sec-13f',id:_f13Inst})});
+    const d=await r.json();
+    if(!r.ok||d.error)throw new Error(d.error||('http_'+r.status));
+    _f13Cache[_f13Inst]=d;
+    renderF13(d);
+  }catch(e){
+    body.innerHTML=_errBox('13F 데이터를 불러오지 못했어요.','loadF13()');
+    meta.textContent='—';
+  }
+}
+
+const _f13Money=v=>v>=1e9?`$${(v/1e9).toFixed(1)}B`:v>=1e6?`$${(v/1e6).toFixed(0)}M`:`$${v.toLocaleString()}`;
+
+function renderF13(d){
+  const body=document.getElementById('f13-body');
+  document.getElementById('f13-meta').textContent=
+    `${d.filedAt} 제출 · 보유 ${d.count}종목 · 총 ${_f13Money(d.totalValue)}${d.prevFiledAt?` · 직전 ${d.prevFiledAt} 대비`:''}`;
+  const sec=(title,rows,fn,cls)=>rows&&rows.length
+    ?`<div class="f13-sec"><div class="f13-sec-title ${cls||''}">${title}</div>${rows.map(fn).join('')}</div>`:'';
+  body.innerHTML=
+    sec('🆕 신규 편입',d.added,x=>`<div class="f13-row">
+        <span class="f13-name">${escapeHtml(x.name)}</span>
+        <span class="f13-val buy">${_f13Money(x.value)} · ${x.shares.toLocaleString()}주</span></div>`,'buy')
+   +sec('🚪 전량 매도',d.exited,x=>`<div class="f13-row">
+        <span class="f13-name">${escapeHtml(x.name)}</span>
+        <span class="f13-val sell">직전 ${_f13Money(x.prevValue)}</span></div>`,'sell')
+   +sec('🔀 비중 변화',d.changed,x=>`<div class="f13-row">
+        <span class="f13-name">${escapeHtml(x.name)}</span>
+        <span class="f13-val ${x.diff>=0?'buy':'sell'}">${x.diff>=0?'+':''}${x.pct}% (${x.diff>=0?'+':''}${x.diff.toLocaleString()}주)</span></div>`)
+   +sec('📊 상위 보유',d.top,x=>`<div class="f13-row">
+        <span class="f13-name">${escapeHtml(x.name)}</span>
+        <span class="f13-val">${x.weight}% · ${_f13Money(x.value)}</span></div>`);
+}
+
 // ═══════════════════════════════════════════════════════════════
 // 뉴스 페이지 (News) - 모든 기능
 // ═══════════════════════════════════════════════════════════════
@@ -5412,11 +5506,12 @@ const HELP_CONTENT={
   indices:{label:'📉 지수·환율',tips:['주요 지수·환율을 한눈에','설정에서 표시 항목 선택']},
   news:{label:'📰 뉴스',tips:['시장/종목별 뉴스, 월가 레이팅, 실시간 시세','<b>시장 뉴스는 로그인 없이</b>도 볼 수 있어요','종목별 뉴스·월가 레이팅·실시간 시세는 로그인 후 이용']},
   flow:{label:'💰 수급',tips:[
-    '기관·외국인이 <b>어제 가장 많이 사고 판 종목</b>을 순매수량 순으로 표시',
-    '시총 상위 300종목을 장 마감 후 집계 (기준일은 상단에 표시)',
+    '<b>국내 수급</b>: 기관·외국인이 어제 가장 많이 사고 판 종목 (시총 상위 300종목 집계)',
     '<b>연속 매수/매도 N일</b> 배지로 흐름의 지속성을 확인하세요',
     '로그인하면 <b>내 보유 종목의 수급</b>과 기관 연속 순매도 경고가 함께 표시됩니다',
-    '로그인 없이도 랭킹은 볼 수 있어요'
+    '<b>미국 내부자</b>: CEO·임원이 자기 회사 주식을 사고 판 내역 (거래 후 2영업일 내 신고 → 거의 실시간)',
+    '<b>기관 보유(13F)</b>: 버핏·버리 등 대가들의 분기별 포지션 변화 (45일 지연 자료)',
+    '로그인 없이도 볼 수 있어요'
   ]},
   research:{label:'🔍 리서치·규제',tips:['규제기관 RSS 실시간 모니터링','키워드로 최신 규제 뉴스 검색']},
   memo:{label:'📓 투자 일지',tips:['캘린더 날짜에 일지 작성·편집','💰 가계부(수입/지출)와 ⚖️ 몸무게를 함께 기록','어닝콜·FOMC 등 주요 일정 자동 표시']},
@@ -5488,6 +5583,7 @@ function swInner(panel,page,btn){
   btn.classList.add('on');
   localStorage.setItem('cur_itab_'+page,panel);
   if(page==='flow'&&panel==='usinsider')loadInsider();   // 첫 진입 시 로드(이후 캐시)
+  if(page==='flow'&&panel==='inst13f')loadF13();
 }
 // ═══════════════════════════════════════════════════════════════
 // 지수·환율 페이지

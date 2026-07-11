@@ -752,6 +752,125 @@ serve(async (req: Request) => {
       }
     }
 
+    // ══ 13F — 주요 기관의 분기별 포지션 변화 ═══════════════════════
+    // 13F는 분기 종료 후 45일 내 제출 → "지금 뭘 사는가"가 아니라 "지난 분기에 어떻게
+    // 움직였나"를 본다. 대가들의 신규 편입·전량 매도·비중 변화가 핵심.
+    //
+    // 함정: 종목을 이름으로 매칭하면 안 된다. 발행사 표기가 분기마다 바뀌어
+    // (예: "CHEVRON CORP NEW" → "CHEVRON CORPORATION") 같은 종목이 '전량 매도 +
+    // 신규 편입'으로 이중 계상된다. 반드시 CUSIP(증권 고유번호)으로 매칭한다.
+
+    const INSTITUTIONS: { id: string; cik: string; name: string; who: string }[] = [
+      { id: "brk",  cik: "0001067983", name: "버크셔 해서웨이", who: "워런 버핏" },
+      { id: "ark",  cik: "0001697748", name: "ARK Invest",      who: "캐시 우드" },
+      { id: "psq",  cik: "0001336528", name: "퍼싱 스퀘어",     who: "빌 애크먼" },
+      { id: "scion",cik: "0001649339", name: "사이언 자산운용", who: "마이클 버리" },
+      { id: "bw",   cik: "0001350694", name: "브리지워터",      who: "레이 달리오" },
+      { id: "tiger",cik: "0001167483", name: "타이거 글로벌",   who: "체이스 콜먼" },
+      { id: "duq",  cik: "0001536411", name: "듀케인 패밀리",   who: "스탠리 드러켄밀러" },
+      { id: "app",  cik: "0001056188", name: "아팔루사",        who: "데이비드 테퍼" },
+    ];
+
+    // 13F 보유내역(정보 테이블 XML) → CUSIP 기준 집계
+    const fetch13fHoldings = async (cik: string, accession: string) => {
+      const accn = accession.replace(/-/g, "");
+      const base = `https://www.sec.gov/Archives/edgar/data/${cik.replace(/^0+/, "")}/${accn}`;
+      const idxRes = await fetch(`${base}/`, { headers: SEC_UA });
+      if (!idxRes.ok) return null;
+      const idx = await idxRes.text();
+      const xmls = [...idx.matchAll(/href="([^"]+\.xml)"/g)]
+        .map((m) => m[1]).filter((u) => !u.includes("primary_doc"));
+      for (const x of xmls) {
+        const r = await fetch(`https://www.sec.gov${x}`, { headers: SEC_UA });
+        if (!r.ok) continue;
+        const t = await r.text();
+        if (!t.includes("infoTable")) continue;
+        const map: Record<string, { name: string; value: number; shares: number }> = {};
+        for (const m of t.matchAll(/<(?:\w+:)?infoTable>([\s\S]*?)<\/(?:\w+:)?infoTable>/g)) {
+          const b = m[1];
+          const pick = (tag: string) => {
+            const mm = b.match(new RegExp(`<(?:\\w+:)?${tag}>([\\s\\S]*?)</(?:\\w+:)?${tag}>`));
+            return mm ? mm[1].trim() : "";
+          };
+          const cusip = pick("cusip").toUpperCase();
+          if (!cusip) continue;
+          const num = (s: string) => Number(String(s).replace(/[^0-9]/g, "")) || 0;
+          const cur = map[cusip] || (map[cusip] = { name: pick("nameOfIssuer"), value: 0, shares: 0 });
+          cur.value += num(pick("value"));
+          cur.shares += num(pick("sshPrnamt"));
+        }
+        if (Object.keys(map).length) return map;
+      }
+      return null;
+    };
+
+    if (action === "sec-13f") {
+      const id = String(body.id || "brk");
+      const inst = INSTITUTIONS.find((i) => i.id === id);
+      if (!inst) return err("institution_not_found", 404);
+      const key = `sec:13f:${id}`;
+      const cached = await cacheGet(key, 24 * 3600_000);   // 분기 데이터 → 하루 캐시로 충분
+      if (cached) return ok(cached, 200, CACHE_HIT);
+      try {
+        const sr = await fetch(`https://data.sec.gov/submissions/CIK${inst.cik}.json`, { headers: SEC_UA });
+        if (!sr.ok) throw new Error(`sec_${sr.status}`);
+        const sub = await sr.json();
+        const rec = sub.filings?.recent ?? {};
+        const f13: { acc: string; date: string }[] = [];
+        for (let i = 0; i < (rec.form?.length || 0) && f13.length < 2; i++) {
+          if (String(rec.form[i]).startsWith("13F-HR")) {
+            f13.push({ acc: rec.accessionNumber[i], date: rec.filingDate[i] });
+          }
+        }
+        if (!f13.length) return err("no_13f", 404);
+
+        const cur = await fetch13fHoldings(inst.cik, f13[0].acc);
+        if (!cur) throw new Error("holdings_parse");
+        const prev = f13[1] ? await fetch13fHoldings(inst.cik, f13[1].acc) : null;
+
+        const total = Object.values(cur).reduce((s, h) => s + h.value, 0);
+        const top = Object.entries(cur)
+          .map(([cusip, h]) => ({ cusip, name: h.name, value: h.value, shares: h.shares,
+            weight: total ? Number((h.value / total * 100).toFixed(1)) : 0 }))
+          .sort((a, b) => b.value - a.value).slice(0, 15);
+
+        let added: any[] = [], exited: any[] = [], changed: any[] = [];
+        if (prev) {
+          added = Object.entries(cur).filter(([c]) => !prev[c])
+            .map(([c, h]) => ({ cusip: c, name: h.name, value: h.value, shares: h.shares }))
+            .sort((a, b) => b.value - a.value).slice(0, 10);
+          exited = Object.entries(prev).filter(([c]) => !cur[c])
+            .map(([c, h]) => ({ cusip: c, name: h.name, prevValue: h.value, prevShares: h.shares }))
+            .sort((a, b) => b.prevValue - a.prevValue).slice(0, 10);
+          changed = Object.entries(cur).filter(([c]) => prev[c] && prev[c].shares !== cur[c].shares)
+            .map(([c, h]) => {
+              const p = prev[c];
+              const diff = h.shares - p.shares;
+              return { cusip: c, name: h.name, shares: h.shares, diff,
+                pct: p.shares ? Number((diff / p.shares * 100).toFixed(1)) : 0, value: h.value };
+            })
+            .sort((a, b) => Math.abs(b.pct) - Math.abs(a.pct)).slice(0, 10);
+        }
+
+        const data = {
+          inst: { id: inst.id, name: inst.name, who: inst.who },
+          filedAt: f13[0].date, prevFiledAt: f13[1]?.date || "",
+          totalValue: total, count: Object.keys(cur).length,
+          top, added, exited, changed,
+        };
+        await cacheSet(key, data);
+        return ok(data, 200, CACHE_MISS);
+      } catch (_e) {
+        const stale = await cacheGetStale(key);
+        if (stale) return ok(stale, 200, CACHE_HIT);
+        return err("sec_unavailable", 502);
+      }
+    }
+
+    if (action === "sec-13f-list") {
+      return ok(INSTITUTIONS.map((i) => ({ id: i.id, name: i.name, who: i.who })));
+    }
+
     // 티커 → CIK 매핑(SEC 공식 목록, 7일 캐시). 미국 기업 모니터링·내부자 조회의 공통 기반.
     const getTickerCik = async (ticker: string): Promise<string | null> => {
       let map = await cacheGet("sec:tickers", 7 * 24 * 3600_000) as Record<string, string> | null;
