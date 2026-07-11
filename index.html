@@ -514,6 +514,18 @@ button:focus-visible,a:focus-visible,[role="button"]:focus-visible,select:focus-
 .svc-banner-msg{color:var(--color-text-secondary);white-space:pre-wrap;word-break:break-word}
 .svc-banner-x{flex-shrink:0;background:none;border:none;cursor:pointer;color:var(--color-text-tertiary);font-size:16px;padding:2px 5px;line-height:1;font-family:inherit;border-radius:4px}
 .svc-banner-x:hover{color:var(--color-text-primary);background:var(--color-bg-subtle)}
+/* ── 공지 객관식 투표(배너 안) ── */
+.svc-poll{margin-top:10px;display:flex;flex-direction:column;gap:6px}
+.svc-poll-q{font-weight:600;color:var(--color-text-primary);font-size:var(--text-base)}
+.svc-poll-opt{position:relative;overflow:hidden;display:flex;align-items:center;gap:8px;width:100%;text-align:left;padding:7px 10px;border:1px solid var(--color-border-default);border-radius:8px;background:var(--color-bg-surface);color:var(--color-text-primary);font-family:inherit;font-size:var(--text-base);cursor:pointer}
+.svc-poll-opt:hover:not(.voted){border-color:var(--color-accent-primary);background:var(--color-bg-subtle)}
+.svc-poll-opt.voted{cursor:default}
+.svc-poll-opt.mine{border-color:var(--color-accent-primary);font-weight:600}
+.svc-poll-fill{position:absolute;left:0;top:0;bottom:0;background:var(--color-accent-primary);opacity:.16;width:0;transition:width .3s ease}
+.svc-poll-label{position:relative;flex:1;min-width:0;word-break:break-word}
+.svc-poll-pct{position:relative;flex-shrink:0;font-variant-numeric:tabular-nums;color:var(--color-text-secondary);font-size:var(--text-sm)}
+.svc-poll-meta{display:flex;gap:10px;align-items:center;font-size:var(--text-sm);color:var(--color-text-tertiary)}
+.svc-poll-meta button{background:none;border:none;padding:0;cursor:pointer;color:var(--color-accent-primary);font-family:inherit;font-size:var(--text-sm);text-decoration:underline}
 .info-box{background:var(--color-trade-long-bg);color:var(--color-info);border-radius:8px;padding:9px 12px;font-size:var(--text-base);margin-bottom:10px;border:1px solid var(--color-info-border);line-height:1.6}
 .empty{text-align:center;padding:2.5rem 1rem;color:var(--color-text-tertiary);font-size:var(--text-md)}
 /* ── 빈 상태(Empty): 아이콘 + 안내 + CTA ── */
@@ -1602,6 +1614,22 @@ function toggleTheme(){
       <input type="text" id="svc-title" placeholder="공지 제목 (예: 정기 점검 안내)" style="flex:1;min-width:180px;font-size:var(--text-base);padding:5px 8px;border:1px solid var(--color-border-input);border-radius:7px;font-family:inherit;color:var(--color-text-primary);background:var(--color-bg-surface)"/>
     </div>
     <textarea id="svc-body" rows="2" placeholder="공지 내용" style="width:100%;box-sizing:border-box;font-size:var(--text-base);padding:8px 10px;border:1px solid var(--color-border-input);border-radius:7px;font-family:inherit;color:var(--color-text-primary);background:var(--color-bg-surface);resize:vertical;line-height:1.5"></textarea>
+
+    <!-- 객관식 투표(선택) -->
+    <div style="margin-top:10px;padding-top:10px;border-top:1px dashed var(--color-border-default)">
+      <label style="display:flex;align-items:center;gap:6px;font-size:var(--text-sm);cursor:pointer;font-weight:600"><input type="checkbox" id="svc-poll-on" onchange="toggleSvcPollForm()"/> 🗳️ 객관식 투표 포함</label>
+      <div id="svc-poll-wrap" style="display:none;margin-top:8px">
+        <input type="text" id="svc-poll-q" placeholder="투표 질문 (예: 다음에 추가됐으면 하는 기능은?)" style="width:100%;box-sizing:border-box;font-size:var(--text-base);padding:5px 8px;border:1px solid var(--color-border-input);border-radius:7px;font-family:inherit;color:var(--color-text-primary);background:var(--color-bg-surface);margin-bottom:6px"/>
+        <textarea id="svc-poll-opts" rows="3" placeholder="선택지를 한 줄에 하나씩 (2~9개)&#10;예)&#10;배당 캘린더&#10;종목 토론방&#10;리밸런싱 알림" style="width:100%;box-sizing:border-box;font-size:var(--text-base);padding:8px 10px;border:1px solid var(--color-border-input);border-radius:7px;font-family:inherit;color:var(--color-text-primary);background:var(--color-bg-surface);resize:vertical;line-height:1.5"></textarea>
+        <div style="font-size:var(--text-sm);color:var(--color-text-tertiary);margin-top:4px">선택지를 바꾸지 않고 저장하면 기존 투표 결과가 유지됩니다. 선택지를 수정하면 새 투표로 시작(결과 초기화)됩니다.</div>
+        <div style="display:flex;align-items:center;gap:8px;margin-top:8px">
+          <div style="font-size:var(--text-sm);font-weight:600">투표 결과</div>
+          <button class="btn" onclick="refreshSvcPollResults()" style="padding:3px 8px;font-size:var(--text-sm)">새로고침</button>
+        </div>
+        <div id="svc-poll-results" style="margin-top:6px;font-size:var(--text-sm);color:var(--color-text-tertiary)">게시 후 결과가 표시됩니다.</div>
+      </div>
+    </div>
+
     <div style="display:flex;gap:8px;align-items:center;margin-top:8px;flex-wrap:wrap">
       <label style="display:flex;align-items:center;gap:6px;font-size:var(--text-sm);cursor:pointer"><input type="checkbox" id="svc-active"/> 게시(활성화)</label>
       <button class="btn btn-primary" onclick="saveServiceNotice()" style="margin-left:auto;flex-shrink:0">저장</button>
@@ -2359,6 +2387,7 @@ _sb.auth.onAuthStateChange(async(event,session)=>{
       // 클라우드 로드 + API 키 복원 병렬(독립). _cloudLoadedFor/_apiKeysRestoredFor가 중복 호출 방지
       await Promise.all([_loadFromCloud(_currentUser),_restoreApiKeyState()]);
     }
+    try{_loadSvcPollState();}catch(e){}   // 공지 투표: 로그인 계정의 "내 표" 반영
   }else if(event==='SIGNED_OUT'){
     _currentUser=null;
     _currentSession=null;
@@ -2368,6 +2397,7 @@ _sb.auth.onAuthStateChange(async(event,session)=>{
     localStorage.removeItem('data_owner');
     _resetToLoggedOutUI();
     _updateNavAuth(null);
+    try{_svcPollMyVote=null;_renderSvcBanner();}catch(e){}  // 계정 격리: 이전 계정 표 잔상 제거
   }
 });
 
@@ -7540,26 +7570,95 @@ setInterval(checkAndAutoFetch,60000);
 // 서비스 공지(관리자 게시 → 전 사용자 상단 배너 1회 노출)
 // ════════════════════════════════════════
 let _svcNotice=null;
+let _svcPollResults=null;  // { "0":3, "1":7 } — 선택지 index → 표 수
+let _svcPollMyVote=null;   // 내가 고른 선택지 index (미투표 시 null)
+// 유효한 투표가 붙은 공지면 poll 객체를, 아니면 null
+function _svcPoll(n){
+  const p=n&&n.poll;
+  if(!p||!p.id||!Array.isArray(p.options)||p.options.length<2)return null;
+  return p;
+}
 async function loadServiceNotice(){
   const n=await _restRpc('get_service_notice');
   _svcNotice=(n&&typeof n==='object'&&!Array.isArray(n))?n:(Array.isArray(n)?(n[0]||null):null);
+  _renderSvcBanner();
+  await _loadSvcPollState();
+}
+// 집계(공개) + 내 표(RLS로 본인 것만) 조회 → 배너 재렌더
+async function _loadSvcPollState(){
+  const p=_svcPoll(_svcNotice);
+  if(!p||!_svcNotice.active)return;
+  _svcPollResults=await _restRpc('get_notice_poll_results',{p_poll_id:String(p.id)})||{};
+  _svcPollMyVote=null;
+  if(_currentUser){
+    try{
+      const r=await _restSelectRow(`notice_votes?poll_id=eq.${encodeURIComponent(p.id)}&user_id=eq.${_currentUser.id}&select=choice`);
+      if(r&&r.choice!=null)_svcPollMyVote=Number(r.choice);
+    }catch(e){}
+  }
   _renderSvcBanner();
 }
 function _renderSvcBanner(){
   const host=document.getElementById('svc-notice-banner');if(!host)return;
   const n=_svcNotice;
-  if(!n||!n.active||!(n.title||n.body)){host.innerHTML='';return;}
+  const poll=_svcPoll(n);
+  if(!n||!n.active||!(n.title||n.body||poll)){host.innerHTML='';return;}
   if(localStorage.getItem('svc_notice_dismissed')===String(n.id)){host.innerHTML='';return;}
   const type=n.type==='warn'?'warn':'info';const ico=type==='warn'?'⚠️':'ℹ️';
   host.innerHTML=`<div class="svc-banner ${type}" role="status">
     <span class="svc-banner-ico">${ico}</span>
-    <div class="svc-banner-body">${n.title?`<div class="svc-banner-title">${escapeHtml(n.title)}</div>`:''}${n.body?`<div class="svc-banner-msg">${escapeHtml(n.body)}</div>`:''}</div>
+    <div class="svc-banner-body">${n.title?`<div class="svc-banner-title">${escapeHtml(n.title)}</div>`:''}${n.body?`<div class="svc-banner-msg">${escapeHtml(n.body)}</div>`:''}${poll?_svcPollHtml(poll):''}</div>
     <button class="svc-banner-x" onclick="dismissServiceNotice()" aria-label="공지 닫기" title="닫기">✕</button>
   </div>`;
+}
+// 투표 전: 선택지 버튼 / 투표 후: 막대 + 비율(내 선택 강조)
+function _svcPollHtml(p){
+  const voted=_svcPollMyVote!=null;
+  const res=_svcPollResults||{};
+  const total=p.options.reduce((s,_,i)=>s+(Number(res[String(i)])||0),0);
+  const opts=p.options.map((label,i)=>{
+    const cnt=Number(res[String(i)])||0;
+    const pct=(voted&&total)?Math.round(cnt/total*100):0;
+    const mine=voted&&_svcPollMyVote===i;
+    return `<button class="svc-poll-opt${voted?' voted':''}${mine?' mine':''}" ${voted?'disabled aria-disabled="true"':`onclick="voteServiceNotice(${i})"`} aria-label="${escapeHtml(label)}${voted?` ${pct}%`:''}">
+      ${voted?`<span class="svc-poll-fill" style="width:${pct}%"></span>`:''}
+      <span class="svc-poll-label">${mine?'✅ ':''}${escapeHtml(label)}</span>
+      ${voted?`<span class="svc-poll-pct">${pct}% · ${cnt}표</span>`:''}
+    </button>`;
+  }).join('');
+  return `<div class="svc-poll">
+    ${p.q?`<div class="svc-poll-q">🗳️ ${escapeHtml(p.q)}</div>`:''}
+    ${opts}
+    <div class="svc-poll-meta" id="svc-poll-meta">${voted?`총 ${total}명 참여 · <button onclick="resetServiceVote()">다시 투표</button>`:(_currentUser?'선택지를 눌러 투표하세요.':'로그인 후 투표할 수 있습니다.')}</div>
+  </div>`;
+}
+async function voteServiceNotice(i){
+  const p=_svcPoll(_svcNotice);if(!p)return;
+  const meta=document.getElementById('svc-poll-meta');
+  if(!_currentUser){if(meta)meta.textContent='로그인 후 투표할 수 있습니다.';openAuthModal();return;}
+  if(meta)meta.textContent='투표 중…';
+  const res=await _restRpc('vote_notice_poll',{p_poll_id:String(p.id),p_choice:i});
+  if(!res){if(meta)meta.textContent='투표에 실패했습니다. 잠시 후 다시 시도해 주세요.';return;}
+  _svcPollResults=res;_svcPollMyVote=i;
+  _renderSvcBanner();
+}
+// "다시 투표" — 선택지 버튼을 다시 노출(실제 표는 재선택 시 갱신됨)
+function resetServiceVote(){
+  _svcPollMyVote=null;
+  _renderSvcBanner();
 }
 function dismissServiceNotice(){
   if(_svcNotice&&_svcNotice.id!=null){try{localStorage.setItem('svc_notice_dismissed',String(_svcNotice.id));}catch(e){}}
   const host=document.getElementById('svc-notice-banner');if(host)host.innerHTML='';
+}
+let _svcAdminPoll=null; // 저장돼 있던 poll(선택지 그대로면 id 재사용 → 표 보존)
+function toggleSvcPollForm(){
+  const on=!!document.getElementById('svc-poll-on')?.checked;
+  const w=document.getElementById('svc-poll-wrap');if(w)w.style.display=on?'block':'none';
+}
+// 텍스트영역 → 선택지 배열(빈 줄 제거, 최대 9개: DB check 제약과 동일)
+function _svcPollOptsFromForm(){
+  return (document.getElementById('svc-poll-opts')?.value||'').split('\n').map(s=>s.trim()).filter(Boolean).slice(0,9);
 }
 async function saveServiceNotice(){
   if(!_isAdmin||!_currentUser)return;
@@ -7569,19 +7668,51 @@ async function saveServiceNotice(){
   const body=(document.getElementById('svc-body').value||'').trim();
   const type=document.getElementById('svc-type').value==='warn'?'warn':'info';
   const active=!!document.getElementById('svc-active').checked;
-  if(!title&&!body){setSt('제목이나 내용을 입력하세요.','var(--color-error-text)');return;}
+  const pollOn=!!document.getElementById('svc-poll-on').checked;
+  let poll=null;
+  if(pollOn){
+    const options=_svcPollOptsFromForm();
+    if(options.length<2){setSt('투표 선택지를 2개 이상 입력하세요(한 줄에 하나).','var(--color-error-text)');return;}
+    const q=(document.getElementById('svc-poll-q').value||'').trim();
+    // 선택지가 이전과 같으면 poll.id 유지 → 기존 표 누적. 바뀌면 새 id로 결과 초기화.
+    const same=_svcAdminPoll&&Array.isArray(_svcAdminPoll.options)
+      &&_svcAdminPoll.options.length===options.length
+      &&_svcAdminPoll.options.every((o,i)=>o===options[i]);
+    poll={id:(same&&_svcAdminPoll.id)?String(_svcAdminPoll.id):Date.now().toString(),q,options};
+  }
+  if(!title&&!body&&!poll){setSt('제목이나 내용을 입력하세요.','var(--color-error-text)');return;}
   setSt('저장 중…','var(--color-text-tertiary)');
-  const notice={id:Date.now().toString(),title,body,type,active};
+  const notice={id:Date.now().toString(),title,body,type,active,poll};
   const{error}=await _restUpsert('user_profiles',{user_id:_currentUser.id,service_notice:notice});
   if(error){setSt('저장 실패: '+error.message,'var(--color-error-text)');return;}
+  _svcAdminPoll=poll;
   setSt(active?'✅ 게시됐습니다. 전 사용자 상단에 노출됩니다.':'✅ 저장됨(비게시 상태).','var(--color-success-text)');
+  refreshSvcPollResults();
 }
 async function clearServiceNotice(){
   if(!_isAdmin||!_currentUser)return;
   const st=document.getElementById('svc-admin-status');
-  const{error}=await _restUpsert('user_profiles',{user_id:_currentUser.id,service_notice:{id:Date.now().toString(),title:'',body:'',type:'info',active:false}});
+  const{error}=await _restUpsert('user_profiles',{user_id:_currentUser.id,service_notice:{id:Date.now().toString(),title:'',body:'',type:'info',active:false,poll:null}});
   if(st){st.textContent=error?('실패: '+error.message):'✅ 공지를 내렸습니다.';st.style.color=error?'var(--color-error-text)':'var(--color-success-text)';}
   const a=document.getElementById('svc-active');if(a)a.checked=false;
+}
+// 관리자용 집계 표시(공개 함수와 동일 데이터 — 개별 투표자는 조회 불가)
+async function refreshSvcPollResults(){
+  const host=document.getElementById('svc-poll-results');if(!host)return;
+  const p=_svcAdminPoll;
+  if(!p||!p.id||!Array.isArray(p.options)){host.textContent='게시 후 결과가 표시됩니다.';return;}
+  host.textContent='불러오는 중…';
+  const res=await _restRpc('get_notice_poll_results',{p_poll_id:String(p.id)})||{};
+  const total=p.options.reduce((s,_,i)=>s+(Number(res[String(i)])||0),0);
+  host.innerHTML=p.options.map((label,i)=>{
+    const cnt=Number(res[String(i)])||0;
+    const pct=total?Math.round(cnt/total*100):0;
+    return `<div style="display:flex;align-items:center;gap:8px;margin-bottom:3px">
+      <div style="flex:1;min-width:0;color:var(--color-text-primary);word-break:break-word">${escapeHtml(label)}</div>
+      <div style="flex:0 0 120px;height:6px;border-radius:3px;background:var(--color-bg-subtle);overflow:hidden"><div style="width:${pct}%;height:100%;background:var(--color-accent-primary)"></div></div>
+      <div style="flex-shrink:0;font-variant-numeric:tabular-nums">${pct}% · ${cnt}표</div>
+    </div>`;
+  }).join('')+`<div style="margin-top:4px">총 ${total}명 참여</div>`;
 }
 async function renderServiceNoticeAdmin(){
   if(!_isAdmin||!_currentUser)return;
@@ -7593,6 +7724,13 @@ async function renderServiceNoticeAdmin(){
       document.getElementById('svc-body').value=n.body||'';
       document.getElementById('svc-type').value=n.type==='warn'?'warn':'info';
       document.getElementById('svc-active').checked=!!n.active;
+      const p=_svcPoll(n);
+      _svcAdminPoll=p;
+      document.getElementById('svc-poll-on').checked=!!p;
+      document.getElementById('svc-poll-q').value=p?(p.q||''):'';
+      document.getElementById('svc-poll-opts').value=p?p.options.join('\n'):'';
+      toggleSvcPollForm();
+      if(p)refreshSvcPollResults();
     }
   }catch(e){}
 }
@@ -7618,6 +7756,8 @@ try{loadServiceNotice();}catch(e){}
       // 클라우드 로드 + API 키 복원 병렬(독립) — 순차 await 제거로 체감 단축
       await Promise.all([_loadFromCloud(_currentUser),_restoreApiKeyState()]);
     }
+    // 공지 투표: 로그인 확정 후 "내 표"를 다시 조회(초기 로드는 비로그인 상태로 실행됨)
+    try{_loadSvcPollState();}catch(e){}
   }
   if(CKEY){
     document.getElementById('pn-ai-dot').style.display='inline-block';
