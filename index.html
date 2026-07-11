@@ -514,6 +514,15 @@ button:focus-visible,a:focus-visible,[role="button"]:focus-visible,select:focus-
 .svc-banner-msg{color:var(--color-text-secondary);white-space:pre-wrap;word-break:break-word}
 .svc-banner-x{flex-shrink:0;background:none;border:none;cursor:pointer;color:var(--color-text-tertiary);font-size:16px;padding:2px 5px;line-height:1;font-family:inherit;border-radius:4px}
 .svc-banner-x:hover{color:var(--color-text-primary);background:var(--color-bg-subtle)}
+/* ── 비회원 가입 유도 배너 ── */
+.guest-cta{max-width:960px;width:calc(100% - 24px);margin:12px auto 0;padding:12px 16px;border-radius:var(--rh-radius-md);display:flex;align-items:center;gap:12px;background:var(--color-accent-bg);border:1px solid var(--color-accent-primary);font-size:var(--text-md);line-height:1.5}
+.guest-cta.hidden{display:none}
+.guest-cta-ico{font-size:18px;flex-shrink:0}
+.guest-cta-body{flex:1;min-width:0}
+.guest-cta-title{font-weight:700;color:var(--color-text-primary);margin-bottom:2px}
+.guest-cta-msg{color:var(--color-text-secondary);font-size:var(--text-sm)}
+.guest-cta-btn{flex-shrink:0;white-space:nowrap}
+@media(max-width:768px){.guest-cta{flex-wrap:wrap}.guest-cta-btn{width:100%}}
 /* ── 공지 객관식 투표(배너 안) ── */
 .svc-poll{margin-top:10px;display:flex;flex-direction:column;gap:6px}
 .svc-poll-q{font-weight:600;color:var(--color-text-primary);font-size:var(--text-base)}
@@ -1036,6 +1045,16 @@ body.admin-mode .admin-only{display:inline-flex!important}
 <!-- 서비스 공지 배너 (get_service_notice → 활성 공지 있고 미열람 시 표시) -->
 <div id="svc-notice-banner"></div>
 
+<!-- 비회원 가입 유도 배너 (_updateNavAuth에서 로그인 시 숨김) -->
+<div id="guest-cta" class="guest-cta">
+  <span class="guest-cta-ico">✨</span>
+  <div class="guest-cta-body">
+    <div class="guest-cta-title">API 키 발급 없이, 이메일만으로 바로 시작하세요</div>
+    <div class="guest-cta-msg">지금 보시는 시장 뉴스·지수는 실제 데이터예요. 무료 가입하면 내 포트폴리오 저장, 종목별 뉴스, 실시간 시세, 기업 모니터링까지 열립니다.</div>
+  </div>
+  <button class="btn btn-primary guest-cta-btn" onclick="openAuthModal()">무료로 시작하기</button>
+</div>
+
 <!-- RichHub Phase 6: 다크/라이트 테마 토글 (다크 기본, localStorage 유지) -->
 <script>
 function _rhSyncThemeBtn(){
@@ -1219,7 +1238,7 @@ function toggleTheme(){
       <span id="pn-key-hint" style="font-size:var(--text-sm);width:100%;margin-top:-4px"></span>
     </div>
     <div id="pn-ai-summary" style="display:none;margin-bottom:10px"></div>
-    <div id="portfolio-news-feed"><div style="font-size:var(--text-base);color:var(--color-text-disabled);padding:6px 0">🔑 뉴스 페이지에서 Finnhub API 키를 연결하면 최신 소식이 표시됩니다</div></div>
+    <div id="portfolio-news-feed"><div style="font-size:var(--text-base);color:var(--color-text-disabled);padding:6px 0">🔒 로그인하면 보유 종목의 최신 소식이 표시됩니다</div></div>
   </div>
 
 </div>
@@ -1295,20 +1314,10 @@ function toggleTheme(){
      PAGE 3: 뉴스 (Finnhub)
 ═══════════════════════════════════════════ -->
 <div id="page-news" class="page">
-  <!-- API KEY -->
-  <!-- 기업 계정: 관리자 공용 Finnhub 키 자동 연결 안내 (applyUserTypeUI에서 표시) -->
-  <div id="fh-biz-note" class="apikey-box" style="display:none">
-    <div style="font-size:var(--text-md);font-weight:700;margin-bottom:4px">✅ 관리자 제공 공용 Finnhub 키로 자동 연결됨</div>
-    <div style="font-size:var(--text-sm);color:var(--color-text-tertiary)">기업 계정은 별도의 API 키 입력이 필요 없습니다. 시장 뉴스·실시간 시세가 자동으로 표시됩니다.</div>
-  </div>
-  <div class="apikey-box" id="fh-key-box">
-    <div style="font-size:var(--text-lg);font-weight:700;margin-bottom:8px">🔑 Finnhub API 키 <span style="font-size:var(--text-sm);color:var(--color-text-tertiary);font-weight:400">(1회 입력 후 자동 저장 · <a href="https://finnhub.io" target="_blank" style="color:var(--color-info)">finnhub.io</a> 무료 발급)</span></div>
-    <div class="key-row">
-      <input id="api-key-input" type="password" placeholder="Finnhub API Key 입력..." autocomplete="off"/>
-      <button class="btn" id="connect-btn" onclick="connectAPI()" style="font-weight:700">연결</button>
-      <button class="btn" id="clear-btn" onclick="clearKey()" style="display:none" aria-label="API 키 삭제">✕</button>
-    </div>
-    <div class="key-status" id="key-status"><span class="dot-wait"></span><span style="color:var(--color-text-tertiary)">API 키를 입력해주세요</span></div>
+  <!-- 공용 Finnhub 키 자동 연결 안내(전 사용자). 키 입력란은 통합과 함께 제거됨 -->
+  <div id="fh-biz-note" class="apikey-box">
+    <div style="font-size:var(--text-md);font-weight:700;margin-bottom:4px">✅ 실시간 시세·뉴스가 자동으로 연결됩니다</div>
+    <div style="font-size:var(--text-sm);color:var(--color-text-tertiary)">별도의 API 키 입력이 필요 없습니다. 로그인만 하면 시장 뉴스·실시간 시세가 자동으로 표시됩니다.</div>
   </div>
 
   <div class="inner-tab-bar">
@@ -1329,7 +1338,7 @@ function toggleTheme(){
       </div>
       <button class="btn" onclick="loadMarketNews()">↻ 갱신</button>
     </div>
-    <div id="news-feed"><div class="empty">API 키 연결 후 실시간 뉴스 표시</div></div>
+    <div id="news-feed"><div class="empty">로그인 후 실시간 뉴스 표시</div></div>
   </div>
 
   <!-- 종목별 뉴스 -->
@@ -1360,7 +1369,7 @@ function toggleTheme(){
       <button class="btn" onclick="addQuote()">+ 추가</button>
       <button class="btn" onclick="refreshQuotes()">↻ 갱신</button>
     </div>
-    <div class="q-grid" id="quote-grid"><div class="empty">API 키 연결 후 표시</div></div>
+    <div class="q-grid" id="quote-grid"><div class="empty">로그인 후 표시</div></div>
     <div style="font-size:var(--text-sm);color:var(--color-text-muted);margin-top:.25rem">* 미국 주식 실시간 · 국내(KS) 15분 딜레이</div>
   </div>
 </div>
@@ -1490,41 +1499,27 @@ function toggleTheme(){
 ═══════════════════════════════════════════ -->
 <div id="page-monitor" class="page">
 
-  <!-- DART API 키 등록 배너 (미등록 시 표시) -->
-  <div id="monitor-setup-banner" style="display:none">
-    <div class="monitor-setup-banner" style="margin-bottom:16px">
-      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-        <span style="font-size:1.1rem">🔑</span>
-        <div>
-          <div class="monitor-setup-title" style="margin-bottom:2px">DART API 키를 등록하면 실시간 데이터가 연결됩니다</div>
-          <div style="font-size:var(--text-xs);color:var(--color-text-tertiary)">
-            아래는 샘플 미리보기입니다. 키 등록 후 실제 공시·시세 데이터로 전환됩니다. &nbsp;·&nbsp;
-            <a href="https://opendart.fss.or.kr/intro/main.do" target="_blank" rel="noopener" style="color:var(--color-info)">DART OpenAPI 무료 발급 →</a>
-          </div>
-        </div>
-      </div>
-      <div style="display:flex;gap:8px;align-items:flex-start;flex-direction:column;margin-top:12px">
-        <div style="display:flex;gap:8px;width:100%;max-width:520px">
-          <input type="text" id="dart-key-input" placeholder="발급받은 DART API 키 붙여넣기" class="monitor-key-input" style="flex:1"/>
-          <button id="dart-key-save-btn" onclick="saveDartKey()" class="btn btn-primary" style="flex-shrink:0;white-space:nowrap">등록</button>
-        </div>
-        <label style="display:flex;gap:8px;align-items:flex-start;font-size:var(--text-xs);color:var(--color-text-secondary);cursor:pointer;max-width:520px">
-          <input type="checkbox" id="dart-terms-check" style="margin-top:2px;flex-shrink:0">
-          <span>DART API 이용약관을 확인하였으며, 본인 명의 키의 약관 준수 의무가 본인에게 있음에 동의합니다.</span>
-        </label>
-        <div id="dart-key-err" style="color:var(--color-error-text);font-size:var(--text-sm)"></div>
-      </div>
-    </div>
-  </div>
-
-  <!-- 기업 계정: 관리자 공용 DART 키 자동 연결 안내 (initMonitorPage에서 표시) -->
+  <!-- 공용 DART 키 자동 연결 안내(전 사용자). 키 입력 배너는 통합과 함께 제거됨 -->
   <div id="dart-biz-note" style="display:none">
     <div class="monitor-setup-banner" style="margin-bottom:16px;background:rgba(34,197,94,.10);border-color:var(--color-success)">
       <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
         <span style="font-size:1.1rem">✅</span>
         <div>
-          <div class="monitor-setup-title" style="margin-bottom:2px">관리자 제공 공용 DART 키로 자동 연결됨</div>
-          <div style="font-size:var(--text-xs);color:var(--color-text-tertiary)">기업 계정은 별도의 API 키 입력이 필요 없습니다. 공시·시세 데이터가 자동으로 연결됩니다.</div>
+          <div class="monitor-setup-title" style="margin-bottom:2px">공시·시세 데이터가 자동으로 연결됨</div>
+          <div style="font-size:var(--text-xs);color:var(--color-text-tertiary)">별도의 API 키 입력이 필요 없습니다. 로그인만 하면 DART 공시·시세가 자동으로 표시됩니다.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 공용 키 미설정(관리자 미등록) 시에만 노출되는 안내 -->
+  <div id="monitor-setup-banner" style="display:none">
+    <div class="monitor-setup-banner" style="margin-bottom:16px">
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        <span style="font-size:1.1rem">🔑</span>
+        <div>
+          <div class="monitor-setup-title" style="margin-bottom:2px">데이터 연결을 준비 중입니다</div>
+          <div style="font-size:var(--text-xs);color:var(--color-text-tertiary)">아래는 샘플 미리보기입니다. 잠시 후 다시 시도해 주세요.</div>
         </div>
       </div>
     </div>
@@ -1549,10 +1544,6 @@ function toggleTheme(){
           <button class="mv-btn on" id="mvbtn-card"  onclick="setMonitorView('card')">☰ 카드</button>
           <button class="mv-btn"    id="mvbtn-table" onclick="setMonitorView('table')">⊞ 비교</button>
           <button class="mv-btn"    id="mvbtn-radar" onclick="setMonitorView('radar')">🛰️ 레이더</button>
-        </div>
-        <div class="monitor-key-info">
-          DART 키: <span id="monitor-dart-key-label">····</span>
-          <button id="monitor-dart-key-change-btn" onclick="deleteDartKeyFn()" class="mc-text-btn">변경</button>
         </div>
       </div>
     </div>
@@ -1969,13 +1960,16 @@ function _resetToLoggedOutUI(){
 function _updateNavAuth(user){
   const loginBtn=document.getElementById('nav-login-btn');
   const accountEl=document.getElementById('nav-account');
+  const guestCta=document.getElementById('guest-cta');   // 비회원 가입 유도 배너
   if(user){
     loginBtn.style.display='none';
     accountEl.style.display='flex';
     document.getElementById('nav-user-email').textContent=user.email;
+    if(guestCta)guestCta.classList.add('hidden');
   }else{
     loginBtn.style.display='';
     accountEl.style.display='none';
+    if(guestCta)guestCta.classList.remove('hidden');
   }
 }
 
@@ -2147,11 +2141,13 @@ async function loadAdminKeysStatus(){
   const res=await fetch(DART_PROXY_URL,{method:'POST',headers:h,body:JSON.stringify({action:'admin-keys-status'})}).then(r=>r.json()).catch(()=>({}));
   const dartEl=document.getElementById('admin-dart-key-display');
   const dartHint=document.getElementById('admin-dart-key-hint');
+  const dartDel=document.getElementById('admin-dart-del-btn');
   if(dartEl){
     dartEl.textContent=res.dart?.exists?(res.dart.masked||'등록됨'):'미등록';
     dartEl.style.color=res.dart?.exists?'var(--color-success-text)':'var(--color-text-tertiary)';
   }
-  if(dartHint)dartHint.textContent=res.dart?.exists?'승인된 기업에 자동 공유 중':'기업 모니터링 탭에서 등록';
+  if(dartHint)dartHint.textContent=res.dart?.exists?'전 사용자에게 자동 적용 중':'미등록 — 전 사용자 공시 중단 상태';
+  if(dartDel)dartDel.style.display=res.dart?.exists?'':'none';
   const fhEl=document.getElementById('admin-fh-key-display');
   const fhDel=document.getElementById('admin-fh-del-btn');
   if(fhEl){
@@ -2159,6 +2155,40 @@ async function loadAdminKeysStatus(){
     fhEl.style.color=res.finnhub?.exists?'var(--color-success-text)':'var(--color-text-tertiary)';
   }
   if(fhDel)fhDel.style.display=res.finnhub?.exists?'':'none';
+}
+
+// 공용 DART 키(관리자 프로필에 저장 → 서버가 전 사용자 호출에 사용)
+async function saveAdminDartKey(){
+  const errEl=document.getElementById('admin-dart-err');
+  const okEl=document.getElementById('admin-dart-ok');
+  errEl.style.display='none';okEl.style.display='none';
+  const key=document.getElementById('admin-dart-key-input').value.trim();
+  if(!key)return;
+  const h=_apiHeaders();
+  const r=await fetch(DART_PROXY_URL,{method:'POST',headers:h,body:JSON.stringify({action:'store-dart-key',key})}).catch(()=>null);
+  const res=r?await r.json().catch(()=>({error:'bad_response'})):{error:'network'};
+  if(!r?.ok||res.error){
+    const msg={
+      dart_key_invalid:'유효하지 않은 DART 키입니다.',
+      dart_key_unregistered:'등록되지 않은 키입니다. DART 사이트에서 활성화 여부를 확인하세요.',
+      invalid_key:'키 형식이 올바르지 않습니다 (40자리 영문+숫자).',
+    }[res.error]||`오류: ${res.error||r?.status}`;
+    errEl.textContent=msg;errEl.style.display='block';return;
+  }
+  okEl.textContent=`저장 완료 (${res.masked}) — 모든 사용자에게 즉시 적용됩니다.`
+    +(res.warning==='dart_validation_skipped'?' (DART 점검 중이라 유효성 검증은 생략됨)':'');
+  okEl.style.display='block';
+  document.getElementById('admin-dart-key-input').value='';
+  dartKeyStored=true;
+  try{_applyMonitorKeyBanner();}catch(e){}
+  loadAdminKeysStatus();
+}
+
+async function deleteAdminDartKey(){
+  if(!confirm('공용 DART 키를 삭제하면 모든 사용자의 공시·기업 모니터링이 중단됩니다. 삭제할까요?'))return;
+  const h=_apiHeaders();
+  await fetch(DART_PROXY_URL,{method:'POST',headers:h,body:JSON.stringify({action:'delete-dart-key'})}).catch(()=>{});
+  loadAdminKeysStatus();
 }
 
 async function saveAdminFinnhubKey(){
@@ -2173,14 +2203,14 @@ async function saveAdminFinnhubKey(){
     errEl.textContent=res.error==='finnhub_key_invalid'?'유효하지 않은 Finnhub 키입니다.':`오류: ${res.error}`;
     errEl.style.display='block';return;
   }
-  okEl.textContent=`저장 완료 (${res.masked}) — 승인된 기업 계정에 즉시 적용됩니다.`;
+  okEl.textContent=`저장 완료 (${res.masked}) — 모든 사용자에게 즉시 적용됩니다.`;
   okEl.style.display='block';
   document.getElementById('admin-fh-key-input').value='';
   loadAdminKeysStatus();
 }
 
 async function deleteAdminFinnhubKey(){
-  if(!confirm('Finnhub 공유 키를 삭제하면 기업 사용자의 실시간 시세가 중단됩니다. 삭제할까요?'))return;
+  if(!confirm('공용 Finnhub 키를 삭제하면 모든 사용자의 실시간 시세·뉴스가 중단됩니다. 삭제할까요?'))return;
   const h=_apiHeaders();
   await fetch(DART_PROXY_URL,{method:'POST',headers:h,body:JSON.stringify({action:'admin-delete-finnhub-key'})}).then(r=>r.json()).catch(()=>({}));
   loadAdminKeysStatus();
@@ -2241,12 +2271,10 @@ function _clearLocalUserData(){
    'monitor_co','pf_is_sample','fhkey_stored','ck_stored','fhkey','tech_scan']
     .forEach(k=>localStorage.removeItem(k));
   _cloudLoadedFor=null;_apiKeysRestoredFor=null;
-  // 이전 계정 화면 잔상 즉시 제거 + 키 입력 UI 초기화
+  // 이전 계정 화면 잔상 즉시 제거 (키 입력 UI는 개인/기업 통합과 함께 제거됨)
   try{renderStocks();renderMemos();updateCashDisplay();}catch(e){}
   try{if(document.getElementById('monitor-cards'))renderMonitorCompanies();}catch(e){}
-  const _i=document.getElementById('api-key-input');if(_i)_i.value='';
-  const _c=document.getElementById('clear-btn');if(_c)_c.style.display='none';
-  const _l=document.getElementById('monitor-dart-key-label');if(_l)_l.textContent='····';
+  try{_applyMonitorKeyBanner();}catch(e){}
   const _d=document.getElementById('pn-ai-dot');if(_d)_d.style.display='none';
 }
 
@@ -2415,33 +2443,15 @@ async function storeApiKey(service,key){
 }
 async function proxyApiCall(service,path,params={}){
   if(service==='finnhub'){
-    // 브라우저 직접 호출 (서버 TLS 문제 우회, 레이턴시 감소)
-    if(_fhKey){
-      const qs=new URLSearchParams({...params,token:_fhKey});
-      const r=await fetch(`https://finnhub.io/api/v1/${path}?${qs}`);
-      if(!r.ok){
-        if(r.status===401||r.status===403)throw new Error('fh_auth');
-        if(r.status===429)throw new Error('proxy_error:finnhub_429');
-        throw new Error('proxy_error:finnhub_'+r.status);
-      }
-      return r.json();
-    }
-    // 폴백: 서버 프록시 (키 아직 로드 안 됐거나 서버 키 사용)
-    // 모든 사용자 fh-call 사용 — 서버가 승인 기업엔 관리자 키를 적용하고, 전체 허용 경로를 지원.
+    // 개인/기업 통합: 전 사용자 fh-call(서버 경유) 단일 경로.
+    // 서버가 관리자 공용 키를 적용하며, 공용 키는 브라우저로 내려오지 않는다(유출 방지).
     // (레거시 finnhub-proxy는 stock/recommendation 등을 path_not_allowed로 막아 월가 레이팅이 안 떴음)
-    const isBiz=(_userType==='business'&&_bizApproved);
-    const action='fh-call';
     const r=await fetch(DART_PROXY_URL,{method:'POST',headers:_apiHeaders(),
-      body:JSON.stringify({action,path,params})});
+      body:JSON.stringify({action:'fh-call',path,params})});
     const d=await r.json().catch(()=>({}));
     if(!r.ok){
       if(d.error==='auth_required')throw new Error('fh_auth');
-      if(d.error==='fh_key_required'&&!isBiz){
-        const r2=await fetch(SUPA_URL,{method:'POST',headers:_apiHeaders(),
-          body:JSON.stringify({action:'call',service:'finnhub',path,params})}).catch(()=>null);
-        if(r2&&r2.ok)return r2.json();
-        throw new Error('fh_auth');
-      }
+      if(d.error==='fh_key_required')throw new Error('fh_key_missing'); // 관리자 공용 키 미등록
       throw new Error('proxy_error:'+r.status);
     }
     if(d.error==='finnhub_error')throw new Error('proxy_error:finnhub_'+d.status);
@@ -2467,55 +2477,20 @@ async function _restoreApiKeyState(){
   _apiKeysRestoredFor=_currentUser?.id;
   const h=_apiHeaders();
 
-  // 승인된 기업 사용자 → 관리자 키 자동 적용 (관리자 본인은 개인 키 관리 유지)
-  if(_userType==='business'&&_bizApproved&&!_isAdmin){
-    const bizRes=await fetch(DART_PROXY_URL,{method:'POST',headers:h,
-      body:JSON.stringify({action:'biz-keys-ready'})}).then(r=>r.json()).catch(()=>({}));
-    if(bizRes.dart){
-      dartKeyStored=true;
-      const lbl=document.getElementById('monitor-dart-key-label');
-      if(lbl)lbl.textContent='관리자 키';
-      _loadDartKey().catch(()=>{});
-    }
-    if(bizRes.finnhub){
-      FKEY='***';
-      setKeyStatus('live','관리자 키 사용 중 · 실시간 활성');
-      const inp=document.getElementById('api-key-input');if(inp)inp.value='관리자 제공';
-      const cb=document.getElementById('clear-btn');if(cb)cb.style.display='none';
-      _loadFhKey().catch(()=>{});
-      if(document.getElementById('page-news')?.classList.contains('on')){loadMarketNews();refreshQuotes();}
-    }
-    // GoogleAI 키만 개별 확인
-    const ckRes=await fetch(SUPA_URL,{method:'POST',headers:h,
-      body:JSON.stringify({action:'key-exists',service:'googleai'})}).then(r=>r.json()).catch(()=>({}));
-    if(ckRes.exists){
-      CKEY='***';localStorage.setItem('ck_stored','1');
-      const dot=document.getElementById('pn-ai-dot');if(dot)dot.style.display='inline-block';
-      const row=document.getElementById('pn-key-row');if(row)row.style.display='none';
-    }
-    return;
-  }
-
-  const[fhRes,ckRes,dartRes]=await Promise.all([
-    // Finnhub: market-data 우선, proxy-api 폴백 (이전 사용자 키 호환)
-    fetch(DART_PROXY_URL,{method:'POST',headers:h,body:JSON.stringify({action:'fh-key-exists'})}).then(r=>r.json()).catch(()=>({}))
-      .then(d=>d.exists?d:fetch(SUPA_URL,{method:'POST',headers:h,body:JSON.stringify({action:'key-exists',service:'finnhub'})}).then(r=>r.json()).catch(()=>({}))),
-    fetch(SUPA_URL,{method:'POST',headers:h,body:JSON.stringify({action:'key-exists',service:'googleai'})}).then(r=>r.json()).catch(()=>({})),
-    fetch(DART_PROXY_URL,{method:'POST',headers:h,body:JSON.stringify({action:'dart-key-exists'})}).then(r=>r.json()).catch(()=>({}))
+  // 개인/기업 통합: 전 사용자가 관리자 공용 키로 자동 연결(개인 키 입력 UI 없음).
+  // 서버(keys-ready)가 공용 키 → 개인 키(레거시) 순으로 준비 상태를 알려준다.
+  // 실제 키는 브라우저로 내려오지 않으며(공용 키 유출 방지) 모든 호출은 서버 경유.
+  const[keysRes,ckRes]=await Promise.all([
+    fetch(DART_PROXY_URL,{method:'POST',headers:h,body:JSON.stringify({action:'keys-ready'})}).then(r=>r.json()).catch(()=>({})),
+    fetch(SUPA_URL,{method:'POST',headers:h,body:JSON.stringify({action:'key-exists',service:'googleai'})}).then(r=>r.json()).catch(()=>({}))
   ]);
-  if(dartRes.exists){
+  if(keysRes.dart){
     dartKeyStored=true;
-    const lbl=document.getElementById('monitor-dart-key-label');
-    if(lbl)lbl.textContent=dartRes.masked||'····';
-    _loadDartKey().catch(()=>{});
+    try{_applyMonitorKeyBanner();}catch(e){}
   }
-  if(fhRes.exists){
+  if(keysRes.finnhub){
     FKEY='***';
     localStorage.setItem('fhkey_stored','1');
-    const inp=document.getElementById('api-key-input');if(inp)inp.value='••••••••••••••••';
-    const cb=document.getElementById('clear-btn');if(cb)cb.style.display='flex';
-    setKeyStatus('live','연결됨 · 실시간 활성');
-    _loadFhKey().catch(()=>{});
     if(document.getElementById('page-news')?.classList.contains('on')){loadMarketNews();refreshQuotes();}
   }
   if(ckRes.exists){
@@ -2526,26 +2501,10 @@ async function _restoreApiKeyState(){
   }
 }
 
-// 서버에서 실제 DART/Finnhub 키를 가져와 메모리에 캐시 (브라우저 직접 호출용)
-async function _loadDartKey(){
-  try{
-    const r=await fetch(DART_PROXY_URL,{method:'POST',headers:_apiHeaders(),body:JSON.stringify({action:'get-dart-key'})});
-    if(!r.ok)return;
-    const d=await r.json();
-    if(d.key)_dartKey=d.key;
-  }catch(e){}
-}
-async function _loadFhKey(){
-  try{
-    const r=await fetch(DART_PROXY_URL,{method:'POST',headers:_apiHeaders(),body:JSON.stringify({action:'get-fh-key'})});
-    if(!r.ok)return;
-    const d=await r.json();
-    if(d.key)_fhKey=d.key;
-  }catch(e){}
-}
 // DART API 호출.
 // DART는 (1) Deno 서버 TLS 비호환, (2) 브라우저 직접호출 시 CORS 차단 → 둘 다 불가.
-// 해결: 공개 CORS 프록시 경유. 개인 키는 브라우저에서, 기업(관리자 공용)키는 서버에서 처리.
+// 해결: 공개 CORS 프록시 경유. 통합 이후 키는 전 사용자 공용(관리자 키)이라 브라우저로
+// 내려주지 않으므로(_dartKey는 항상 빈 값) 실제 경로는 서버(dart-proxy) 경유다.
 // 단일 프록시는 자주 다운되므로(allorigins 등) 여러 프록시를 동시에 경쟁시켜
 // 가장 먼저 성공한 응답을 채택(Promise.any). 모두 실패할 때만 에러.
 const DART_PROXIES=[
@@ -3500,7 +3459,9 @@ async function fetchPrices(){
 // ═══════════════════════════════════════════════════════════════
 
 function initNewsUI(){
-  if(FKEY){document.getElementById('api-key-input').value='••••••••••••••••';document.getElementById('clear-btn').style.display='flex';setKeyStatus('live','연결됨 · 실시간 활성');renderPortfolioChips();loadMarketNews();refreshQuotes();}
+  loadMarketNews();                         // 시장 뉴스는 비회원도 열람(서버 캐시 공개 경로)
+  if(FKEY){renderPortfolioChips();refreshQuotes();}
+  else{refreshQuotes();}                    // 비회원엔 로그인 유도 카드 렌더
   // 서브탭 복원
   const savedNewsTab=localStorage.getItem('cur_itab_news')||'mnews';
   const newsTabBtn=document.querySelector(`#page-news .itab[onclick*="'${savedNewsTab}','news'"]`);
@@ -3512,57 +3473,12 @@ function initNewsUI(){
   if(savedAnalystSym)document.getElementById('analyst-sym').value=savedAnalystSym;
 }
 
-async function connectAPI(){
-  // 승인된 기업 계정은 관리자 공용 키 사용 → 개인 키 저장 경로 차단(이중 안전장치)
-  if(_userType==='business'&&_bizApproved&&!_isAdmin)return;
-  const val=document.getElementById('api-key-input').value.trim();if(!val||val.startsWith('•')){setKeyStatus('err','API 키를 입력해주세요');return;}
-  const btn=document.getElementById('connect-btn');btn.disabled=true;btn.textContent='확인 중...';
-  // 최신 세션 확보
-  await _safeGetSession();
-  if(!_currentSession){setKeyStatus('err','로그인 후 API 키를 저장할 수 있습니다');btn.disabled=false;btn.textContent='연결';return;}
-  try{
-    // 1단계: 키 유효성 직접 검증
-    const r=await fetch(`https://finnhub.io/api/v1/news?category=general&token=${val}`);
-    if(!r.ok)throw new Error('invalid_key');
-    const d=await r.json();if(!Array.isArray(d))throw new Error('invalid_key');
-    // 2단계: 유효한 키를 서버에 저장
-    const res=await storeApiKey('finnhub',val);
-    if(res._unauthorized)throw new Error('auth_required');
-    if(!res.ok)throw new Error('store_failed:'+(res.error||''));
-    FKEY='***';
-    _fhKey=val;
-    localStorage.setItem('fhkey_stored','1');
-    localStorage.removeItem('fhkey');
-    document.getElementById('api-key-input').value='••••••••••••••••';
-    document.getElementById('clear-btn').style.display='flex';
-    setKeyStatus('live','연결됨 · 실시간 활성');
-    renderPortfolioChips();loadMarketNews();refreshQuotes();loadPortfolioNews();
-  }catch(e){
-    const msg=e.message==='invalid_key'?'API 키가 잘못됐습니다':
-              e.message==='auth_required'?'로그인이 만료됐습니다. 다시 로그인해주세요':
-              e.message.startsWith('store_failed:')?'서버 저장 실패: '+(e.message.split(':')[1]||'잠시 후 재시도')
-              :'오류: '+e.message;
-    setKeyStatus('err',msg);
-  }
-  btn.disabled=false;btn.textContent='연결';
-}
-
-function clearKey(){
-  FKEY='';
-  _fhKey='';
-  localStorage.removeItem('fhkey_stored');
-  localStorage.removeItem('fhkey');
-  document.getElementById('api-key-input').value='';
-  document.getElementById('clear-btn').style.display='none';
-  setKeyStatus('wait','API 키를 입력해주세요');
-  _deleteApiKeyOnServer('finnhub');
-}
+// 개인/기업 통합: Finnhub 키는 서버(관리자 공용 키)에서 자동 적용된다.
+// 사용자 키 입력/연결/해제 UI(connectAPI·clearKey·setKeyStatus)는 통합과 함께 제거됨.
 function fhKeyErr(feedId){
-  setKeyStatus('err','API 키 오류 · 재입력 필요');
-  document.getElementById(feedId).innerHTML=`<div class="err-box">Finnhub API 키가 유효하지 않거나 만료됐습니다. <button onclick="clearKey()" style="margin-left:6px;font-size:var(--text-sm);padding:2px 8px;border:1px solid var(--color-error);border-radius:5px;background:var(--color-bg-surface);cursor:pointer;color:var(--color-error)">키 재입력</button></div>`;
+  const el=document.getElementById(feedId);
+  if(el)el.innerHTML=_errBox('실시간 데이터 연결에 실패했어요. 잠시 후 다시 시도해 주세요.');
 }
-
-function setKeyStatus(state,msg){const el=document.getElementById('key-status');const dc=state==='live'?'dot-live':state==='err'?'dot-err':'dot-wait';const tc=state==='live'?'var(--color-success)':state==='err'?'var(--color-error-text)':'var(--color-text-tertiary)';el.innerHTML=`<span class="${dc}"></span><span style="color:${tc}">${msg}</span>`;}
 
 // 로딩 스켈레톤 헬퍼: 카드형(뉴스·데이터) / 지수카드형 / 텍스트라인형.
 function _skCards(n){return Array.from({length:n||4}).map(()=>'<div class="sk-card"><div class="sk sk-line sk-w30" style="height:10px"></div><div class="sk sk-line sk-w70" style="height:15px"></div><div class="sk sk-line sk-w50"></div></div>').join('');}
@@ -3573,15 +3489,25 @@ function _emptyState(ico,msg,ctaLabel,ctaAction){return `<div class="empty"><div
 // 카드 단위 에러 + 재시도. retryAction은 onclick 문자열(있으면 '다시 시도' 버튼).
 function _errBox(msg,retryAction){return `<div class="err-box"><span>⚠️ ${escapeHtml(String(msg||'문제가 발생했어요.'))}</span>${retryAction?`<button class="err-retry" onclick="${retryAction}">다시 시도</button>`:''}</div>`;}
 
+// 로그인 유도 카드(개인화 기능 잠금 영역). 클릭하면 로그인/가입 모달.
+function _loginGate(msg){
+  return `<div class="empty"><div class="empty-ico">🔒</div><div class="empty-msg">${escapeHtml(msg)}</div>
+    <button class="empty-cta" onclick="openAuthModal()">무료로 시작하기</button>
+    <div style="font-size:var(--text-sm);color:var(--color-text-tertiary);margin-top:6px">API 키 발급 없이 이메일만으로 가입돼요.</div></div>`;
+}
+
+// 시장 뉴스: 전 사용자 공통 데이터 → 로그인 없이 공개(서버 60초 캐시 경로 public-news).
 async function loadMarketNews(){
-  if(!FKEY){document.getElementById('news-feed').innerHTML=_emptyState('🔑','Finnhub API 키를 연결하면 실시간으로 표시돼요.');return;}
-  document.getElementById('news-feed').innerHTML=_skCards(5);
+  const feed=document.getElementById('news-feed');if(!feed)return;
+  feed.innerHTML=_skCards(5);
   try{
-    const data=await proxyApiCall('finnhub','news',{category:newsCat});
+    const r=await fetch(DART_PROXY_URL,{method:'POST',headers:_apiHeaders(),
+      body:JSON.stringify({action:'public-news',category:newsCat})});
+    const data=await r.json().catch(()=>null);
+    if(!r.ok||(data&&data.error))throw new Error((data&&data.error)||('http_'+r.status));
     displayNews(data);
   }catch(e){
-    if(e.message==='fh_auth'){fhKeyErr('news-feed');return;}
-    document.getElementById('news-feed').innerHTML=_errBox(e.message,'loadMarketNews()');
+    feed.innerHTML=_errBox('뉴스를 불러오지 못했어요.','loadMarketNews()');
   }
 }
 
@@ -3595,7 +3521,7 @@ function setNewsCat(cat,btn){newsCat=cat;document.querySelectorAll('#news-cat-fi
 async function loadCompanyNews(){
   const sym=document.getElementById('company-sym').value.trim().toUpperCase();if(!sym)return;
   localStorage.setItem('news_company_sym',sym);
-  if(!FKEY){document.getElementById('company-feed').innerHTML=_emptyState('🔑','Finnhub API 키를 연결하면 실시간으로 표시돼요.');return;}
+  if(!FKEY){document.getElementById('company-feed').innerHTML=_loginGate('종목별 뉴스는 로그인 후 볼 수 있어요.');return;}
   document.getElementById('company-feed').innerHTML=_skCards(4);
   const today=new Date().toISOString().split('T')[0];const from=new Date(Date.now()-7*86400000).toISOString().split('T')[0];
   try{
@@ -3612,13 +3538,13 @@ async function loadCompanyNews(){
 async function loadAnalystRating(sym){
   const input=sym||document.getElementById('analyst-sym').value.trim().toUpperCase();if(!input)return;
   localStorage.setItem('news_analyst_sym',input);
-  if(!FKEY){document.getElementById('analyst-feed').innerHTML=_emptyState('🔑','Finnhub API 키를 연결하면 실시간으로 표시돼요.');return;}
+  if(!FKEY){document.getElementById('analyst-feed').innerHTML=_loginGate('월가 레이팅·목표주가는 로그인 후 볼 수 있어요.');return;}
   document.getElementById('analyst-feed').innerHTML=_skCards(2);
   try{const [recR,ptR]=await Promise.allSettled([proxyApiCall('finnhub','stock/recommendation',{symbol:input}),proxyApiCall('finnhub','stock/price-target',{symbol:input})]);if(recR.status==='rejected'&&recR.reason?.message==='fh_auth'){fhKeyErr('analyst-feed');return;}const rec=recR.status==='fulfilled'?recR.value:[];const pt=ptR.status==='fulfilled'?ptR.value:null;const feed=document.getElementById('analyst-feed');if(!rec?.length){feed.innerHTML=_emptyState('📊',`${escapeHtml(input)}의 컨센서스 데이터가 없어요.<br>(미국 상장 종목만 지원)`);return;}const l=rec[0];const tot=(l.buy||0)+(l.hold||0)+(l.sell||0)+(l.strongBuy||0)+(l.strongSell||0);const bt=(l.buy||0)+(l.strongBuy||0);const ht=l.hold||0;const st=(l.sell||0)+(l.strongSell||0);const bp=tot?Math.round(bt/tot*100):0;const hp=tot?Math.round(ht/tot*100):0;const sp=tot?Math.round(st/tot*100):0;const con=bp>=60?{l:'Strong Buy',bg:'var(--color-success-bg)',c:'var(--color-success-text)'}:bp>=40?{l:'Buy',bg:'var(--color-success-bg-soft)',c:'var(--color-success-deep)'}:hp>=50?{l:'Hold',bg:'var(--color-warning-bg)',c:'var(--color-warning-text)'}:{l:'Sell',bg:'var(--color-error-bg)',c:'var(--color-error-text)'};let html=`<div style="background:var(--color-bg-surface);border:1px solid var(--color-border-default);border-radius:12px;padding:14px 16px;margin-bottom:8px"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><div><div style="font-size:var(--text-2xl);font-weight:700">${input}</div><div style="font-size:var(--text-sm);color:var(--color-text-tertiary)">${l.period||''} · 총 ${tot}개 기관</div></div><span style="background:${con.bg};color:${con.c};font-size:var(--text-base);font-weight:700;padding:4px 12px;border-radius:20px">${con.l}</span></div><div class="consensus-bar"><div class="cb-buy" style="width:${bp}%"></div><div class="cb-hold" style="width:${hp}%"></div><div class="cb-sell" style="width:${sp}%"></div></div><div style="display:flex;gap:12px;font-size:var(--text-sm);color:var(--color-text-subtle);margin-bottom:6px"><span style="color:var(--color-success)">매수 ${bp}% (${bt})</span><span style="color:var(--color-warning)">보유 ${hp}% (${ht})</span><span style="color:var(--color-error)">매도 ${sp}% (${st})</span></div>`;if(pt?.targetMean){html+=`<div style="font-size:var(--text-base);color:var(--color-text-subtle);border-top:1px solid var(--color-bg-muted);padding-top:8px;display:flex;gap:16px;flex-wrap:wrap"><span>평균 목표가 <strong style="color:var(--color-text-primary)">$${pt.targetMean.toFixed(2)}</strong></span><span>최고 <strong style="color:var(--color-success)">$${pt.targetHigh?.toFixed(2)}</strong></span><span>최저 <strong style="color:var(--color-error)">$${pt.targetLow?.toFixed(2)}</strong></span></div>`;}html+='</div>';if(rec.length>1){html+=rec.slice(0,3).map(r=>{const t2=(r.buy||0)+(r.strongBuy||0);const t3=(r.sell||0)+(r.strongSell||0);const t4=r.hold||0;const tot=t2+t3+t4;const bp=tot?Math.round(t2/tot*100):0;const hp=tot?Math.round(t4/tot*100):0;return`<div style="background:var(--color-bg-surface);border:1px solid var(--color-border-default);border-radius:12px;padding:11px 14px;margin-bottom:6px"><div style="display:flex;justify-content:space-between;font-size:var(--text-base);margin-bottom:6px"><span style="font-weight:600">${r.period}</span><span style="color:var(--color-text-tertiary)">총 ${tot}개</span></div><div class="consensus-bar"><div class="cb-buy" style="width:${bp}%"></div><div class="cb-hold" style="width:${hp}%"></div><div class="cb-sell" style="width:${tot?Math.round(t3/tot*100):0}%"></div></div><div style="font-size:var(--text-sm);margin-top:4px;display:flex;gap:10px"><span style="color:var(--color-success)">매수 ${t2}</span><span style="color:var(--color-warning)">보유 ${t4}</span><span style="color:var(--color-error)">매도 ${t3}</span></div></div>`}).join('');}feed.innerHTML=html;}catch(e){document.getElementById('analyst-feed').innerHTML=_errBox(e.message,'loadAnalystRating()');}
 }
 
 async function refreshQuotes(){
-  if(!FKEY){document.getElementById('quote-grid').innerHTML=_emptyState('🔑','Finnhub API 키를 연결하면 실시간으로 표시돼요.');return;}
+  if(!FKEY){document.getElementById('quote-grid').innerHTML=_loginGate('실시간 시세는 로그인 후 볼 수 있어요.');return;}
   document.getElementById('quote-grid').innerHTML=quoteSymbols.map(s=>`<div class="q-card"><div class="q-sym">${s}</div><div class="q-price neu"><span class="spin">⟳</span></div></div>`).join('');
   const res=await Promise.allSettled(quoteSymbols.map(sym=>proxyApiCall('finnhub','quote',{symbol:sym}).then(d=>({sym,...d}))));
   document.getElementById('quote-grid').innerHTML=res.map((r,i)=>{if(r.status!=='fulfilled')return`<div class="q-card"><div class="q-sym">${quoteSymbols[i]}</div><div class="q-price neu">오류</div></div>`;const d=r.value;const cls=d.dp==null?'neu':d.dp>=0?'up':'down';return`<div class="q-card"><div class="q-sym">${d.sym}</div><div class="q-price ${cls}">$${d.c?d.c.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}):'—'}</div><div class="q-chg ${cls}">${d.dp!=null?(d.dp>=0?'▲ +':'▼ ')+Math.abs(d.dp).toFixed(2)+'%':'—'}</div></div>`}).join('');
@@ -5250,9 +5176,16 @@ const HELP_CONTENT={
   portfolio:{label:'📊 투자 종목 관리',tips:['종목 추가/편집·삭제로 보유·매수·관심 종목 관리','종목 추가 시 <b>매수가만 입력</b>하면 현재가·수익률은 자동으로 불러옵니다','총 평가금액은 $ / ₩ 토글로 환율 기준 전환','현금(원화/달러) 입력 시 총자산에 반영']},
   monitor:{label:'📈 기업 모니터링',tips:['경쟁사(상장사) 종목코드로 등록','🛰️ 레이더: 공시를 전략 시그널로 자동 분류·조기경보','팀 메모는 투자 일지 캘린더에도 자동 표시']},
   indices:{label:'📉 지수·환율',tips:['주요 지수·환율을 한눈에','설정에서 표시 항목 선택']},
-  news:{label:'📰 뉴스',tips:['시장/종목별 뉴스, 월가 레이팅, 실시간 시세','기업 계정은 관리자 공용 키로 자동 연결']},
+  news:{label:'📰 뉴스',tips:['시장/종목별 뉴스, 월가 레이팅, 실시간 시세','<b>시장 뉴스는 로그인 없이</b>도 볼 수 있어요','종목별 뉴스·월가 레이팅·실시간 시세는 로그인 후 이용']},
   research:{label:'🔍 리서치·규제',tips:['규제기관 RSS 실시간 모니터링','키워드로 최신 규제 뉴스 검색']},
-  memo:{label:'📓 투자 일지',tips:['캘린더 날짜에 일지 작성·편집','💰 가계부(수입/지출)와 ⚖️ 몸무게를 함께 기록','어닝콜·FOMC 등 주요 일정 자동 표시']}
+  memo:{label:'📓 투자 일지',tips:['캘린더 날짜에 일지 작성·편집','💰 가계부(수입/지출)와 ⚖️ 몸무게를 함께 기록','어닝콜·FOMC 등 주요 일정 자동 표시']},
+  account:{label:'🔑 API 키 · 계정',tips:[
+    '<b>API 키를 직접 발급받을 필요가 없습니다.</b> DART·Finnhub 키는 서비스가 제공해요',
+    '로그인만 하면 공시·시세·뉴스가 자동으로 연결됩니다 (키 입력란 없음)',
+    '가입은 이메일·비밀번호만으로 끝나고, 무료입니다',
+    '로그인 없이도 <b>시장 뉴스와 지수·환율</b>은 실제 데이터로 볼 수 있어요',
+    '내 포트폴리오 저장·종목별 뉴스·실시간 시세·기업 모니터링은 로그인 후 이용'
+  ]}
   // 보안 페이지는 관리자 전용 → 도움말에서 제외
 };
 let _helpOpenSec=null;
@@ -5999,82 +5932,18 @@ function applyUserTypeUI(type){
   try{renderCompetitorBrief();}catch(e){}
   // 승인된 기업 계정은 관리자 공용 키로 자동 연결되므로 개인 키 입력란을 숨긴다.
   // (관리자는 본인 개인 키를 계속 관리하므로 제외 → bizAuto)
-  const bizAuto = (type==='business' && _bizApproved && !_isAdmin);
-  const fhBox=document.getElementById('fh-key-box'),
-        fhNote=document.getElementById('fh-biz-note');
-  if(fhBox)  fhBox.style.display  = bizAuto ? 'none' : '';
-  if(fhNote) fhNote.style.display = bizAuto ? '' : 'none';
+  // 개인/기업 통합: Finnhub/DART 모두 공용 키 자동 연결 안내만 노출(키 입력란 없음)
+  const fhNote=document.getElementById('fh-biz-note');
+  if(fhNote) fhNote.style.display='';
   // DART 배너는 initMonitorPage에서 처리(페이지 진입 시점 dartKeyStored 반영)
 }
 
-// ── DART 키 등록 ──────────────────────────
-async function saveDartKey(){
-  const input=document.getElementById('dart-key-input');
-  const termsCheck=document.getElementById('dart-terms-check');
-  const errEl=document.getElementById('dart-key-err');
-  const btn=document.getElementById('dart-key-save-btn');
-  const key=(input?.value||'').trim();
-  if(!key){if(errEl)errEl.textContent='API 키를 입력해주세요.';return;}
-  if(!termsCheck?.checked){if(errEl)errEl.textContent='이용약관에 동의해주세요.';return;}
-  // 항상 최신 세션 토큰 확보
-  await _safeGetSession();
-  if(!_currentSession){if(errEl)errEl.textContent='로그인이 필요합니다.';return;}
-  if(btn){btn.disabled=true;btn.textContent='검증 중...';}
-  if(errEl)errEl.textContent='';
-  try{
-    const r=await fetch(DART_PROXY_URL,{method:'POST',headers:_apiHeaders(),body:JSON.stringify({action:'store-dart-key',key})});
-    let d={};
-    try{d=await r.json();}catch(e){}
-    const dartErrMsg={
-      dart_key_invalid:'유효하지 않은 DART API 키입니다. opendart.fss.or.kr에서 키를 확인해주세요.',
-      dart_key_unregistered:'등록되지 않은 키입니다. DART OpenAPI 사이트에서 키 활성화 여부를 확인하세요.',
-      rate_limit_exceeded:'일일 호출 한도(300건)를 초과했습니다. 내일 다시 시도하세요.',
-      invalid_key:'키 형식이 올바르지 않습니다 (40자리 영문+숫자).',
-    };
-    if(!r.ok){
-      const status=r.status;
-      const serverMsg=d.error||'';
-      const errMsg=status===404?'Edge Function을 찾을 수 없습니다 (404). Supabase market-data 배포를 확인하세요.':
-                   status===401?'인증 오류. 다시 로그인 후 시도해주세요.':
-                   status===502?'DART API 서버에 연결할 수 없습니다. 잠시 후 다시 시도하세요.':
-                   dartErrMsg[serverMsg]||(serverMsg.startsWith('db_error')?'DB 저장 오류. 관리자에게 문의하세요.':(serverMsg?`오류: ${serverMsg}`:`서버 오류(${status}).`));
-      if(errEl)errEl.textContent=errMsg;
-      if(btn){btn.disabled=false;btn.textContent='등록';}
-      return;
-    }
-    if(d.ok){
-      dartKeyStored=true;
-      _loadDartKey().catch(()=>{});
-      const lbl=document.getElementById('monitor-dart-key-label');
-      if(lbl)lbl.textContent=d.masked||'····';
-      if(d.warning==='dart_validation_skipped'&&errEl)errEl.style.color='var(--color-warning)';
-      if(errEl&&d.warning==='dart_validation_skipped')errEl.textContent='키가 저장됐습니다. DART 서버 점검 중이어서 유효성 검증은 생략됐습니다.';
-      document.getElementById('monitor-setup-banner').style.display='none';
-      renderMonitorCompanies();
-      startMonitorPolling();
-      requestNotifyPermission();
-    }else{
-      const raw=d.error||'';
-      if(errEl)errEl.textContent=dartErrMsg[raw]||(raw.startsWith('db_error')?'DB 저장 오류. 관리자에게 문의하세요.':('저장 실패: '+raw));
-    }
-  }catch(e){
-    if(errEl)errEl.textContent='네트워크 오류. 인터넷 연결 또는 Edge Function 배포 상태를 확인해주세요.';
-  }
-  if(btn){btn.disabled=false;btn.textContent='등록';}
-}
-
-async function deleteDartKeyFn(){
-  if(!confirm('DART API 키를 삭제하시겠습니까?\n삭제 후 샘플 미리보기로 전환됩니다.'))return;
-  await fetch(DART_PROXY_URL,{method:'POST',headers:_apiHeaders(),body:JSON.stringify({action:'delete-dart-key'})}).catch(()=>{});
-  dartKeyStored=false;
-  _dartKey='';
-  if(_monitorPollTimer){clearInterval(_monitorPollTimer);_monitorPollTimer=null;}
-  document.getElementById('monitor-setup-banner').style.display='';
-  const input=document.getElementById('dart-key-input');
-  if(input)input.value='';
-  const chk=document.getElementById('dart-terms-check');
-  if(chk)chk.checked=false;
-  _renderDemoMonitor();
+// 모니터 페이지 상단 배너: 공용 키 연결됨(안내) / 미연결(준비 중) 중 하나만 노출
+function _applyMonitorKeyBanner(){
+  const setup=document.getElementById('monitor-setup-banner');
+  const note=document.getElementById('dart-biz-note');
+  if(setup)setup.style.display = dartKeyStored ? 'none' : '';
+  if(note) note.style.display  = dartKeyStored ? '' : 'none';
 }
 
 // ── 알림 ──────────────────────────────────
@@ -6371,28 +6240,10 @@ async function renderSecurityDashboard(){
 }
 
 function initMonitorPage(){
-  const banner=document.getElementById('monitor-setup-banner');
-  const changeBtn=document.getElementById('monitor-dart-key-change-btn');
-  const dartNote=document.getElementById('dart-biz-note');
-  // 승인된 기업 사용자는 키 변경 버튼 숨김 (관리자 키 사용)
-  if(changeBtn)changeBtn.style.display=(_bizApproved&&!_isAdmin)?'none':'';
-  // 승인된 기업 계정: DART 키 입력 배너를 절대 노출하지 않고 공용 키 안내만 표시.
-  // (공용 DART 키 미설정 등으로 dartKeyStored가 false여도 입력란 대신 안내를 유지)
-  const bizAuto = (_userType==='business' && _bizApproved && !_isAdmin);
-  if(bizAuto){
-    if(banner)banner.style.display='none';
-    if(dartNote)dartNote.style.display='';
-    if(dartKeyStored){renderMonitorCompanies();if(!_monitorPollTimer)startMonitorPolling();requestNotifyPermission();}
-    else{_renderDemoMonitor();}
-    return;
-  }
-  if(dartNote)dartNote.style.display='none';
-  if(!dartKeyStored){
-    if(banner)banner.style.display='';
-    _renderDemoMonitor();
-    return;
-  }
-  if(banner)banner.style.display='none';
+  // 개인/기업 통합: 전 사용자 공용 DART 키 자동 연결.
+  // 연결됨 → 실데이터, 미연결(공용 키 미등록/비로그인) → 샘플 미리보기 + '준비 중' 안내.
+  _applyMonitorKeyBanner();
+  if(!dartKeyStored){_renderDemoMonitor();return;}
   renderMonitorCompanies();
   if(!_monitorPollTimer)startMonitorPolling();
   requestNotifyPermission();
@@ -8122,20 +7973,27 @@ try{loadServiceNotice();}catch(e){}
     </div>
     <!-- 관리자 전용: 기업 서비스 공유 키 설정 -->
     <div class="profile-section admin-keys-section" id="admin-keys-section" style="display:none;border-top:2px solid var(--color-warning-text);padding-top:16px;margin-top:4px">
-      <div class="profile-label" style="color:var(--color-warning-text);font-weight:700">관리자 · 기업 서비스 공유 키</div>
-      <div style="font-size:var(--text-xs);color:var(--color-text-tertiary);margin-bottom:12px">여기에 저장한 키는 승인된 기업 계정에 자동으로 공유됩니다.</div>
+      <div class="profile-label" style="color:var(--color-warning-text);font-weight:700">관리자 · 서비스 공용 키</div>
+      <div style="font-size:var(--text-xs);color:var(--color-text-tertiary);margin-bottom:12px">여기에 저장한 키는 <b>모든 사용자(개인·기업)</b>에게 자동 적용됩니다. 비어 있으면 전 사용자의 시세·공시가 멈추니 주의하세요.</div>
 
-      <!-- DART 공유 키 -->
-      <div style="margin-bottom:12px">
-        <div style="font-size:var(--text-sm);color:var(--color-text-secondary);margin-bottom:6px;font-weight:600">DART API 키</div>
-        <div style="font-size:var(--text-xs);color:var(--color-text-tertiary);margin-bottom:6px">기업 모니터링 페이지에서 본인의 DART 키를 등록하면 자동으로 공유됩니다.</div>
-        <div style="display:flex;align-items:center;gap:8px;background:var(--color-bg-secondary);border-radius:8px;padding:8px 12px">
-          <span style="font-size:var(--text-sm)" id="admin-dart-key-display">미등록</span>
-          <span style="margin-left:auto;font-size:var(--text-xs);color:var(--color-text-tertiary)" id="admin-dart-key-hint">기업 모니터링 탭에서 등록</span>
+      <!-- DART 공용 키 -->
+      <div style="margin-bottom:14px">
+        <div style="font-size:var(--text-sm);color:var(--color-text-secondary);margin-bottom:6px;font-weight:600">DART API 키 (공시·기업 모니터링)</div>
+        <div style="display:flex;gap:8px;margin-bottom:6px">
+          <input type="password" id="admin-dart-key-input" class="auth-input" placeholder="DART API 키 입력 (40자리)" style="flex:1;margin-bottom:0">
+          <button onclick="saveAdminDartKey()" class="auth-btn auth-btn-primary" style="white-space:nowrap;padding:0 14px;margin-top:0">저장</button>
         </div>
+        <div style="display:flex;align-items:center;gap:8px;margin-top:4px">
+          <span style="font-size:var(--text-xs);color:var(--color-text-tertiary)">현재: </span>
+          <span style="font-size:var(--text-sm);font-weight:600" id="admin-dart-key-display">미등록</span>
+          <button id="admin-dart-del-btn" onclick="deleteAdminDartKey()" style="display:none;background:none;border:none;cursor:pointer;font-size:var(--text-xs);color:var(--color-error-text);margin-left:4px">삭제</button>
+          <span style="margin-left:auto;font-size:var(--text-xs);color:var(--color-text-tertiary)" id="admin-dart-key-hint"></span>
+        </div>
+        <div class="auth-err" id="admin-dart-err" style="margin-top:6px;display:none"></div>
+        <div class="auth-ok" id="admin-dart-ok" style="margin-top:6px;display:none"></div>
       </div>
 
-      <!-- Finnhub 공유 키 -->
+      <!-- Finnhub 공용 키 -->
       <div>
         <div style="font-size:var(--text-sm);color:var(--color-text-secondary);margin-bottom:6px;font-weight:600">Finnhub API 키 (주가 실시간)</div>
         <div style="display:flex;gap:8px;margin-bottom:6px">

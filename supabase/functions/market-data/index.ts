@@ -17,6 +17,14 @@ const DART_BASE = "https://opendart.fss.or.kr/api";
 const FINNHUB_BASE = "https://finnhub.io/api/v1";
 const MAX_DAILY_CALLS = 300;
 
+// ── 비회원 공개 데이터(시장 뉴스) ────────────────────────────────
+// 시장 뉴스는 전 사용자에게 동일한 공통 데이터라 서버에서 캐시 1건으로 모든 방문자를
+// 커버할 수 있다 → 방문자가 아무리 늘어도 Finnhub 쿼터 소모는 카테고리당 60초에 1회.
+// 덕분에 "로그인·API 키 없이 진짜 데이터 미리보기"를 안전하게 열 수 있다(가입 유입 경로).
+const PUBLIC_NEWS_CATEGORIES = ["general", "forex", "crypto", "merger"];
+const PUBLIC_NEWS_TTL_MS = 60_000;
+const publicNewsCache = new Map<string, { at: number; data: unknown }>();
+
 // opendart.fss.or.kr은 Deno(rustls) TLS와 호환 안 됨(HandshakeFailure).
 // 공개 CORS 프록시 경유로 우회 — 프록시는 표준 TLS라 Deno에서 접근 가능.
 // 단일 프록시는 자주 다운되므로(allorigins 등) 여러 프록시를 동시에 경쟁시켜
@@ -258,10 +266,9 @@ serve(async (req: Request) => {
       const user = getUser();
       if (!user) return ok({ exists: false });
       const profile = await getProfile(user.id);
-      if (isApprovedBiz(profile)) {
-        const adminKeys = await getAdminKeys();
-        if (adminKeys.dart) return ok({ exists: true, masked: "관리자 키", isShared: true });
-      }
+      // 통합: 공용 키가 있으면 전 사용자가 "등록됨" 상태
+      const adminKeys = await getAdminKeys();
+      if (adminKeys.dart) return ok({ exists: true, masked: "관리자 키", isShared: true });
       if (!profile?.dart_api_key) return ok({ exists: false });
       return ok({ exists: true, masked: "···" + profile.dart_api_key.slice(-4) });
     }
@@ -316,12 +323,9 @@ serve(async (req: Request) => {
     if (action === "get-dart-key") {
       const user = getUser();
       if (!user) return err("auth_required", 401);
-      const profile = await getProfile(user.id);
-      // 기업 사용자(관리자 공용 키)는 브라우저에 키를 내려주지 않음 → 서버 경유(dart-proxy)
-      if (isApprovedBiz(profile)) return err("biz_use_server");
-      const dartKey = profile?.dart_api_key || "";
-      if (!dartKey) return err("dart_key_required");
-      return ok({ key: dartKey });
+      // 개인/기업 통합 후 모든 사용자가 관리자 공용 키를 쓴다. 공용 키를 브라우저로 내려주면
+      // 전 사용자에게 키가 노출되므로, 어떤 계정에도 키를 반환하지 않고 서버 경유만 허용한다.
+      return err("use_server");
     }
 
     // ── Finnhub personal key management ──────────────────
@@ -362,28 +366,41 @@ serve(async (req: Request) => {
     if (action === "get-fh-key") {
       const user = getUser();
       if (!user) return err("auth_required", 401);
-      const profile = await getProfile(user.id);
-      // 기업 사용자(관리자 공용 키)는 브라우저에 키를 내려주지 않음 → 서버 경유(fh-call)
-      if (isApprovedBiz(profile)) return err("biz_use_server");
-      const fhKey = await getFhKey(user.id);
-      if (!fhKey) return err("fh_key_required");
-      return ok({ key: fhKey });
+      // get-dart-key 와 동일 — 공용 키는 브라우저에 절대 내려주지 않는다(서버 경유: fh-call).
+      return err("use_server");
     }
 
-    // Unified Finnhub proxy: personal users use their own key, biz uses admin key
+    // 공개 시장 뉴스(로그인 불필요). 카테고리 화이트리스트 + 60초 서버 캐시.
+    // 개인화 데이터가 아니므로 인증을 요구하지 않지만, 키는 서버에만 있고 경로도 news 고정이라
+    // 남용해도 외부 API 호출은 캐시 TTL 이상으로 늘지 않는다.
+    if (action === "public-news") {
+      const cat = String(body.category || "general");
+      if (!PUBLIC_NEWS_CATEGORIES.includes(cat)) return err("category_not_allowed");
+
+      const hit = publicNewsCache.get(cat);
+      if (hit && Date.now() - hit.at < PUBLIC_NEWS_TTL_MS) return ok(hit.data);
+
+      const adminKeys = await getAdminKeys();
+      if (!adminKeys.finnhub) return err("fh_key_required", 400);
+      const res = await fetch(`${FINNHUB_BASE}/news?category=${cat}&token=${adminKeys.finnhub}`);
+      if (!res.ok) {
+        // 만료된 캐시라도 있으면 빈 화면 대신 그것을 보여준다(체감 안정성)
+        if (hit) return ok(hit.data);
+        return ok({ error: "finnhub_error", status: res.status });
+      }
+      const data = await res.json();
+      publicNewsCache.set(cat, { at: Date.now(), data });
+      return ok(data);
+    }
+
+    // Finnhub 프록시(개인/기업 통합): 모든 사용자가 관리자 공용 키를 사용.
+    // 공용 키가 없을 때만 예전에 등록해 둔 본인 개인 키로 폴백.
     if (action === "fh-call") {
       const user = getUser();
       if (!user) return err("auth_required", 401);
-      const profile = await getProfile(user.id);
 
-      let fhKey = "";
-      if (isApprovedBiz(profile)) {
-        const adminKeys = await getAdminKeys();
-        // 관리자 공용 Finnhub 키 우선, 미설정 시 본인 개인 키로 폴백
-        fhKey = adminKeys.finnhub || await getFhKey(user.id);
-      } else {
-        fhKey = await getFhKey(user.id);
-      }
+      const adminKeys = await getAdminKeys();
+      const fhKey = adminKeys.finnhub || await getFhKey(user.id);
       if (!fhKey) return err("fh_key_required", 400);
 
       const { path, params = {} } = body;
@@ -411,13 +428,9 @@ serve(async (req: Request) => {
       if (count >= MAX_DAILY_CALLS) return { _err: "rate_limit_exceeded" };
       await incrementCount(user.id, count, today);
 
-      let dartKey = "";
-      if (isApprovedBiz(profile)) {
-        const adminKeys = await getAdminKeys();
-        dartKey = adminKeys.dart || profile?.dart_api_key || "";
-      } else {
-        dartKey = profile?.dart_api_key || "";
-      }
+      // 개인/기업 통합: 모든 사용자가 관리자 공용 DART 키 사용. 없을 때만 본인 개인 키 폴백.
+      const adminKeys = await getAdminKeys();
+      const dartKey = adminKeys.dart || profile?.dart_api_key || "";
       if (!dartKey) return { _err: "dart_key_required" };
 
       const qs = new URLSearchParams({ crtfc_key: dartKey, ...params });
@@ -506,17 +519,18 @@ serve(async (req: Request) => {
       return new Response(text, { status: 200, headers: { ...CORS, "Content-Type": "application/json" } });
     }
 
-    // ── Biz user auto-provision check ─────────────────────
+    // ── 공용 키 준비 상태(전 사용자) ───────────────────────
+    // 개인/기업 통합 후 모든 로그인 사용자가 대상. (action 이름은 구버전 클라 호환 위해 유지)
 
-    if (action === "biz-keys-ready") {
+    if (action === "biz-keys-ready" || action === "keys-ready") {
       const user = getUser();
       if (!user) return ok({ dart: false, finnhub: false });
       const profile = await getProfile(user.id);
-      if (!isApprovedBiz(profile)) return ok({ dart: false, finnhub: false });
       const adminKeys = await getAdminKeys();
       // 관리자 공용 키 없으면 본인 개인 키 보유 여부로 판단(폴백 반영) → 상태표시 정확도
       const fhReady = !!adminKeys.finnhub || !!(await getFhKey(user.id));
-      return ok({ dart: !!adminKeys.dart, finnhub: fhReady, isShared: !!adminKeys.finnhub });
+      const dartReady = !!adminKeys.dart || !!profile?.dart_api_key;
+      return ok({ dart: dartReady, finnhub: fhReady, isShared: !!adminKeys.finnhub });
     }
 
     // Legacy: biz users routed to fh-call path now, but keep for backward compat
