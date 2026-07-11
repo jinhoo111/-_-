@@ -202,6 +202,41 @@ serve(async (req: Request) => {
       return ok({ ok: true });
     }
 
+    // 회원 계정 삭제(관리자 전용, 되돌릴 수 없음).
+    // auth.users 삭제는 service_role 로만 가능 → 클라이언트에서 직접 못 하고 반드시 여기를 통한다.
+    // 자기 자신·다른 관리자는 삭제 불가(운영자 계정 전멸 방지).
+    if (action === "admin-delete-user") {
+      const user = getUser();
+      if (!user) return err("auth_required", 401);
+      const profile = await getAdminProfile(user.id);
+      if (!profile?.is_admin) return err("admin_only", 403);
+
+      const targetId = body.user_id;
+      if (!targetId || typeof targetId !== "string") return err("invalid_user");
+      if (targetId === user.id) return err("cannot_delete_self");
+
+      const { data: target } = await supabase
+        .from("user_profiles")
+        .select("is_admin, email")
+        .eq("user_id", targetId)
+        .maybeSingle();
+      if (target?.is_admin) return err("cannot_delete_admin");
+
+      // 앱 데이터 → 프로필 → 인증 계정 순. user_data 의 FK cascade 여부에 의존하지 않도록 명시 삭제.
+      // voc_requests·security_events 는 on delete set null 이라 기록 자체는 남긴다(감사 추적).
+      await supabase.from("user_data").delete().eq("user_id", targetId);
+      await supabase.from("user_profiles").delete().eq("user_id", targetId);
+      const { error: delErr } = await supabase.auth.admin.deleteUser(targetId);
+      if (delErr) return err("delete_failed:" + delErr.message, 500);
+
+      logSecurityEvent({
+        user_id: user.id, email: user.email, event_type: "admin_delete_user",
+        severity: "warn", risk_score: 30,
+        detail: { target_user_id: targetId, target_email: target?.email ?? null },
+      });
+      return ok({ ok: true, email: target?.email ?? null });
+    }
+
     if (action === "admin-keys-status") {
       const user = getUser();
       if (!user) return err("auth_required", 401);

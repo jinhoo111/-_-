@@ -282,6 +282,16 @@
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Pretendard',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:var(--color-text-primary);background:var(--color-bg-base);min-height:100vh;font-variant-numeric:tabular-nums}
 
+/* ── 폼 컨트롤 기본값 ──
+   인라인 style로 color만 지정한 입력창들이 브라우저 기본 흰 배경 위에 놓여
+   다크모드에서 흰 글씨=흰 배경으로 묻히던 문제를 전역에서 차단.
+   타입 선택자(0,0,1)라 .rh-input 등 클래스 규칙이 그대로 우선한다. */
+body[data-theme="dark"]{color-scheme:dark}
+body[data-theme="light"]{color-scheme:light}
+input:not([type=checkbox]):not([type=radio]):not([type=range]),select,textarea{background:var(--color-bg-surface);color:var(--color-text-primary)}
+option{background:var(--color-bg-surface);color:var(--color-text-primary)}
+input::placeholder,textarea::placeholder{color:var(--color-text-muted)}
+
 /* ════════════════════════════════════════════════════════════════
    RICHHUB COMPONENT LIBRARY  (Phase 3 · designsystem_richhub.md §4)
    ─ 모두 .rh- 접두사(기존 클래스와 충돌 0). 지금은 미사용 → 화면 무변.
@@ -2575,6 +2585,7 @@ async function proxyFetchDirect(url,ms=5000){await _nSem.get();try{return await 
 let investPhilosophy=[];
 try{investPhilosophy=JSON.parse(localStorage.getItem('pf_phil')||'[]')}catch(e){}
 let stocks=[],memos=[],memoArchive=[],memoView='calendar',selTagV='general',memoEditTag='general',archiveTagFilter='all',archiveViewMode='list',archiveSearch='',FKEY='',newsCat='general',quoteSymbols=['NVDA','AAPL','TSLA','MSFT'],stkFilter='all',stkMarket='all',stkStyle='all',stkSort='',stkSortDir='desc',fxRate=1400;
+let _editingIdx=null;  // 편집 토글로 열려 있는 종목의 stocks 인덱스(한 번에 하나). null=편집 없음
 let ledger=[];  // 가계부: {id,date:'YYYY-MM-DD',type:'income'|'expense',amount,cat,memo}
 let health={goal:null,entries:[],monthlyGoals:{},weeklyActual:{},workouts:{}};  // 몸무게: entries=[{date,kg}], goal=기본목표, monthlyGoals={'YYYY-MM':kg}, weeklyActual={'YYYY-MM':[kg|null,...주차]}(주차별 실제체중 직접입력 override)
 let budget={};  // 월별 예산: {'YYYY-MM':{income,expense,incomeWeeks?:[..주차],expenseWeeks?:[..주차]}} (주차 배열 없으면 월÷주수 균등분할 폴백)
@@ -2855,6 +2866,8 @@ function renderStocks(){
     const styleBadge=s.style==='short'?`<span style="font-size:var(--text-sm);font-weight:700;padding:2px 8px;border-radius:20px;background:var(--color-trade-short-bg);color:var(--color-trade-short-text)">단</span>`:s.style==='long'?`<span style="font-size:var(--text-sm);font-weight:700;padding:2px 8px;border-radius:20px;background:var(--color-trade-long-bg);color:var(--color-trade-long-text)">장</span>`:`<span style="font-size:var(--text-sm);font-weight:700;padding:2px 8px;border-radius:20px;background:var(--color-bg-badge);color:var(--color-text-placeholder)">미</span>`;
     return`<tr id="sr-${i}"><td style="font-weight:600">${mktBadge}${escapeHtml(s.name)}</td><td style="font-size:var(--text-sm);color:var(--color-text-tertiary);font-family:monospace">${escapeHtml(s.ticker)}</td><td>${pFmt(s.buy)}</td><td style="font-weight:600">${pFmt(s.cur)}${stateTag}</td><td>${s.qty}</td><td>${evalFmt}</td><td class="${r>=0?'pl-up':'pl-down'}" style="font-weight:600">${(r>=0?'+':'')+r.toFixed(2)}%</td><td>${s.status==='hold'?w.toFixed(1)+'%':'—'}</td><td><span style="font-size:var(--text-sm);font-weight:700;padding:2px 7px;border-radius:20px;${bc}">${s.status==='buy'?'매수':s.status==='hold'?'보유':'관심'}</span></td><td>${styleBadge}</td><td style="text-align:center"><span style="font-size:var(--text-sm);font-weight:700;padding:2px 6px;border-radius:4px;background:${ac.bg};color:${ac.c}">${escapeHtml(acctCh)}</span></td><td style="white-space:nowrap"><button type="button" onclick="editStock(${i})" style="font-size:var(--text-sm);padding:3px 7px;border:1px solid var(--color-border-input);border-radius:6px;background:var(--color-bg-surface);cursor:pointer;color:var(--color-text-secondary);margin-right:4px">편집</button><button type="button" onclick="removeStock(${i})" style="font-size:var(--text-sm);padding:3px 7px;border:1px solid var(--color-error-border);border-radius:6px;background:var(--color-bg-surface);cursor:pointer;color:var(--color-error);margin-right:4px">삭제</button><button type="button" onclick="${s.hidden?'unhideStock':'hideStock'}(${i})" style="font-size:var(--text-sm);padding:3px 7px;border:1px solid ${s.hidden?'var(--color-accent-border)':'var(--color-border-subtle)'};border-radius:6px;background:${s.hidden?'var(--color-accent-bg)':'var(--color-bg-surface)'};cursor:pointer;color:${s.hidden?'var(--color-accent)':'var(--color-text-placeholder)'}">${s.hidden?'복원':'숨김'}</button></td></tr>`;
   }).join('');
+  // 편집 토글이 열려 있으면 그 행만 편집 폼으로 교체. 시세 자동갱신 등으로 재렌더돼도 편집이 닫히지 않는다.
+  if(_editingIdx!=null)_paintEditRow(_editingIdx);
   localStorage.setItem('pf_s',JSON.stringify(stocks));
   _syncToCloud();
   try{renderCompetitorBrief();}catch(e){}
@@ -3290,7 +3303,7 @@ async function addStock(){
   else if(cur===0){ errEl.style.display='block'; errEl.textContent=`가격 조회 실패: ${ticker} — 티커를 확인하세요 (예: AAPL, NVDA, 005930.KS)`; }
 }
 
-function removeStock(i){stocks.splice(i,1);renderStocks();}
+function removeStock(i){stocks.splice(i,1);_editingIdx=null;renderStocks();}  // splice 로 인덱스가 밀리므로 편집 토글은 닫는다
 function hideStock(i){stocks[i].hidden=true;renderStocks();}
 function unhideStock(i){stocks[i].hidden=false;renderStocks();}
 function toggleEditHidden(i){
@@ -3303,10 +3316,17 @@ function toggleEditHidden(i){
   btn.style.color=next?'var(--color-accent)':'var(--color-text-placeholder)';
 }
 
+// 편집 토글: 같은 종목의 '편집'을 다시 누르면 닫힌다. 열려 있는 행은 _editingIdx 하나뿐이라
+// 다른 행의 '편집'을 누르면 이전 행은 자동으로 닫힌다(입력 중이던 값은 저장 안 하고 버림).
 function editStock(i){
+  _editingIdx=(_editingIdx===i)?null:i;
+  renderStocks();  // 편집 행은 renderStocks 끝에서 _paintEditRow 로 다시 그려진다
+}
+function cancelEditStock(){_editingIdx=null;renderStocks();}
+function _paintEditRow(i){
   const s=stocks[i];
   const row=document.getElementById('sr-'+i);
-  if(!row)return;
+  if(!s||!row){_editingIdx=null;return;}  // 필터로 행이 안 보이면 편집 상태도 해제
   const opts=['hold','buy','watch'].map(v=>`<option value="${v}"${s.status===v?' selected':''}>${v==='buy'?'매수':v==='hold'?'보유':'관심'}</option>`).join('');
   const styleOpts=[['','미설정'],['short','단타'],['long','장타']].map(([v,l])=>`<option value="${v}"${(s.style||'')===v?' selected':''}>${l}</option>`).join('');
   const acctList=['토스증권','카카오페이증권','키움증권','미래에셋증권','삼성증권','NH투자증권','KB증권','신한투자증권','한화투자증권','대신증권','하나증권','유안타증권','기타'];
@@ -3324,9 +3344,10 @@ function editStock(i){
     <td><select id="esty-${i}" style="${ism}width:72px">${styleOpts}</select></td>
     <td><select id="ea2-${i}" style="${ism}width:90px">${acctOpts}</select></td>
     <td style="white-space:nowrap">
+      <button type="button" onclick="editStock(${i})" aria-pressed="true" aria-label="편집 닫기" style="font-size:var(--text-sm);padding:3px 7px;border:1px solid var(--color-accent);border-radius:6px;background:var(--color-accent-bg);cursor:pointer;color:var(--color-accent);margin-right:4px">편집 중</button>
       <button type="button" id="ehid-${i}" data-hidden="${!!s.hidden}" onclick="toggleEditHidden(${i})" style="font-size:var(--text-sm);padding:3px 7px;border:1px solid ${s.hidden?'var(--color-accent-border)':'var(--color-border-subtle)'};border-radius:6px;background:${s.hidden?'var(--color-accent-bg)':'var(--color-bg-surface)'};cursor:pointer;color:${s.hidden?'var(--color-accent)':'var(--color-text-placeholder)'};margin-right:4px">${s.hidden?'숨김 ON':'숨김 OFF'}</button>
       <button type="button" onclick="saveStock(${i})" aria-label="저장" style="background:var(--color-success);color:var(--color-bg-surface);border:none;border-radius:6px;padding:4px 9px;font-size:var(--text-base);cursor:pointer;margin-right:3px">✓</button>
-      <button type="button" onclick="renderStocks()" aria-label="취소" style="background:none;border:1px solid var(--color-border-input);border-radius:6px;padding:4px 9px;font-size:var(--text-base);cursor:pointer;color:var(--color-text-subtle)">✕</button>
+      <button type="button" onclick="cancelEditStock()" aria-label="취소" style="background:none;border:1px solid var(--color-border-input);border-radius:6px;padding:4px 9px;font-size:var(--text-base);cursor:pointer;color:var(--color-text-subtle)">✕</button>
     </td>
   </tr>`;
 }
@@ -3345,6 +3366,7 @@ function saveStock(i){
   if(a!=null)stocks[i].account=a;
   const hidBtn=document.getElementById('ehid-'+i);
   if(hidBtn)stocks[i].hidden=hidBtn.dataset.hidden==='true';
+  _editingIdx=null;  // 저장하면 편집 토글도 닫힌다
   renderStocks();
 }
 
@@ -6201,13 +6223,16 @@ function _paintAcctList(){
       const isBiz=a.user_type==='business',uid=a.user_id;
       const typeBtn=`<button type="button" onclick="setAccountType('${uid}','${isBiz?'personal':'business'}')" class="mc-text-btn" style="color:var(--color-accent-indigo)">${isBiz?'개인 전환':'기업 전환'}</button>`;
       const apprBtn=isBiz?`<button type="button" onclick="setAccountApproved('${uid}',${a.business_approved?'false':'true'})" class="mc-text-btn" style="color:${a.business_approved?'var(--color-text-tertiary)':'var(--color-success-text)'}">${a.business_approved?'승인 해제':'승인'}</button>`:'';
+      // 본인·다른 관리자는 삭제 버튼을 아예 노출하지 않는다(Edge에서도 동일하게 거부).
+      const canDel=!a.is_admin&&uid!==(_currentUser&&_currentUser.id);
+      const delBtn=canDel?`<button type="button" onclick="deleteAccount('${uid}','${escapeHtml(_jsStr(a.email||''))}')" class="mc-text-btn" style="color:var(--color-error-text)">삭제</button>`:'';
       return `<tr>
         <td>${escapeHtml(a.email||'-')}${a.is_admin?' <span style="font-size:var(--text-xs);color:var(--color-accent-indigo)">관리자</span>':''}</td>
         <td><span style="font-size:var(--text-xs);font-weight:700;padding:2px 8px;border-radius:20px;background:${isBiz?'var(--color-success-bg)':'var(--color-info-bg)'};color:${isBiz?'var(--color-success-text)':'var(--color-info)'}">${isBiz?'기업':'개인'}</span></td>
         <td>${isBiz?(a.business_approved?'<span style="color:var(--color-success-text)">승인</span>':'<span style="color:var(--color-warning-text)">대기</span>'):'-'}</td>
         <td style="white-space:nowrap;color:var(--color-text-tertiary)">${fmt(a.created_at)}</td>
         <td style="white-space:nowrap;color:var(--color-text-tertiary)">${a.last_seen?new Date(a.last_seen).toLocaleString('ko-KR',{year:'2-digit',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}):'-'}</td>
-        <td style="white-space:nowrap"><div style="display:flex;gap:8px">${typeBtn}${apprBtn}</div></td>
+        <td style="white-space:nowrap"><div style="display:flex;gap:8px">${typeBtn}${apprBtn}${delBtn}</div></td>
       </tr>`;
     }).join('')}</tbody>
   </table></div>`;
@@ -6226,6 +6251,28 @@ async function setAccountType(uid,type){
 }
 async function setAccountApproved(uid,val){
   (await _patchProfile(uid,{business_approved:val}))?renderAccountsAdmin():_acctErr();
+}
+// 회원 계정 삭제(되돌릴 수 없음) — auth.users 삭제는 service_role 이 필요해 Edge(admin-delete-user)로만 가능.
+// 오타 삭제 방지를 위해 이메일을 그대로 입력받아 대조한다.
+async function deleteAccount(uid,email){
+  const label=email||uid;
+  if(!confirm(`⚠️ '${label}' 계정을 삭제합니다.\n\n이 회원의 로그인 계정과 저장 데이터(포트폴리오·투자 일지 등)가 함께 삭제되며 되돌릴 수 없습니다.\n계속할까요?`))return;
+  const typed=prompt(`확인을 위해 이메일을 그대로 입력하세요:\n${label}`);
+  if(typed===null)return;
+  if(typed.trim().toLowerCase()!==String(label).trim().toLowerCase()){alert('입력이 일치하지 않아 삭제를 취소했습니다.');return;}
+  await _safeGetSession();
+  const res=await fetch(DART_PROXY_URL,{method:'POST',headers:_apiHeaders(),
+    body:JSON.stringify({action:'admin-delete-user',user_id:uid})}).then(r=>r.json()).catch(()=>({error:'network'}));
+  if(res.error){
+    const msg={auth_required:'로그인이 필요합니다.',admin_only:'관리자만 삭제할 수 있습니다.',
+      cannot_delete_self:'본인 계정은 삭제할 수 없습니다.',cannot_delete_admin:'관리자 계정은 삭제할 수 없습니다.',
+      invalid_user:'대상 계정을 찾을 수 없습니다.',network:'네트워크 오류로 실패했습니다.'}[res.error]
+      ||(res.error.startsWith('delete_failed:')?'삭제 실패 — '+res.error.slice(14):'삭제 실패 — '+res.error);
+    const el=document.getElementById('acct-list');
+    if(el)el.insertAdjacentHTML('afterbegin',`<div style="font-size:var(--text-xs);color:var(--color-error-text);margin-bottom:4px">${escapeHtml(msg)}</div>`);
+    return;
+  }
+  renderAccountsAdmin();
 }
 
 // ── 보안 대시보드 (관리자 전용) — security_events 조회 ──────────────
