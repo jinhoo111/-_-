@@ -6767,20 +6767,30 @@ async function _loadUsCompanyData(co){
   _monitorCache[key]=_monitorCache[key]||{};
   const call=(action,extra)=>fetch(DART_PROXY_URL,{method:'POST',headers:_apiHeaders(),
     body:JSON.stringify({action,ticker:co.stock_code,...extra})}).then(r=>r.json());
-  const[q,f,ins]=await Promise.allSettled([
+  // 시세·공시(빠름)를 먼저 렌더하고, 내부자(Form 4 XML 파싱이라 십수 초)는 뒤이어 채운다.
+  // 한 번에 기다리면 카드가 20초 가까이 비어 보인다.
+  const[q,f]=await Promise.allSettled([
     proxyApiCall('finnhub','quote',{symbol:co.stock_code}),
-    call('sec-filings'),
-    call('sec-insider-stock')
+    call('sec-filings')
   ]);
   if(q.status==='fulfilled'&&q.value&&q.value.c!=null){
     const d=q.value;
     _monitorCache[key].price={price:d.c,change:d.d||0,changePct:(d.dp||0).toFixed(2)};
   }
   if(f.status==='fulfilled'&&Array.isArray(f.value?.rows))_monitorCache[key].filings=f.value.rows;
-  if(ins.status==='fulfilled'&&Array.isArray(ins.value?.rows))_monitorCache[key].insider=ins.value.rows;
   _monitorCache[key].loaded=true;
   _renderCardContent(key);
   if(monitorView==='table')renderMonitorTable();
+  // 내부자 거래는 후속 로드 → 도착하면 카드만 다시 그림
+  call('sec-insider-stock').then(d=>{
+    if(!Array.isArray(d?.rows))return;
+    _monitorCache[key].insider=d.rows;
+    _monitorCache[key].insiderLoaded=true;
+    _renderCardContent(key);
+  }).catch(()=>{
+    _monitorCache[key].insiderLoaded=true;
+    _renderCardContent(key);
+  });
 }
 
 async function loadCompanyData(corpCode){
@@ -7027,6 +7037,29 @@ function _createCardEl(co){
   return div;
 }
 
+// SEC 공시 제목을 사람이 읽을 수 있게. 8-K는 항목코드(2.02 등)가 실제 내용을 결정하므로
+// 코드를 그대로 노출하지 않고 뜻으로 번역한다("2.02,9.01" → "실적 발표").
+const SEC_ITEM_KO={
+  '1.01':'주요 계약 체결','1.02':'주요 계약 종료','2.01':'인수·매각 완료','2.02':'실적 발표',
+  '2.03':'채무 발생','2.05':'구조조정 비용','3.01':'상장 규정 이슈','3.02':'주식 발행',
+  '5.02':'경영진·이사 변동','5.03':'정관 변경','5.07':'주주총회 표결 결과','7.01':'기업 설명자료',
+  '8.01':'기타 주요 사항','9.01':'재무제표·첨부'
+};
+const SEC_FORM_KO={'8-K':'수시공시(주요 사건)','10-Q':'분기보고서','10-K':'연차보고서',
+  'DEF 14A':'주주총회 위임장','SC 13D':'5% 이상 지분 취득','SC 13G':'5% 이상 지분(수동)',
+  'S-1':'증권신고서','6-K':'외국기업 수시보고','20-F':'외국기업 연차보고서'};
+function _secFilingTitle(d){
+  const t=String(d.title||'').trim();
+  // 8-K 항목코드 형태("2.02,9.01")면 뜻으로 번역. 9.01(첨부)만 있으면 정보가 없으니 제외.
+  if(/^[\d.,\s]+$/.test(t)&&t){
+    const names=t.split(',').map(s=>s.trim()).filter(s=>s&&s!=='9.01')
+      .map(c=>SEC_ITEM_KO[c]||c);
+    if(names.length)return names.join(' · ');
+    return SEC_FORM_KO[d.form]||d.form;
+  }
+  return t||SEC_FORM_KO[d.form]||d.form;
+}
+
 // 미국 기업 카드: 공시(SEC) + 내부자(Form 4). DART 전용 섹션(타법인 출자·보유변동)은 없음.
 function _buildUsCardHTML(co){
   const cache=_monitorCache[co.corp_code]||{};
@@ -7041,10 +7074,7 @@ function _buildUsCardHTML(co){
   const discHtml=cache.loaded
     ?(filings.length?filings.slice(0,6).map(d=>{
         const dt=(d.date||'').replace(/(\d{4})(\d{2})(\d{2})/,'$2/$3');
-        // 서식명(8-K 등)은 배지에 이미 있으므로 제목이 비면 서식 뜻을 대신 보여준다
-        const FORM_KO={'8-K':'수시공시(주요 사건)','10-Q':'분기보고서','10-K':'연차보고서',
-          'DEF 14A':'주주총회 위임장','SC 13D':'5% 이상 지분 취득','SC 13G':'5% 이상 지분(수동)','S-1':'증권신고서'};
-        const title=d.title||FORM_KO[d.form]||d.form;
+        const title=_secFilingTitle(d);
         return`<div class="mc-disclosure-row">
           <span class="mc-disc-date">${dt}</span>
           <span class="mc-disc-type-badge tB">${escapeHtml(d.form)}</span>
@@ -7054,7 +7084,7 @@ function _buildUsCardHTML(co){
       }).join(''):'<div class="mc-empty-state">최근 공시가 없습니다.</div>')
     :_skLines(3);
   const ins=(cache.insider||[]).slice(0,5);
-  const insHtml=cache.loaded
+  const insHtml=cache.insiderLoaded
     ?(ins.length?ins.map(x=>`<div class="mc-disclosure-row">
         <span class="mc-disc-date">${escapeHtml((x.date||'').slice(5))}</span>
         <span class="mc-disc-type-badge ${x.code==='S'?'tC':'tA'}">${x.code==='S'?'매도':'매수'}</span>
