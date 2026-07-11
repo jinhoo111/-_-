@@ -11,6 +11,8 @@ const isAllowedOrigin = (o: string): boolean =>
 const corsHeaders = (origin: string): Record<string, string> => ({
   "Access-Control-Allow-Origin": isAllowedOrigin(origin) ? origin : ALLOWED_ORIGINS[0],
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  // 캐시 적중 여부를 클라이언트/운영에서 확인할 수 있도록 노출(진단용, 값은 HIT|MISS)
+  "Access-Control-Expose-Headers": "x-cache",
   "Vary": "Origin",
 });
 const DART_BASE = "https://opendart.fss.or.kr/api";
@@ -23,7 +25,23 @@ const MAX_DAILY_CALLS = 300;
 // 덕분에 "로그인·API 키 없이 진짜 데이터 미리보기"를 안전하게 열 수 있다(가입 유입 경로).
 const PUBLIC_NEWS_CATEGORIES = ["general", "forex", "crypto", "merger"];
 const PUBLIC_NEWS_TTL_MS = 60_000;
-const publicNewsCache = new Map<string, { at: number; data: unknown }>();
+
+// ── 종목 단위 공유 캐시(fh-call) ────────────────────────────────
+// 시세·종목뉴스·레이팅은 "누가 요청하든 심볼이 같으면 같은 응답"이라 사용자별로 따로 부를
+// 이유가 없다. 심볼 단위로 캐시해 두면 같은 종목을 보는 사용자가 늘어도 Finnhub 호출은
+// TTL당 1회 → 분당 60회 한도가 사용자 수와 무관해진다.
+// TTL은 데이터 성격에 맞춘다: 시세는 짧게(체감 실시간 유지), 뉴스·레이팅은 길게.
+const SHARED_FH_TTL_MS: Record<string, number> = {
+  "quote": 30_000,
+  "company-news": 300_000,
+  "stock/recommendation": 3_600_000,
+  "stock/price-target": 3_600_000,
+};
+// 저장소는 DB(api_cache). Edge Function의 메모리는 요청마다 다른 isolate가 처리할 수 있어
+// 요청 간 공유되지 않는다(실측: 모듈 레벨 Map은 연속 호출에도 전부 MISS).
+// 메모리 Map은 "같은 isolate가 연속 처리하는 경우"만 아끼는 1차 캐시로 남겨둔다.
+const memCache = new Map<string, { at: number; data: unknown }>();
+const MEM_CACHE_MAX = 200;
 
 // opendart.fss.or.kr은 Deno(rustls) TLS와 호환 안 됨(HandshakeFailure).
 // 공개 CORS 프록시 경유로 우회 — 프록시는 표준 TLS라 Deno에서 접근 가능.
@@ -61,8 +79,10 @@ serve(async (req: Request) => {
   const CORS = corsHeaders(req.headers.get("Origin") || "");
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
 
-  const ok = (data: unknown, status = 200) =>
-    new Response(JSON.stringify(data), { status, headers: { ...CORS, "Content-Type": "application/json" } });
+  const ok = (data: unknown, status = 200, extra: Record<string, string> = {}) =>
+    new Response(JSON.stringify(data), { status, headers: { ...CORS, "Content-Type": "application/json", ...extra } });
+  const CACHE_HIT = { "x-cache": "HIT" };
+  const CACHE_MISS = { "x-cache": "MISS" };
   const err = (msg: string, status = 400) =>
     new Response(JSON.stringify({ error: msg }), { status, headers: { ...CORS, "Content-Type": "application/json" } });
 
@@ -74,6 +94,43 @@ serve(async (req: Request) => {
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
     );
+
+    // ── 공유 캐시(api_cache 테이블) ─────────────────────────────
+    // 메모리(1차) → DB(2차) 순으로 조회. DB라 어느 isolate가 처리하든 캐시가 공유된다.
+    // 캐시 실패(테이블 미적용 등)는 무시하고 원본 API를 호출한다 → 기능이 죽지 않음.
+    const cacheGet = async (key: string, ttlMs: number): Promise<unknown | null> => {
+      const m = memCache.get(key);
+      if (m && Date.now() - m.at < ttlMs) return m.data;
+      try {
+        const { data, error } = await supabase
+          .from("api_cache").select("data, updated_at").eq("key", key).maybeSingle();
+        // PGRST116(행 없음)은 정상적인 캐시 미스. 그 외 오류(테이블 없음 등)만 로깅.
+        if (error) { console.error("[cache] select 실패:", error.message); return null; }
+        if (!data) return null;
+        const at = new Date(data.updated_at).getTime();
+        if (Date.now() - at >= ttlMs) return null;
+        memCache.set(key, { at, data: data.data });
+        return data.data;
+      } catch (e) { console.error("[cache] select 예외:", String(e)); return null; }
+    };
+    // 저장은 반드시 await 한다. Edge 런타임은 응답을 반환하는 순간 남은 비동기 작업을
+    // 중단하므로, fire-and-forget으로 두면 upsert가 실행되기 전에 잘려 캐시가 영원히
+    // 비어 있게 된다(실측: 연속 호출이 전부 MISS). 지연은 DB 왕복 수십 ms 수준.
+    const cacheSet = async (key: string, data: unknown) => {
+      memCache.set(key, { at: Date.now(), data });
+      if (memCache.size > MEM_CACHE_MAX) {
+        for (const k of [...memCache.keys()].slice(0, memCache.size - MEM_CACHE_MAX)) memCache.delete(k);
+      }
+      try {
+        const { error } = await supabase.from("api_cache")
+          .upsert({ key, data, updated_at: new Date().toISOString() }, { onConflict: "key" });
+        if (error) console.error("[cache] upsert 실패:", error.message);
+      } catch (e) {
+        console.error("[cache] upsert 예외:", String(e));
+      }
+    };
+    // 만료된 캐시라도 원본 호출이 실패(429 등)했을 때 화면 공백 대신 보여주기 위한 조회
+    const cacheGetStale = async (key: string) => await cacheGet(key, Number.MAX_SAFE_INTEGER);
 
     const authHeader = req.headers.get("Authorization") || "";
     const jwt = authHeader.replace("Bearer ", "").trim();
@@ -377,20 +434,22 @@ serve(async (req: Request) => {
       const cat = String(body.category || "general");
       if (!PUBLIC_NEWS_CATEGORIES.includes(cat)) return err("category_not_allowed");
 
-      const hit = publicNewsCache.get(cat);
-      if (hit && Date.now() - hit.at < PUBLIC_NEWS_TTL_MS) return ok(hit.data);
+      const key = `fh:news?category=${cat}`;
+      const cached = await cacheGet(key, PUBLIC_NEWS_TTL_MS);
+      if (cached) return ok(cached, 200, CACHE_HIT);
 
       const adminKeys = await getAdminKeys();
       if (!adminKeys.finnhub) return err("fh_key_required", 400);
       const res = await fetch(`${FINNHUB_BASE}/news?category=${cat}&token=${adminKeys.finnhub}`);
       if (!res.ok) {
         // 만료된 캐시라도 있으면 빈 화면 대신 그것을 보여준다(체감 안정성)
-        if (hit) return ok(hit.data);
+        const stale = await cacheGetStale(key);
+        if (stale) return ok(stale, 200, CACHE_HIT);
         return ok({ error: "finnhub_error", status: res.status });
       }
       const data = await res.json();
-      publicNewsCache.set(cat, { at: Date.now(), data });
-      return ok(data);
+      await cacheSet(key, data);
+      return ok(data, 200, CACHE_MISS);
     }
 
     // Finnhub 프록시(개인/기업 통합): 모든 사용자가 관리자 공용 키를 사용.
@@ -410,10 +469,30 @@ serve(async (req: Request) => {
       const basePath = path.split("?")[0].replace(/^\/+/, "");
       if (!allowedPaths.some((p) => basePath.startsWith(p))) return err("path_not_allowed");
 
+      // 시세·레이팅 등은 사용자와 무관하게 심볼만 같으면 동일한 응답이므로 서버에서 캐시한다.
+      // 같은 종목을 N명이 보든 외부 호출은 TTL당 1회 → Finnhub 분당 60회 한도를 사용자 수와 분리.
+      const ttl = SHARED_FH_TTL_MS[Object.keys(SHARED_FH_TTL_MS).find((p) => basePath.startsWith(p)) ?? ""];
+      // 파라미터 순서가 달라도 같은 키가 되도록 정렬(캐시 파편화 방지)
+      const cacheKey = ttl
+        ? `fh:${basePath}?${[...new URLSearchParams({ ...params }).entries()].sort()
+            .map(([k, v]) => `${k}=${v}`).join("&")}`
+        : "";
+      if (ttl) {
+        const cached = await cacheGet(cacheKey, ttl);
+        if (cached) return ok(cached, 200, CACHE_HIT);
+      }
+
       const qs = new URLSearchParams({ ...params, token: fhKey });
       const res = await fetch(`${FINNHUB_BASE}/${basePath}?${qs}`);
-      if (!res.ok) return ok({ error: "finnhub_error", status: res.status });
-      return ok(await res.json());
+      if (!res.ok) {
+        // 한도 초과(429) 등으로 실패해도 만료된 캐시가 있으면 그것으로 응답(화면 공백 방지)
+        const stale = ttl ? await cacheGetStale(cacheKey) : null;
+        if (stale) return ok(stale, 200, CACHE_HIT);
+        return ok({ error: "finnhub_error", status: res.status });
+      }
+      const data = await res.json();
+      if (ttl) await cacheSet(cacheKey, data);
+      return ok(data, 200, ttl ? CACHE_MISS : {});
     }
 
     // ── DART API proxy ────────────────────────────────────
