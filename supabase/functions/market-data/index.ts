@@ -625,6 +625,168 @@ serve(async (req: Request) => {
       return ok({ ok: true, date: built.date, universe: built.universe });
     }
 
+    // ══ 미국 내부자 거래(SEC Form 4) ═══════════════════════════════
+    // Form 4는 거래 후 2영업일 내 신고 → 거의 실시간. "CEO가 자기 주식을 판다"가 핵심 신호.
+    // SEC 요건: User-Agent 필수, 10 req/s 제한 → 캐시(TTL 10분)와 동시성 제한 필수.
+    // 13F(분기·45일 지연)와 달리 즉시성이 있어 Phase 2로 먼저 구현.
+
+    const SEC_UA = { "User-Agent": "RichHub/1.0 (jinhoo9915@gmail.com)" };
+    // 거래코드: P=시장매수, S=매도가 핵심. A(RSU 무상취득)·M(옵션행사)·F(세금대납 매도)는
+    // 보상 절차라 신호 가치가 낮아 기본 노출에서 제외한다(클라에서 필요 시 표시).
+    const SEC_CODE_LABEL: Record<string, string> = {
+      P: "매수", S: "매도", M: "옵션행사", A: "무상취득", F: "세금납부 매도", G: "증여",
+    };
+
+    const secText = (tag: string, s: string) => {
+      const m = s.match(new RegExp(`<${tag}>([\\s\\S]*?)</${tag}>`));
+      return m ? m[1].trim() : "";
+    };
+    // Form 4의 수치 필드는 <transactionShares><value>123</value></transactionShares> 구조.
+    // 반드시 해당 태그 "블록 안"에서만 <value>를 찾아야 한다. 태그 경계를 넘어 검색하면
+    // <value>가 없는 필드(transactionCode 등)가 뒤쪽 다른 필드의 <value>를 잡아채
+    // 거래코드가 수량 숫자로 뒤바뀐다(실측으로 드러난 버그).
+    const secValue = (tag: string, s: string) => {
+      const block = secText(tag, s);
+      if (!block) return "";
+      const m = block.match(/<value>([\s\S]*?)<\/value>/);
+      return m ? m[1].trim() : block.replace(/<[^>]+>/g, "").trim();
+    };
+
+    const parseForm4 = (xml: string) => {
+      const symbol = secText("issuerTradingSymbol", xml);
+      const issuer = secText("issuerName", xml);
+      const owner = secText("rptOwnerName", xml);
+      const rel = secText("reportingOwnerRelationship", xml);
+      const title = rel ? secText("officerTitle", rel) : "";
+      const isDirector = /<isDirector>\s*(1|true)\s*<\/isDirector>/.test(rel);
+      const isTenPct = /<isTenPercentOwner>\s*(1|true)\s*<\/isTenPercentOwner>/.test(rel);
+      const role = title || (isDirector ? "이사" : isTenPct ? "10% 주주" : "");
+      // CEO/CFO 등 최고경영진 여부 — 신호 강도가 다르므로 별도 플래그
+      const isTopExec = /chief exec|CEO|president|chief financial|CFO/i.test(title);
+
+      const txs = [...xml.matchAll(/<nonDerivativeTransaction>([\s\S]*?)<\/nonDerivativeTransaction>/g)]
+        .map((m) => {
+          const t = m[1];
+          const code = secValue("transactionCode", t) || secText("transactionCode", t);
+          const shares = Number(secValue("transactionShares", t)) || 0;
+          const price = Number(secValue("transactionPricePerShare", t)) || 0;
+          return {
+            code,
+            label: SEC_CODE_LABEL[code] || code,
+            date: secValue("transactionDate", t),
+            shares,
+            price,
+            amount: Math.round(shares * price),
+            sharesAfter: Number(secValue("sharesOwnedFollowingTransaction", t)) || 0,
+          };
+        })
+        .filter((t) => t.shares > 0);
+
+      return { symbol, issuer, owner, role, isTopExec, txs };
+    };
+
+    // 여러 Form 4 문서를 병렬(제한)로 가져와 파싱 → 거래 단위로 평탄화
+    const form4Stats = { fetched: 0, httpFail: 0, noTx: 0, parsed: 0 };
+    const fetchForm4Docs = async (hits: any[]) => {
+      const out: any[] = [];
+      const CONC = 4;                                  // SEC 10 req/s 제한 준수(여유 있게)
+      for (let i = 0; i < hits.length; i += CONC) {
+        const chunk = hits.slice(i, i + CONC);
+        const got = await Promise.all(chunk.map(async (h: any) => {
+          try {
+            const [acc, doc] = String(h._id).split(":");
+            // 주의: ciks[0]이 항상 발행사는 아니다(보고자일 수도). 문서 경로는 어느 CIK로도
+            // 접근 가능하므로 첫 CIK를 쓰되, 실패 시 나머지 CIK로 재시도한다.
+            const ciks: string[] = (h._source?.ciks || []).map((c: string) => String(c).replace(/^0+/, ""));
+            let xml = "";
+            for (const cik of ciks) {
+              const url = `https://www.sec.gov/Archives/edgar/data/${cik}/${acc.replace(/-/g, "")}/${doc}`;
+              const r = await fetch(url, { headers: SEC_UA });
+              if (r.ok) { xml = await r.text(); form4Stats.fetched++; break; }
+              form4Stats.httpFail++;
+            }
+            if (!xml) return null;
+            const parsed = parseForm4(xml);
+            if (!parsed.symbol || !parsed.txs.length) { form4Stats.noTx++; return null; }
+            form4Stats.parsed++;
+            return { ...parsed, filedAt: h._source?.file_date || "", url: "" };
+          } catch { return null; }
+        }));
+        out.push(...got.filter(Boolean));
+        await new Promise((r) => setTimeout(r, 120));   // SEC 예의(초당 요청 억제)
+      }
+      // 거래 1건 = 카드 1장. 매수(P)/매도(S)만 노출(보상성 거래 제외).
+      const rows: any[] = [];
+      for (const f of out) {
+        for (const t of f.txs) {
+          if (t.code !== "P" && t.code !== "S") continue;
+          rows.push({
+            symbol: f.symbol, issuer: f.issuer, owner: f.owner, role: f.role,
+            isTopExec: f.isTopExec, filedAt: f.filedAt, url: f.url,
+            code: t.code, label: t.label, date: t.date,
+            shares: t.shares, price: t.price, amount: t.amount, sharesAfter: t.sharesAfter,
+          });
+        }
+      }
+      return rows.sort((a, b) => b.amount - a.amount);
+    };
+
+    // 최신 내부자 거래 피드 — 비회원 공개(캐시된 공통 데이터)
+    if (action === "sec-insider-latest") {
+      const key = "sec:insider:latest:v2";
+      const cached = await cacheGet(key, 10 * 60_000) as any;
+      // 빈 결과는 캐시하지 않지만, 혹시 남아 있어도 재조회하도록 방어(빈 화면 고착 방지)
+      if (cached?.rows?.length) return ok(cached, 200, CACHE_HIT);
+      try {
+        const r = await fetch("https://efts.sec.gov/LATEST/search-index?forms=4&from=0&size=60", { headers: SEC_UA });
+        if (!r.ok) throw new Error(`efts_${r.status}`);
+        const hits = (await r.json())?.hits?.hits ?? [];
+        const rows = await fetchForm4Docs(hits.slice(0, 40));
+        const data = { builtAt: new Date().toISOString(), rows, stats: form4Stats };
+        if (rows.length) await cacheSet(key, data);   // 빈 결과 캐시 금지
+        return ok(data, 200, CACHE_MISS);
+      } catch (_e) {
+        const stale = await cacheGetStale(key);
+        if (stale) return ok(stale, 200, CACHE_HIT);
+        return err("sec_unavailable", 502);
+      }
+    }
+
+    // 종목별 내부자 거래(티커) — 내 보유·관심 종목 확인용
+    if (action === "sec-insider-stock") {
+      const ticker = String(body.ticker || "").toUpperCase();
+      if (!/^[A-Z.\-]{1,10}$/.test(ticker)) return err("ticker_required");
+      const key = `sec:insider:${ticker}`;
+      const cached = await cacheGet(key, 30 * 60_000);
+      if (cached) return ok(cached, 200, CACHE_HIT);
+      try {
+        // 티커 → CIK (SEC 공식 매핑, 7일 캐시)
+        let map = await cacheGet("sec:tickers", 7 * 24 * 3600_000) as any;
+        if (!map) {
+          const tr = await fetch("https://www.sec.gov/files/company_tickers.json", { headers: SEC_UA });
+          if (!tr.ok) throw new Error("tickers_fetch");
+          const raw = await tr.json();
+          map = {};
+          for (const k of Object.keys(raw)) map[raw[k].ticker] = String(raw[k].cik_str).padStart(10, "0");
+          await cacheSet("sec:tickers", map);
+        }
+        const cik = map[ticker];
+        if (!cik) return err("ticker_not_found", 404);
+        const r = await fetch(
+          `https://efts.sec.gov/LATEST/search-index?forms=4&ciks=${cik}&from=0&size=20`, { headers: SEC_UA });
+        if (!r.ok) throw new Error(`efts_${r.status}`);
+        const hits = (await r.json())?.hits?.hits ?? [];
+        const rows = await fetchForm4Docs(hits);
+        const data = { ticker, builtAt: new Date().toISOString(), rows };
+        await cacheSet(key, data);
+        return ok(data, 200, CACHE_MISS);
+      } catch (_e) {
+        const stale = await cacheGetStale(key);
+        if (stale) return ok(stale, 200, CACHE_HIT);
+        return err("sec_unavailable", 502);
+      }
+    }
+
     // ── DART API proxy ────────────────────────────────────
 
     const callDart = async (endpoint: string, params: Record<string, string>) => {

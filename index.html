@@ -531,6 +531,25 @@ button:focus-visible,a:focus-visible,[role="button"]:focus-visible,select:focus-
 .flow-warn{background:var(--color-warning-bg);color:var(--color-warning-text);border-radius:8px;padding:7px 10px;margin-bottom:8px;font-size:var(--text-sm)}
 .flow-mine-box .flow-row{grid-template-columns:1fr 150px 150px}
 @media(max-width:640px){.flow-head,.flow-row{grid-template-columns:1fr 110px}.flow-price{display:none}.flow-head span:nth-child(2){display:none}.flow-mine-box .flow-row{grid-template-columns:1fr 1fr}}
+/* ── 미국 내부자 거래 카드 ── */
+.ins-card{background:var(--color-bg-surface);border:1px solid var(--color-border-default);border-left:3px solid var(--color-border-default);border-radius:var(--radius-md);padding:10px 13px;margin-bottom:8px}
+.ins-card.sell{border-left-color:var(--color-info)}
+.ins-card.buy{border-left-color:var(--color-error-text)}
+.ins-top{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:3px}
+.ins-sym{font-weight:700;font-family:monospace;font-size:var(--text-md)}
+.ins-badge{font-size:var(--text-xs);font-weight:700;padding:1px 7px;border-radius:20px}
+.ins-badge.sell{background:var(--color-trade-long-bg);color:var(--color-info)}
+.ins-badge.buy{background:var(--color-error-bg);color:var(--color-error-text)}
+.ins-exec{font-size:var(--text-xs);font-weight:700;padding:1px 7px;border-radius:20px;background:var(--color-warning-bg);color:var(--color-warning-text)}
+.ins-mine{font-size:var(--text-xs);font-weight:700;padding:1px 7px;border-radius:20px;background:var(--color-accent-bg);color:var(--color-accent-primary)}
+.ins-date{margin-left:auto;font-size:var(--text-xs);color:var(--color-text-tertiary)}
+.ins-who{font-size:var(--text-base);color:var(--color-text-primary)}
+.ins-role{color:var(--color-text-tertiary);font-size:var(--text-sm)}
+.ins-nums{display:flex;gap:12px;align-items:baseline;margin-top:5px;font-size:var(--text-base);flex-wrap:wrap}
+.ins-amt{font-weight:700;font-variant-numeric:tabular-nums}
+.ins-amt.sell{color:var(--color-info)}
+.ins-amt.buy{color:var(--color-error-text)}
+.ins-foot{margin-top:4px;font-size:var(--text-xs);color:var(--color-text-tertiary)}
 /* ── 비회원 가입 유도 배너 ── */
 .guest-cta{max-width:960px;width:calc(100% - 24px);margin:12px auto 0;padding:12px 16px;border-radius:var(--rh-radius-md);display:flex;align-items:center;gap:12px;background:var(--color-accent-bg);border:1px solid var(--color-accent-primary);font-size:var(--text-md);line-height:1.5}
 .guest-cta.hidden{display:none}
@@ -1268,27 +1287,62 @@ function toggleTheme(){
      PAGE: 수급 (기관·외국인 순매수) — 비회원 공개
 ═══════════════════════════════════════════ -->
 <div id="page-flow" class="page">
-  <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:.875rem">
-    <div>
-      <div style="font-size:var(--text-lg);font-weight:700">💰 기관·외국인 수급</div>
-      <div style="font-size:var(--text-sm);color:var(--color-text-tertiary)" id="flow-meta">불러오는 중…</div>
+  <div class="inner-tab-bar">
+    <button class="itab on" onclick="swInner('krflow','flow',this)">🇰🇷 국내 수급</button>
+    <button class="itab"    onclick="swInner('usinsider','flow',this)">🇺🇸 미국 내부자</button>
+  </div>
+
+  <!-- ── 국내 수급 ── -->
+  <div id="ip-flow-krflow" class="ipanel on">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:.875rem">
+      <div>
+        <div style="font-size:var(--text-lg);font-weight:700">💰 기관·외국인 수급</div>
+        <div style="font-size:var(--text-sm);color:var(--color-text-tertiary)" id="flow-meta">불러오는 중…</div>
+      </div>
+      <button class="btn" onclick="loadFlowRank(true)">↻ 갱신</button>
     </div>
-    <button class="btn" onclick="loadFlowRank(true)">↻ 갱신</button>
+
+    <!-- 내 보유 종목 수급 (로그인 + 보유종목 있을 때만) -->
+    <div id="flow-mine" style="display:none;margin-bottom:1rem"></div>
+
+    <!-- 투자자 / 방향 필터 -->
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">
+      <button class="fbtn on" id="flow-inv-organ"   onclick="setFlowInvestor('organ',this)">🏛️ 기관</button>
+      <button class="fbtn"    id="flow-inv-foreign" onclick="setFlowInvestor('foreign',this)">🌏 외국인</button>
+      <span style="width:10px"></span>
+      <button class="fbtn on" id="flow-dir-buy"  onclick="setFlowDir('buy',this)">순매수 TOP</button>
+      <button class="fbtn"    id="flow-dir-sell" onclick="setFlowDir('sell',this)">순매도 TOP</button>
+    </div>
+
+    <div id="flow-list"></div>
   </div>
 
-  <!-- 내 보유 종목 수급 (로그인 + 보유종목 있을 때만) -->
-  <div id="flow-mine" style="display:none;margin-bottom:1rem"></div>
+  <!-- ── 미국 내부자(Form 4) ── -->
+  <div id="ip-flow-usinsider" class="ipanel">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:.875rem">
+      <div>
+        <div style="font-size:var(--text-lg);font-weight:700">🇺🇸 내부자 거래 (SEC Form 4)</div>
+        <div style="font-size:var(--text-sm);color:var(--color-text-tertiary)" id="ins-meta">불러오는 중…</div>
+      </div>
+      <button class="btn" onclick="loadInsider(true)">↻ 갱신</button>
+    </div>
 
-  <!-- 투자자 / 방향 필터 -->
-  <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">
-    <button class="fbtn on" id="flow-inv-organ"   onclick="setFlowInvestor('organ',this)">🏛️ 기관</button>
-    <button class="fbtn"    id="flow-inv-foreign" onclick="setFlowInvestor('foreign',this)">🌏 외국인</button>
-    <span style="width:10px"></span>
-    <button class="fbtn on" id="flow-dir-buy"  onclick="setFlowDir('buy',this)">순매수 TOP</button>
-    <button class="fbtn"    id="flow-dir-sell" onclick="setFlowDir('sell',this)">순매도 TOP</button>
+    <div class="info-box" style="margin-bottom:10px">
+      내부자(임원·이사·10% 주주)는 <b>거래 후 2영업일 내 SEC 신고 의무</b>가 있어 거의 실시간입니다.
+      RSU 무상취득·세금 대납 매도 같은 보상 절차는 제외하고, <b>본인 판단에 의한 시장 매수(P)·매도(S)</b>만 표시합니다.
+    </div>
+
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">
+      <button class="fbtn on" id="ins-dir-all"  onclick="setInsDir('all',this)">전체</button>
+      <button class="fbtn"    id="ins-dir-sell" onclick="setInsDir('S',this)">📉 매도</button>
+      <button class="fbtn"    id="ins-dir-buy"  onclick="setInsDir('P',this)">📈 매수</button>
+      <span style="width:10px"></span>
+      <button class="fbtn" id="ins-exec" onclick="toggleInsExec(this)">👔 CEO·CFO만</button>
+      <button class="fbtn" id="ins-mine" onclick="toggleInsMine(this)">⭐ 내 종목만</button>
+    </div>
+
+    <div id="ins-list"></div>
   </div>
-
-  <div id="flow-list"></div>
 </div>
 
 <div id="page-indices" class="page">
@@ -3574,6 +3628,65 @@ function renderFlowMine(){
   </div>`;
 }
 
+// ── 미국 내부자 거래(SEC Form 4) ────────────────────────────────
+// 서버가 최신 Form 4를 파싱해 "본인 판단에 의한 매수(P)/매도(S)"만 추려 캐시(10분).
+// RSU 무상취득(A)·세금 대납 매도(F)·옵션행사(M)는 보상 절차라 신호 가치가 낮아 제외.
+let _insData=null,_insDir='all',_insExecOnly=false,_insMineOnly=false;
+function setInsDir(v,btn){_insDir=v;['ins-dir-all','ins-dir-sell','ins-dir-buy'].forEach(i=>document.getElementById(i).classList.remove('on'));btn.classList.add('on');renderInsider();}
+function toggleInsExec(btn){_insExecOnly=!_insExecOnly;btn.classList.toggle('on',_insExecOnly);renderInsider();}
+function toggleInsMine(btn){
+  if(!_currentUser){openAuthModal();return;}
+  _insMineOnly=!_insMineOnly;btn.classList.toggle('on',_insMineOnly);renderInsider();
+}
+
+async function loadInsider(force){
+  const list=document.getElementById('ins-list');if(!list)return;
+  if(_insData&&!force){renderInsider();return;}
+  list.innerHTML=_skCards(5);
+  document.getElementById('ins-meta').textContent='불러오는 중…';
+  try{
+    const r=await fetch(DART_PROXY_URL,{method:'POST',headers:_apiHeaders(),body:JSON.stringify({action:'sec-insider-latest'})});
+    const d=await r.json();
+    if(!r.ok||d.error)throw new Error(d.error||('http_'+r.status));
+    _insData=d.rows||[];
+    document.getElementById('ins-meta').textContent=`최근 신고 ${_insData.length}건 · 금액순 · SEC 원문 연결`;
+    renderInsider();
+  }catch(e){
+    list.innerHTML=_errBox('내부자 거래를 불러오지 못했어요.','loadInsider(true)');
+    document.getElementById('ins-meta').textContent='—';
+  }
+}
+
+function renderInsider(){
+  const list=document.getElementById('ins-list');if(!list||!_insData)return;
+  const myTickers=new Set(stocks.map(s=>String(s.ticker||'').toUpperCase()).filter(t=>/^[A-Z.\-]{1,10}$/.test(t)));
+  let rows=_insData;
+  if(_insDir!=='all')rows=rows.filter(x=>x.code===_insDir);
+  if(_insExecOnly)rows=rows.filter(x=>x.isTopExec);
+  if(_insMineOnly)rows=rows.filter(x=>myTickers.has(x.symbol));
+  if(!rows.length){list.innerHTML=_emptyState('🔍','조건에 맞는 내부자 거래가 없어요.');return;}
+  list.innerHTML=rows.map(x=>{
+    const sell=x.code==='S';
+    const mine=myTickers.has(x.symbol);
+    return `<div class="ins-card ${sell?'sell':'buy'}">
+      <div class="ins-top">
+        <span class="ins-sym">${escapeHtml(x.symbol)}</span>
+        ${mine?'<span class="ins-mine">내 종목</span>':''}
+        ${x.isTopExec?'<span class="ins-exec">경영진</span>':''}
+        <span class="ins-badge ${sell?'sell':'buy'}">${sell?'📉 매도':'📈 매수'}</span>
+        <span class="ins-date">${escapeHtml(x.date||x.filedAt||'')}</span>
+      </div>
+      <div class="ins-who">${escapeHtml(x.owner)}${x.role?` · <span class="ins-role">${escapeHtml(x.role)}</span>`:''}</div>
+      <div class="ins-nums">
+        <span><b>${x.shares.toLocaleString()}</b>주</span>
+        <span>@ $${x.price.toLocaleString(undefined,{maximumFractionDigits:2})}</span>
+        <span class="ins-amt ${sell?'sell':'buy'}">$${x.amount.toLocaleString()}</span>
+      </div>
+      <div class="ins-foot">${escapeHtml(x.issuer)} · 거래 후 보유 ${x.sharesAfter.toLocaleString()}주</div>
+    </div>`;
+  }).join('');
+}
+
 // ═══════════════════════════════════════════════════════════════
 // 뉴스 페이지 (News) - 모든 기능
 // ═══════════════════════════════════════════════════════════════
@@ -5374,6 +5487,7 @@ function swInner(panel,page,btn){
   document.getElementById(prefix+panel).classList.add('on');
   btn.classList.add('on');
   localStorage.setItem('cur_itab_'+page,panel);
+  if(page==='flow'&&panel==='usinsider')loadInsider();   // 첫 진입 시 로드(이후 캐시)
 }
 // ═══════════════════════════════════════════════════════════════
 // 지수·환율 페이지
