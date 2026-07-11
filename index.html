@@ -514,6 +514,17 @@ button:focus-visible,a:focus-visible,[role="button"]:focus-visible,select:focus-
 .svc-banner-msg{color:var(--color-text-secondary);white-space:pre-wrap;word-break:break-word}
 .svc-banner-x{flex-shrink:0;background:none;border:none;cursor:pointer;color:var(--color-text-tertiary);font-size:16px;padding:2px 5px;line-height:1;font-family:inherit;border-radius:4px}
 .svc-banner-x:hover{color:var(--color-text-primary);background:var(--color-bg-subtle)}
+/* ── 홈: 오늘의 수급 요약 바(전체폭) ── */
+.flow-bar{margin-bottom:1rem;border:1px solid var(--color-border-default);border-radius:var(--radius-lg);overflow:hidden;background:var(--color-bg-surface)}
+.flow-bar-main{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:10px 14px;cursor:pointer}
+.flow-bar-main:hover{background:var(--color-bg-subtle)}
+.flow-bar-tag{font-weight:700;font-size:var(--text-sm);flex-shrink:0}
+.flow-bar-item{font-size:var(--text-sm);color:var(--color-text-secondary);white-space:nowrap}
+.flow-bar-item .up{color:var(--color-error-text);font-variant-numeric:tabular-nums}
+.flow-bar-more{margin-left:auto;font-size:var(--text-sm);color:var(--color-accent-primary);flex-shrink:0}
+.flow-bar-warn{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:9px 14px;
+  background:var(--color-warning-bg);color:var(--color-warning-text);font-size:var(--text-sm);border-top:1px solid var(--color-border-default)}
+.flow-bar-warn button{margin-left:auto;flex-shrink:0}
 /* ── 수급 페이지(기관·외국인 순매수) ── */
 .flow-head{display:grid;grid-template-columns:1fr auto 140px;gap:10px;padding:6px 12px;font-size:var(--text-sm);color:var(--color-text-tertiary);border-bottom:1px solid var(--color-border-default)}
 .flow-head span:last-child,.flow-head span:nth-child(2){text-align:right}
@@ -1204,6 +1215,9 @@ function toggleTheme(){
       </div>
     </div>
   </div>
+
+  <!-- 홈 상단 전체폭: 오늘의 수급 요약 바 (renderFlowBar가 채움) -->
+  <div id="flow-bar" class="flow-bar" style="display:none"></div>
 
   <!-- 홈 상단: 경쟁사 브리핑 + 기술 신호 스캐너 (좌/우 2열 · JS는 각 div를 ID로 채움) -->
   <div class="home-top-grid">
@@ -2415,6 +2429,9 @@ function _clearLocalUserData(){
   try{renderStocks();renderMemos();updateCashDisplay();}catch(e){}
   try{if(document.getElementById('monitor-cards'))renderMonitorCompanies();}catch(e){}
   try{_applyMonitorKeyBanner();}catch(e){}
+  // 계정 격리: 이전 계정의 수급 경고가 남지 않게 초기화
+  _myFlow=null;_flowBarLoaded=false;
+  const _fb=document.getElementById('flow-bar');if(_fb){_fb.style.display='none';_fb.innerHTML='';}
   const _d=document.getElementById('pn-ai-dot');if(_d)_d.style.display='none';
 }
 
@@ -2757,7 +2774,8 @@ const TAG={
   general:{bg:'var(--color-info-bg)',c:'var(--color-info)',l:'메모'},
   buy:{bg:'var(--color-success-bg)',c:'var(--color-success-text)',l:'매수'},
   sell:{bg:'var(--color-error-bg)',c:'var(--color-error-text)',l:'매도'},
-  monitor:{bg:'var(--color-warning-bg)',c:'var(--color-warning-text)',l:'기업모니터'}
+  monitor:{bg:'var(--color-warning-bg)',c:'var(--color-warning-text)',l:'기업모니터'},
+  flow:{bg:'var(--color-accent-bg)',c:'var(--color-accent-primary)',l:'수급'}
 };
 
 // ─ 로컬스토리지에서 데이터 로드
@@ -3001,6 +3019,16 @@ function renderStocks(){
   _syncToCloud();
   try{renderCompetitorBrief();}catch(e){}
   try{renderTechCard();}catch(e){}
+  try{_flowBarOnce();}catch(e){}       // 홈 수급 요약 바(세션당 1회 로드)
+}
+
+// renderStocks가 자주 재호출되므로 수급 바는 세션당 1회만 네트워크 조회
+let _flowBarLoaded=false;
+function _flowBarOnce(){
+  if(_flowBarLoaded)return;
+  if(!_currentUser)return;             // 내 종목 경고가 핵심이라 로그인 시에만
+  _flowBarLoaded=true;
+  renderFlowBar().catch(()=>{});
 }
 
 function _syncCurToggle(){
@@ -3667,6 +3695,140 @@ function renderFlowMine(){
       <div class="flow-qty ${x.foreign>=0?'up':'down'}">외국인 ${x.foreign>=0?'+':''}${x.foreign.toLocaleString()}</div>
     </div>`).join('')}
   </div>`;
+}
+
+// ── 홈: 오늘의 수급 요약 바 + 내 종목 기관 연속 순매도 경고 ──────
+// 랭킹은 시총 상위 300종목만 커버하므로, 내 보유 종목이 랭킹 밖이면
+// flow-kr-stock으로 개별 조회해 보완한다(보유 종목은 보통 10개 안팎).
+let _myFlow=null;                       // [{code,name,organ,foreign,organStreak,...}]
+const _flowWarnDays=2;                  // 기관 N일 연속 순매도부터 경고
+
+async function loadMyFlow(){
+  if(!_currentUser)return null;
+  const codes=[...new Set(stocks
+    .filter(s=>!s.hidden&&['hold','buy'].includes(s.status))
+    .map(s=>String(s.ticker||''))
+    .filter(t=>/^\d{6}$/.test(t)))].slice(0,15);
+  if(!codes.length){_myFlow=[];return _myFlow;}
+
+  if(!_flowData){try{
+    const r=await fetch(DART_PROXY_URL,{method:'POST',headers:_apiHeaders(),body:JSON.stringify({action:'flow-kr-rank'})});
+    const d=await r.json();
+    if(r.ok&&!d.error)_flowData=d;
+  }catch(e){}}
+
+  // 1) 랭킹에 있는 종목은 그대로 사용
+  const inRank=new Map();
+  if(_flowData){
+    for(const x of [..._flowData.organBuy,..._flowData.organSell,..._flowData.foreignBuy,..._flowData.foreignSell]){
+      if(codes.includes(x.code))inRank.set(x.code,x);
+    }
+  }
+  // 2) 랭킹 밖 종목만 개별 조회(서버 캐시 1시간)
+  const missing=codes.filter(c=>!inRank.has(c));
+  const fetched=await Promise.all(missing.map(async code=>{
+    try{
+      const r=await fetch(DART_PROXY_URL,{method:'POST',headers:_apiHeaders(),
+        body:JSON.stringify({action:'flow-kr-stock',code})});
+      const rows=await r.json();
+      if(!Array.isArray(rows)||!rows.length)return null;
+      const latest=rows[0];
+      const streak=pick=>{
+        const sign=Math.sign(pick(rows[0]));
+        if(!sign)return 0;
+        let n=0;for(const f of rows){if(Math.sign(pick(f))===sign)n++;else break;}
+        return sign*n;
+      };
+      const name=(stocks.find(s=>String(s.ticker)===code)||{}).name||code;
+      return {code,name,date:latest.date,close:latest.close,changeRate:Number((latest.changeRate||0).toFixed(2)),
+        organ:latest.organ,foreign:latest.foreign,
+        organStreak:streak(f=>f.organ),foreignStreak:streak(f=>f.foreign)};
+    }catch(e){return null;}
+  }));
+  _myFlow=[...inRank.values(),...fetched.filter(Boolean)];
+  return _myFlow;
+}
+
+// 홈 요약 바 렌더 + 알림 트리거
+async function renderFlowBar(){
+  const host=document.getElementById('flow-bar');if(!host)return;
+  if(!_flowData){
+    try{
+      const r=await fetch(DART_PROXY_URL,{method:'POST',headers:_apiHeaders(),body:JSON.stringify({action:'flow-kr-rank'})});
+      const d=await r.json();
+      if(!r.ok||d.error)throw new Error('rank');
+      _flowData=d;
+    }catch(e){host.style.display='none';return;}
+  }
+  await loadMyFlow();
+
+  const org1=(_flowData.organBuy||[])[0];
+  const frn1=(_flowData.foreignBuy||[])[0];
+  const warn=(_myFlow||[]).filter(x=>x.organStreak<=-_flowWarnDays);
+  const dt=String(_flowData.date||'');
+  const dstr=`${dt.slice(4,6)}/${dt.slice(6,8)}`;
+
+  host.style.display='';
+  host.innerHTML=`
+    <div class="flow-bar-main" onclick="goPage('flow')" role="button" tabindex="0" title="수급 페이지로 이동">
+      <span class="flow-bar-tag">💰 ${dstr} 수급</span>
+      ${org1?`<span class="flow-bar-item">기관 순매수 <b>${escapeHtml(org1.name)}</b> <span class="up">+${org1.organ.toLocaleString()}</span></span>`:''}
+      ${frn1?`<span class="flow-bar-item">외국인 순매수 <b>${escapeHtml(frn1.name)}</b> <span class="up">+${frn1.foreign.toLocaleString()}</span></span>`:''}
+      <span class="flow-bar-more">자세히 →</span>
+    </div>
+    ${warn.length?`
+    <div class="flow-bar-warn">
+      <span>⚠️ 내 종목 중 <b>${warn.map(x=>escapeHtml(x.name)).join(', ')}</b> — 기관이 ${warn.map(x=>Math.abs(x.organStreak)).join('·')}일 연속 순매도 중입니다.</span>
+      <button class="btn" onclick="flowWarnToJournal()">📝 일지로</button>
+    </div>`:''}`;
+
+  _fireFlowAlerts(warn);
+}
+
+// 브라우저 알림: 같은 종목은 하루 1회만(수급은 일 단위 확정 데이터라 이걸로 충분)
+async function _fireFlowAlerts(warn){
+  if(!warn.length)return;
+  if(!('Notification' in window))return;
+  // 경고가 실제로 있을 때만 권한을 묻는다(빈손으로 권한 팝업을 띄우지 않음)
+  if(Notification.permission==='default')await Notification.requestPermission();
+  if(Notification.permission!=='granted')return;
+  const today=getKSTNow().dateStr;
+  let sent={};
+  try{sent=JSON.parse(localStorage.getItem('flow_alerted')||'{}');}catch(e){}
+  if(sent.date!==today)sent={date:today,codes:[]};
+  const fresh=warn.filter(x=>!sent.codes.includes(x.code));
+  if(!fresh.length)return;
+  for(const x of fresh){
+    new Notification(`${x.name} · 🟠 수급 경고`,{
+      body:`기관이 ${Math.abs(x.organStreak)}일 연속 순매도 중입니다 (어제 ${x.organ.toLocaleString()}주)`
+    });
+    sent.codes.push(x.code);
+  }
+  try{localStorage.setItem('flow_alerted',JSON.stringify(sent));}catch(e){}
+}
+
+// 일지 초안: 캘린더 오늘 날짜에 수급 이벤트 기록(사용자가 확인 후 저장하는 초안이 아니라
+// 바로 아카이브에 남기되, 태그 '수급'으로 구분해 나중에 필터링 가능)
+function flowWarnToJournal(){
+  const warn=(_myFlow||[]).filter(x=>x.organStreak<=-_flowWarnDays);
+  if(!warn.length)return;
+  const now=new Date().toISOString();
+  for(const x of warn){
+    const text=`[수급] ${x.name}(${x.code}) — 기관 ${Math.abs(x.organStreak)}일 연속 순매도 (전일 ${x.organ.toLocaleString()}주, 외국인 ${x.foreign>=0?'+':''}${x.foreign.toLocaleString()}주)`;
+    // 같은 날 같은 종목 중복 기록 방지
+    const dup=memoArchive.some(m=>m.tag==='flow'&&m.source?.code===x.code&&String(m.completedAt||m.time).slice(0,10)===now.slice(0,10));
+    if(dup)continue;
+    memoArchive.unshift({
+      id:Date.now()+Math.floor(Math.random()*1000),
+      text,tag:'flow',time:now,completedAt:now,important:false,
+      source:{type:'flow',code:x.code,name:x.name,organStreak:x.organStreak}
+    });
+  }
+  localStorage.setItem('pf_ma',JSON.stringify(memoArchive));
+  _syncToCloud();
+  try{renderMemos();}catch(e){}
+  const memoBtn=[...document.querySelectorAll('.nav-tab')].find(b=>b.getAttribute('onclick')?.includes("'memo'"));
+  goPage('memo',memoBtn);
 }
 
 // ── 미국 내부자 거래(SEC Form 4) ────────────────────────────────

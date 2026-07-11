@@ -752,6 +752,46 @@ serve(async (req: Request) => {
       }
     }
 
+    // ══ KRX 공식 OpenAPI (임시 진단: 응답 필드 확인용) ══════════════
+    // 키는 서버 시크릿(KRX_KEY)에만 존재. 브라우저로 절대 내려보내지 않는다.
+    if (action === "krx-probe") {
+      const KRX_KEY = Deno.env.get("KRX_KEY") || "";
+      if (!KRX_KEY) return err("krx_key_missing", 400);
+      const basDd = String(body.basDd || "20260710");
+      const eps: Record<string, string> = {
+        주식_유가: `sto/stk_bydd_trd?basDd=${basDd}`,
+        주식_코스닥: `sto/ksq_bydd_trd?basDd=${basDd}`,
+        종목기본정보: `sto/stk_isu_base_info?basDd=${basDd}`,
+        지수_KOSPI: `idx/kospi_dd_trd?basDd=${basDd}`,
+        지수_KRX: `idx/krx_dd_trd?basDd=${basDd}`,
+        ETF: `etp/etf_bydd_trd?basDd=${basDd}`,
+        옵션: `drv/eqsop_bydd_trd?basDd=${basDd}`,
+        선물: `drv/eqsfu_bydd_trd?basDd=${basDd}`,
+      };
+      const out: Record<string, unknown> = {};
+      for (const [name, path] of Object.entries(eps)) {
+        try {
+          const r = await fetch(`https://data-dbg.krx.co.kr/svc/apis/${path}`, {
+            headers: { AUTH_KEY: KRX_KEY },
+          });
+          const txt = await r.text();
+          let j: any = null;
+          try { j = JSON.parse(txt); } catch { /* not json */ }
+          const rows = j?.OutBlock_1 || j?.OutBlock_2 || j?.output || [];
+          out[name] = {
+            status: r.status,
+            rows: Array.isArray(rows) ? rows.length : 0,
+            fields: Array.isArray(rows) && rows[0] ? Object.keys(rows[0]) : null,
+            sample: Array.isArray(rows) && rows[0] ? rows[0] : txt.slice(0, 160),
+            topKeys: j ? Object.keys(j) : null,
+          };
+        } catch (e) {
+          out[name] = { error: String(e) };
+        }
+      }
+      return ok(out);
+    }
+
     // ══ 13F — 주요 기관의 분기별 포지션 변화 ═══════════════════════
     // 13F는 분기 종료 후 45일 내 제출 → "지금 뭘 사는가"가 아니라 "지난 분기에 어떻게
     // 움직였나"를 본다. 대가들의 신규 편입·전량 매도·비중 변화가 핵심.
