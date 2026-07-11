@@ -514,6 +514,23 @@ button:focus-visible,a:focus-visible,[role="button"]:focus-visible,select:focus-
 .svc-banner-msg{color:var(--color-text-secondary);white-space:pre-wrap;word-break:break-word}
 .svc-banner-x{flex-shrink:0;background:none;border:none;cursor:pointer;color:var(--color-text-tertiary);font-size:16px;padding:2px 5px;line-height:1;font-family:inherit;border-radius:4px}
 .svc-banner-x:hover{color:var(--color-text-primary);background:var(--color-bg-subtle)}
+/* ── 수급 페이지(기관·외국인 순매수) ── */
+.flow-head{display:grid;grid-template-columns:1fr auto 140px;gap:10px;padding:6px 12px;font-size:var(--text-sm);color:var(--color-text-tertiary);border-bottom:1px solid var(--color-border-default)}
+.flow-head span:last-child,.flow-head span:nth-child(2){text-align:right}
+.flow-row{display:grid;grid-template-columns:1fr auto 140px;gap:10px;align-items:center;padding:9px 12px;border-bottom:1px solid var(--color-border-subtle,var(--color-border-default));font-size:var(--text-base)}
+.flow-row:hover{background:var(--color-bg-subtle)}
+.flow-name{display:flex;align-items:center;gap:7px;min-width:0;flex-wrap:wrap}
+.flow-code{font-family:monospace;font-size:var(--text-xs);color:var(--color-text-tertiary)}
+.flow-streak{font-size:var(--text-xs);padding:1px 6px;border-radius:20px;background:var(--color-accent-bg);color:var(--color-accent-primary);font-weight:600}
+.flow-price{text-align:right;white-space:nowrap;color:var(--color-text-secondary);font-size:var(--text-sm)}
+.flow-qty{text-align:right;font-variant-numeric:tabular-nums;font-weight:600;white-space:nowrap}
+.flow-qty.up,.flow-price .up{color:var(--color-error-text)}      /* 매수=빨강(국내 관행) */
+.flow-qty.down,.flow-price .down{color:var(--color-info)}        /* 매도=파랑 */
+.flow-mine-box{background:var(--color-bg-surface);border:1px solid var(--color-accent-primary);border-radius:var(--radius-lg);padding:12px 14px}
+.flow-mine-title{font-weight:700;margin-bottom:6px}
+.flow-warn{background:var(--color-warning-bg);color:var(--color-warning-text);border-radius:8px;padding:7px 10px;margin-bottom:8px;font-size:var(--text-sm)}
+.flow-mine-box .flow-row{grid-template-columns:1fr 150px 150px}
+@media(max-width:640px){.flow-head,.flow-row{grid-template-columns:1fr 110px}.flow-price{display:none}.flow-head span:nth-child(2){display:none}.flow-mine-box .flow-row{grid-template-columns:1fr 1fr}}
 /* ── 비회원 가입 유도 배너 ── */
 .guest-cta{max-width:960px;width:calc(100% - 24px);margin:12px auto 0;padding:12px 16px;border-radius:var(--rh-radius-md);display:flex;align-items:center;gap:12px;background:var(--color-accent-bg);border:1px solid var(--color-accent-primary);font-size:var(--text-md);line-height:1.5}
 .guest-cta.hidden{display:none}
@@ -1026,6 +1043,7 @@ body.admin-mode .admin-only{display:inline-flex!important}
     <button class="nav-tab on"  onclick="goPage('portfolio',this)">투자 종목 관리</button>
     <button class="nav-tab personal-only" onclick="goPage('indices',this)">지수·환율</button>
     <button class="nav-tab"     onclick="goPage('news',this)">뉴스</button>
+    <button class="nav-tab"     onclick="goPage('flow',this)">💰 수급</button>
     <button class="nav-tab"     onclick="goPage('research',this)">리서치·규제</button>
     <button class="nav-tab"     onclick="goPage('memo',this)">투자 일지</button>
     <button class="nav-tab admin-only" onclick="goPage('security',this)">🛡️ 보안</button>
@@ -1246,6 +1264,33 @@ function toggleTheme(){
 <!-- ══════════════════════════════════════════
      PAGE 2: 지수·환율
 ═══════════════════════════════════════════ -->
+<!-- ══════════════════════════════════════════
+     PAGE: 수급 (기관·외국인 순매수) — 비회원 공개
+═══════════════════════════════════════════ -->
+<div id="page-flow" class="page">
+  <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:.875rem">
+    <div>
+      <div style="font-size:var(--text-lg);font-weight:700">💰 기관·외국인 수급</div>
+      <div style="font-size:var(--text-sm);color:var(--color-text-tertiary)" id="flow-meta">불러오는 중…</div>
+    </div>
+    <button class="btn" onclick="loadFlowRank(true)">↻ 갱신</button>
+  </div>
+
+  <!-- 내 보유 종목 수급 (로그인 + 보유종목 있을 때만) -->
+  <div id="flow-mine" style="display:none;margin-bottom:1rem"></div>
+
+  <!-- 투자자 / 방향 필터 -->
+  <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">
+    <button class="fbtn on" id="flow-inv-organ"   onclick="setFlowInvestor('organ',this)">🏛️ 기관</button>
+    <button class="fbtn"    id="flow-inv-foreign" onclick="setFlowInvestor('foreign',this)">🌏 외국인</button>
+    <span style="width:10px"></span>
+    <button class="fbtn on" id="flow-dir-buy"  onclick="setFlowDir('buy',this)">순매수 TOP</button>
+    <button class="fbtn"    id="flow-dir-sell" onclick="setFlowDir('sell',this)">순매도 TOP</button>
+  </div>
+
+  <div id="flow-list"></div>
+</div>
+
 <div id="page-indices" class="page">
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.875rem">
     <div style="font-size:var(--text-base);color:var(--color-text-tertiary)" id="idx-upd">—</div>
@@ -3455,6 +3500,81 @@ async function fetchPrices(){
 }
 
 // ═══════════════════════════════════════════════════════════════
+// 수급 페이지 — 기관·외국인 순매수 (비회원 공개)
+// 서버가 장 마감 후 시총 상위 300종목 수급을 모아 랭킹을 캐시해 둔다.
+// 클라이언트는 캐시를 그대로 읽으므로 조회가 많아도 외부 API 호출은 0.
+// ═══════════════════════════════════════════════════════════════
+let _flowData=null,_flowInvestor='organ',_flowDir='buy';
+function setFlowInvestor(v,btn){_flowInvestor=v;['flow-inv-organ','flow-inv-foreign'].forEach(i=>document.getElementById(i).classList.remove('on'));btn.classList.add('on');renderFlowList();}
+function setFlowDir(v,btn){_flowDir=v;['flow-dir-buy','flow-dir-sell'].forEach(i=>document.getElementById(i).classList.remove('on'));btn.classList.add('on');renderFlowList();}
+
+async function loadFlowRank(force){
+  const list=document.getElementById('flow-list');if(!list)return;
+  if(_flowData&&!force){renderFlowList();renderFlowMine();return;}
+  list.innerHTML=_skCards(6);
+  document.getElementById('flow-meta').textContent='불러오는 중…';
+  try{
+    const r=await fetch(DART_PROXY_URL,{method:'POST',headers:_apiHeaders(),body:JSON.stringify({action:'flow-kr-rank'})});
+    const d=await r.json();
+    if(!r.ok||d.error)throw new Error(d.error||('http_'+r.status));
+    _flowData=d;
+    const dt=String(d.date||'');
+    document.getElementById('flow-meta').textContent=
+      `${dt.slice(0,4)}.${dt.slice(4,6)}.${dt.slice(6,8)} 기준 · 시총 상위 ${d.universe}종목 · 순매수량(주)`;
+    renderFlowList();renderFlowMine();
+  }catch(e){
+    list.innerHTML=_errBox('수급 데이터를 불러오지 못했어요.','loadFlowRank(true)');
+    document.getElementById('flow-meta').textContent='—';
+  }
+}
+
+function _flowRow(x,key){
+  const v=x[key];
+  const streak=key==='organ'?x.organStreak:x.foreignStreak;
+  const cls=v>=0?'up':'down';
+  const st=Math.abs(streak)>=2?`<span class="flow-streak">${streak>0?'연속 매수':'연속 매도'} ${Math.abs(streak)}일</span>`:'';
+  return `<div class="flow-row">
+    <div class="flow-name"><b>${escapeHtml(x.name)}</b><span class="flow-code">${x.code}</span>${st}</div>
+    <div class="flow-price">${x.close?x.close.toLocaleString()+'원':'—'}
+      <span class="${x.changeRate>=0?'up':'down'}">${x.changeRate>=0?'+':''}${x.changeRate}%</span></div>
+    <div class="flow-qty ${cls}">${v>=0?'+':''}${v.toLocaleString()}</div>
+  </div>`;
+}
+
+function renderFlowList(){
+  const list=document.getElementById('flow-list');if(!list||!_flowData)return;
+  const key=_flowInvestor;                                   // organ | foreign
+  const arr=_flowData[key+(_flowDir==='buy'?'Buy':'Sell')]||[];
+  if(!arr.length){list.innerHTML=_emptyState('📊','표시할 수급 데이터가 없어요.');return;}
+  const label=(key==='organ'?'기관':'외국인')+(_flowDir==='buy'?' 순매수':' 순매도');
+  list.innerHTML=`<div class="flow-head"><span>종목</span><span>현재가</span><span>${label}(주)</span></div>`
+    +arr.map(x=>_flowRow(x,key)).join('');
+}
+
+// 차별화: 내 보유 종목의 수급 — 남들은 못 하는 포트폴리오 연계
+function renderFlowMine(){
+  const host=document.getElementById('flow-mine');if(!host||!_flowData)return;
+  if(!_currentUser||!stocks.length){host.style.display='none';return;}
+  const codes=new Set(stocks.map(s=>String(s.ticker||'')).filter(t=>/^\d{6}$/.test(t)));
+  if(!codes.size){host.style.display='none';return;}
+  const all=[..._flowData.organBuy,..._flowData.organSell,..._flowData.foreignBuy,..._flowData.foreignSell];
+  const mine=[...new Map(all.filter(x=>codes.has(x.code)).map(x=>[x.code,x])).values()];
+  if(!mine.length){host.style.display='none';return;}
+  // 경고 우선: 기관이 2일 이상 연속 순매도 중인 내 종목
+  const warn=mine.filter(x=>x.organStreak<=-2);
+  host.style.display='';
+  host.innerHTML=`<div class="flow-mine-box">
+    <div class="flow-mine-title">📌 내 보유 종목 수급</div>
+    ${warn.length?`<div class="flow-warn">⚠️ ${warn.map(x=>`<b>${escapeHtml(x.name)}</b>`).join(', ')} — 기관이 연속 순매도 중입니다.</div>`:''}
+    ${mine.map(x=>`<div class="flow-row">
+      <div class="flow-name"><b>${escapeHtml(x.name)}</b><span class="flow-code">${x.code}</span></div>
+      <div class="flow-qty ${x.organ>=0?'up':'down'}">기관 ${x.organ>=0?'+':''}${x.organ.toLocaleString()}</div>
+      <div class="flow-qty ${x.foreign>=0?'up':'down'}">외국인 ${x.foreign>=0?'+':''}${x.foreign.toLocaleString()}</div>
+    </div>`).join('')}
+  </div>`;
+}
+
+// ═══════════════════════════════════════════════════════════════
 // 뉴스 페이지 (News) - 모든 기능
 // ═══════════════════════════════════════════════════════════════
 
@@ -5160,6 +5280,7 @@ function goPage(name,btn){
   if(name==='monitor')initMonitorPage();
   if(name==='security'){renderSecurityDashboard();renderMarketEventsAdmin();renderVocAdmin();renderAccountsAdmin();renderServiceNoticeAdmin();}
   if(name==='indices')loadAllIndices();
+  if(name==='flow')loadFlowRank();
   if(name==='news')initNewsUI();
   if(name==='memo')switchMemoView('calendar');
   if(name==='research'){
@@ -5177,6 +5298,13 @@ const HELP_CONTENT={
   monitor:{label:'📈 기업 모니터링',tips:['경쟁사(상장사) 종목코드로 등록','🛰️ 레이더: 공시를 전략 시그널로 자동 분류·조기경보','팀 메모는 투자 일지 캘린더에도 자동 표시']},
   indices:{label:'📉 지수·환율',tips:['주요 지수·환율을 한눈에','설정에서 표시 항목 선택']},
   news:{label:'📰 뉴스',tips:['시장/종목별 뉴스, 월가 레이팅, 실시간 시세','<b>시장 뉴스는 로그인 없이</b>도 볼 수 있어요','종목별 뉴스·월가 레이팅·실시간 시세는 로그인 후 이용']},
+  flow:{label:'💰 수급',tips:[
+    '기관·외국인이 <b>어제 가장 많이 사고 판 종목</b>을 순매수량 순으로 표시',
+    '시총 상위 300종목을 장 마감 후 집계 (기준일은 상단에 표시)',
+    '<b>연속 매수/매도 N일</b> 배지로 흐름의 지속성을 확인하세요',
+    '로그인하면 <b>내 보유 종목의 수급</b>과 기관 연속 순매도 경고가 함께 표시됩니다',
+    '로그인 없이도 랭킹은 볼 수 있어요'
+  ]},
   research:{label:'🔍 리서치·규제',tips:['규제기관 RSS 실시간 모니터링','키워드로 최신 규제 뉴스 검색']},
   memo:{label:'📓 투자 일지',tips:['캘린더 날짜에 일지 작성·편집','💰 가계부(수입/지출)와 ⚖️ 몸무게를 함께 기록','어닝콜·FOMC 등 주요 일정 자동 표시']},
   account:{label:'🔑 API 키 · 계정',tips:[

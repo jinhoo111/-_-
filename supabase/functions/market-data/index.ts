@@ -495,6 +495,136 @@ serve(async (req: Request) => {
       return ok(data, 200, ttl ? CACHE_MISS : {});
     }
 
+    // ══ 국내 수급(기관·외국인 순매수) ═══════════════════════════════
+    // 소스: 네이버 모바일 API. 투자자별 수급은 KRX 공식 OpenAPI에 서비스 자체가 없고
+    // (지수·시세·종목정보만 제공), KRX 웹 통계는 로그인 세션을 요구해 서비스 기반으로
+    // 쓸 수 없다(2026-07-11 실측). KIS 앱키 발급 시 getInvestorFlow만 교체하면 된다.
+    //
+    // 수급은 "일 단위 확정 데이터"라 하루 1회 배치로 랭킹을 만들어 캐시에 넣고,
+    // 사용자 조회는 캐시만 읽는다 → 조회가 아무리 많아도 외부 호출 0.
+
+    const NAVER_M = "https://m.stock.naver.com/api";
+    const naverHeaders = { "User-Agent": "Mozilla/5.0", "Referer": "https://m.stock.naver.com/" };
+    const toNum = (s: unknown) => Number(String(s ?? "").replace(/[+,%\s]/g, "")) || 0;
+
+    // 소스 추상화: 종목 1개의 최근 수급(일별). KIS 전환 시 이 함수만 교체.
+    const getInvestorFlow = async (code: string) => {
+      const r = await fetch(`${NAVER_M}/stock/${code}/trend?page=1&pageSize=5`, { headers: naverHeaders });
+      if (!r.ok) throw new Error(`naver_${r.status}`);
+      const rows = await r.json();
+      if (!Array.isArray(rows)) throw new Error("naver_bad_shape");
+      return rows.map((d: any) => ({
+        date: d.bizdate,
+        foreign: toNum(d.foreignerPureBuyQuant),      // 외국인 순매수(주)
+        organ: toNum(d.organPureBuyQuant),            // 기관 순매수(주)
+        individual: toNum(d.individualPureBuyQuant),  // 개인 순매수(주)
+        foreignHoldRatio: toNum(d.foreignerHoldRatio),
+        close: toNum(d.closePrice),
+        changeRate: toNum(d.compareToPreviousClosePrice) / (toNum(d.closePrice) || 1) * 100,
+      }));
+    };
+
+    // 랭킹 대상 유니버스: 시총 상위 N(코스피+코스닥 통합)
+    const getUniverse = async (size: number) => {
+      const out: { code: string; name: string }[] = [];
+      for (let page = 1; out.length < size && page <= 20; page++) {
+        const r = await fetch(`${NAVER_M}/stocks/marketValue/all?page=${page}&pageSize=100`, { headers: naverHeaders });
+        if (!r.ok) break;
+        const d = await r.json();
+        const list = d?.stocks ?? [];
+        if (!list.length) break;
+        for (const s of list) {
+          if (s.stockEndType === "stock" && /^\d{6}$/.test(s.itemCode)) {
+            out.push({ code: s.itemCode, name: s.stockName });
+          }
+        }
+      }
+      return out.slice(0, size);
+    };
+
+    const FLOW_UNIVERSE_SIZE = 300;
+    const flowRankKey = () => `flow:kr:rank:v1`;
+
+    // 랭킹 재계산(배치). 300종목을 순회하며 최신 영업일 수급을 모아 정렬.
+    const buildKrFlowRank = async () => {
+      const universe = await getUniverse(FLOW_UNIVERSE_SIZE);
+      const rows: any[] = [];
+      // 네이버에 예의를 갖춰 소량 동시성으로 순회(동시 5, 종목당 실패는 건너뜀)
+      const CONC = 5;
+      for (let i = 0; i < universe.length; i += CONC) {
+        const chunk = universe.slice(i, i + CONC);
+        const got = await Promise.all(chunk.map(async (u) => {
+          try {
+            const flow = await getInvestorFlow(u.code);
+            const latest = flow[0];
+            if (!latest) return null;
+            // 연속 순매수/순매도 일수(포트폴리오 알림의 재료)
+            const streak = (pick: (f: any) => number) => {
+              const sign = Math.sign(pick(flow[0]));
+              if (!sign) return 0;
+              let n = 0;
+              for (const f of flow) { if (Math.sign(pick(f)) === sign) n++; else break; }
+              return sign * n;
+            };
+            return {
+              code: u.code, name: u.name, date: latest.date,
+              close: latest.close, changeRate: Number(latest.changeRate.toFixed(2)),
+              organ: latest.organ, foreign: latest.foreign, individual: latest.individual,
+              organStreak: streak((f) => f.organ), foreignStreak: streak((f) => f.foreign),
+            };
+          } catch { return null; }
+        }));
+        rows.push(...got.filter(Boolean));
+      }
+      const top = (key: "organ" | "foreign", dir: 1 | -1) =>
+        [...rows].sort((a, b) => dir * (b[key] - a[key])).slice(0, 20);
+
+      const result = {
+        date: rows[0]?.date ?? "",
+        universe: rows.length,
+        builtAt: new Date().toISOString(),
+        organBuy: top("organ", 1), organSell: top("organ", -1),
+        foreignBuy: top("foreign", 1), foreignSell: top("foreign", -1),
+      };
+      await cacheSet(flowRankKey(), result);
+      return result;
+    };
+
+    // 랭킹 조회 — 비회원에게도 공개(캐시된 공통 데이터, 외부 호출 0 → 가입 유입 자산)
+    if (action === "flow-kr-rank") {
+      const cached = await cacheGet(flowRankKey(), 12 * 3600_000);  // 하루 1회 갱신 + 여유
+      if (cached) return ok(cached, 200, CACHE_HIT);
+      // 배치가 아직 안 돌았으면 온디맨드로 계산(수십 초) → 화면이 비지 않게
+      const built = await buildKrFlowRank();
+      return ok(built, 200, CACHE_MISS);
+    }
+
+    // 종목별 수급 상세(일별 추이)
+    if (action === "flow-kr-stock") {
+      const code = String(body.code || "");
+      if (!/^\d{6}$/.test(code)) return err("stock_code_required_6digit");
+      const key = `flow:kr:stock:${code}`;
+      const cached = await cacheGet(key, 3600_000);
+      if (cached) return ok(cached, 200, CACHE_HIT);
+      try {
+        const flow = await getInvestorFlow(code);
+        await cacheSet(key, flow);
+        return ok(flow, 200, CACHE_MISS);
+      } catch (e) {
+        const stale = await cacheGetStale(key);
+        if (stale) return ok(stale, 200, CACHE_HIT);
+        return err("flow_unavailable", 502);
+      }
+    }
+
+    // 배치 재계산(스케줄러 전용). FLOW_REFRESH_SECRET 헤더로 보호.
+    if (action === "flow-kr-refresh") {
+      const secret = Deno.env.get("FLOW_REFRESH_SECRET") || "";
+      if (!secret || req.headers.get("x-refresh-secret") !== secret) return err("forbidden", 403);
+      const built = await buildKrFlowRank();
+      return ok({ ok: true, date: built.date, universe: built.universe });
+    }
+
     // ── DART API proxy ────────────────────────────────────
 
     const callDart = async (endpoint: string, params: Record<string, string>) => {
