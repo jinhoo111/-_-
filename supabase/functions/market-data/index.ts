@@ -752,6 +752,79 @@ serve(async (req: Request) => {
       }
     }
 
+    // 티커 → CIK 매핑(SEC 공식 목록, 7일 캐시). 미국 기업 모니터링·내부자 조회의 공통 기반.
+    const getTickerCik = async (ticker: string): Promise<string | null> => {
+      let map = await cacheGet("sec:tickers", 7 * 24 * 3600_000) as Record<string, string> | null;
+      if (!map) {
+        const tr = await fetch("https://www.sec.gov/files/company_tickers.json", { headers: SEC_UA });
+        if (!tr.ok) return null;
+        const raw = await tr.json();
+        map = {};
+        for (const k of Object.keys(raw)) map[raw[k].ticker] = String(raw[k].cik_str).padStart(10, "0");
+        await cacheSet("sec:tickers", map);
+      }
+      return map[ticker] || null;
+    };
+
+    // 미국 기업 조회(티커 → 회사명·CIK·거래소). 모니터링 카드 추가 시 사용.
+    if (action === "sec-company") {
+      const ticker = String(body.ticker || "").toUpperCase();
+      if (!/^[A-Z.\-]{1,10}$/.test(ticker)) return err("ticker_required");
+      const cik = await getTickerCik(ticker);
+      if (!cik) return err("ticker_not_found", 404);
+      const key = `sec:company:${ticker}`;
+      const cached = await cacheGet(key, 7 * 24 * 3600_000);
+      if (cached) return ok(cached, 200, CACHE_HIT);
+      const r = await fetch(`https://data.sec.gov/submissions/CIK${cik}.json`, { headers: SEC_UA });
+      if (!r.ok) return err("sec_unavailable", 502);
+      const d = await r.json();
+      const data = { ticker, cik, name: d.name || ticker, exchange: (d.exchanges || [])[0] || "US" };
+      await cacheSet(key, data);
+      return ok(data, 200, CACHE_MISS);
+    }
+
+    // 미국 기업 최근 공시(8-K·10-Q·10-K 등). DART 공시 카드와 같은 자리에 표시.
+    if (action === "sec-filings") {
+      const ticker = String(body.ticker || "").toUpperCase();
+      if (!/^[A-Z.\-]{1,10}$/.test(ticker)) return err("ticker_required");
+      const key = `sec:filings:${ticker}`;
+      const cached = await cacheGet(key, 30 * 60_000);
+      if (cached) return ok(cached, 200, CACHE_HIT);
+      try {
+        const cik = await getTickerCik(ticker);
+        if (!cik) return err("ticker_not_found", 404);
+        const r = await fetch(`https://data.sec.gov/submissions/CIK${cik}.json`, { headers: SEC_UA });
+        if (!r.ok) throw new Error(`sec_${r.status}`);
+        const d = await r.json();
+        const rec = d.filings?.recent ?? {};
+        // 투자 판단에 의미 있는 서식만(정기보고·수시공시·지분·증권신고)
+        const KEEP = ["8-K", "10-Q", "10-K", "S-1", "SC 13D", "SC 13G", "DEF 14A", "6-K", "20-F"];
+        const rows: any[] = [];
+        for (let i = 0; i < (rec.form?.length || 0) && rows.length < 15; i++) {
+          const form = rec.form[i];
+          if (!KEEP.some((f) => String(form).startsWith(f))) continue;
+          const acc = String(rec.accessionNumber[i] || "");
+          // 제목: 문서설명 → 8-K 항목코드(items) 순. 서식명과 같으면 중복이라 비운다.
+          const desc = rec.primaryDocDescription?.[i] || "";
+          const items = rec.items?.[i] || "";
+          const title = (desc && desc !== form) ? desc : items;
+          rows.push({
+            form,
+            date: String(rec.filingDate[i] || "").replace(/-/g, ""),   // YYYYMMDD (DART와 동일 포맷)
+            title,
+            url: `https://www.sec.gov/Archives/edgar/data/${cik.replace(/^0+/, "")}/${acc.replace(/-/g, "")}/${rec.primaryDocument[i]}`,
+          });
+        }
+        const data = { ticker, name: d.name || ticker, rows };
+        await cacheSet(key, data);
+        return ok(data, 200, CACHE_MISS);
+      } catch (_e) {
+        const stale = await cacheGetStale(key);
+        if (stale) return ok(stale, 200, CACHE_HIT);
+        return err("sec_unavailable", 502);
+      }
+    }
+
     // 종목별 내부자 거래(티커) — 내 보유·관심 종목 확인용
     if (action === "sec-insider-stock") {
       const ticker = String(body.ticker || "").toUpperCase();
@@ -760,23 +833,14 @@ serve(async (req: Request) => {
       const cached = await cacheGet(key, 30 * 60_000);
       if (cached) return ok(cached, 200, CACHE_HIT);
       try {
-        // 티커 → CIK (SEC 공식 매핑, 7일 캐시)
-        let map = await cacheGet("sec:tickers", 7 * 24 * 3600_000) as any;
-        if (!map) {
-          const tr = await fetch("https://www.sec.gov/files/company_tickers.json", { headers: SEC_UA });
-          if (!tr.ok) throw new Error("tickers_fetch");
-          const raw = await tr.json();
-          map = {};
-          for (const k of Object.keys(raw)) map[raw[k].ticker] = String(raw[k].cik_str).padStart(10, "0");
-          await cacheSet("sec:tickers", map);
-        }
-        const cik = map[ticker];
+        const cik = await getTickerCik(ticker);
         if (!cik) return err("ticker_not_found", 404);
         const r = await fetch(
           `https://efts.sec.gov/LATEST/search-index?forms=4&ciks=${cik}&from=0&size=20`, { headers: SEC_UA });
         if (!r.ok) throw new Error(`efts_${r.status}`);
         const hits = (await r.json())?.hits?.hits ?? [];
-        const rows = await fetchForm4Docs(hits);
+        // 한 신고에 분할 체결이 여러 건 담겨 수백 건이 되기도 한다 → 금액 상위 50건만 전송
+        const rows = (await fetchForm4Docs(hits)).slice(0, 50);
         const data = { ticker, builtAt: new Date().toISOString(), rows };
         await cacheSet(key, data);
         return ok(data, 200, CACHE_MISS);

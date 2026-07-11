@@ -1629,7 +1629,7 @@ function toggleTheme(){
     <div class="monitor-topbar">
       <div class="monitor-search-wrap" style="position:relative">
         <input type="text" id="monitor-search"
-               placeholder="🔍 회사명(삼성전자, SK하이닉스…) 또는 종목코드(6자리)"
+               placeholder="🔍 국내: 회사명·종목코드(6자리) · 미국: 티커(NVDA, AAPL…)"
                class="monitor-search-input" autocomplete="off"
                oninput="monitorSearchInput(this.value)"
                onkeydown="monitorSearchKeyDown(event)"/>
@@ -5408,7 +5408,7 @@ function goPage(name,btn){
 // ── 플로팅 도움말 위젯 ──────────────────────────────────────────
 const HELP_CONTENT={
   portfolio:{label:'📊 투자 종목 관리',tips:['종목 추가/편집·삭제로 보유·매수·관심 종목 관리','종목 추가 시 <b>매수가만 입력</b>하면 현재가·수익률은 자동으로 불러옵니다','총 평가금액은 $ / ₩ 토글로 환율 기준 전환','현금(원화/달러) 입력 시 총자산에 반영']},
-  monitor:{label:'📈 기업 모니터링',tips:['경쟁사(상장사) 종목코드로 등록','🛰️ 레이더: 공시를 전략 시그널로 자동 분류·조기경보','팀 메모는 투자 일지 캘린더에도 자동 표시']},
+  monitor:{label:'📈 기업 모니터링',tips:['국내: 회사명·종목코드(6자리)로 등록 → DART 공시·지분변동','<b>미국: 티커(NVDA·AAPL) 입력</b> → SEC 공시(8-K·10-Q)·내부자 거래·실시간 시세','🛰️ 레이더: 공시를 전략 시그널로 자동 분류·조기경보(국내)','팀 메모는 투자 일지 캘린더에도 자동 표시']},
   indices:{label:'📉 지수·환율',tips:['주요 지수·환율을 한눈에','설정에서 표시 항목 선택']},
   news:{label:'📰 뉴스',tips:['시장/종목별 뉴스, 월가 레이팅, 실시간 시세','<b>시장 뉴스는 로그인 없이</b>도 볼 수 있어요','종목별 뉴스·월가 레이팅·실시간 시세는 로그인 후 이용']},
   flow:{label:'💰 수급',tips:[
@@ -6209,6 +6209,7 @@ async function _pollMonitor(){
   const recent2=_daysAgoYmd(2); // 2일 이내 신규 공시만 푸시(과거 공시는 레이더에만 적재)
   for(const co of monitorCompanies){
     if(!co.alert)continue;
+    if(_isUsCo(co))continue;          // 미국 기업은 DART 공시 폴링 대상이 아님(알림 미지원)
     try{
       const list=await _fetchDartDisclosures(co.corp_code);
       if(!list.length)continue;
@@ -6623,6 +6624,37 @@ function monitorSearchKeyDown(e){
 }
 
 // ── 기업 추가/삭제 ────────────────────────
+// 미국 종목 여부 — corp_code에 'US:' 접두사를 붙여 국내(corp_code 8자리)와 충돌 없이 공존
+const _isUsCo=co=>co&&co.market==='US';
+
+// 미국 기업 추가(티커). SEC(공시·내부자) + Finnhub(시세) 조합.
+async function _addUsCompany(ticker){
+  const btn=document.getElementById('monitor-add-btn');
+  const key='US:'+ticker;
+  if(monitorCompanies.find(c=>c.corp_code===key)){showMonitorErr('이미 추가된 기업입니다.');return true;}
+  const r=await fetch(DART_PROXY_URL,{method:'POST',headers:_apiHeaders(),
+    body:JSON.stringify({action:'sec-company',ticker})});
+  const d=await r.json();
+  if(!r.ok||d.error){
+    if(d.error==='ticker_not_found')return false;   // 미국 티커 아님 → 국내 검색으로 폴백
+    showMonitorErr('미국 기업 정보를 불러오지 못했습니다.');return true;
+  }
+  const co={corp_code:key,corp_name:d.name,stock_code:ticker,market:'US',cik:d.cik,exchange:d.exchange,
+    alert:false,lastCheckedAt:null,memos:[],addedAt:new Date().toISOString()};
+  monitorCompanies.push(co);
+  localStorage.setItem('monitor_co',JSON.stringify(monitorCompanies));
+  _syncToCloud();
+  const input=document.getElementById('monitor-search');if(input)input.value='';
+  _monitorSelectedCode='';
+  const cards=document.getElementById('monitor-cards');
+  if(cards){
+    if(cards.querySelector('.monitor-empty'))cards.innerHTML='';
+    cards.appendChild(_createCardEl(co));
+  }
+  loadCompanyData(co.corp_code);
+  return true;
+}
+
 async function addMonitorCompany(){
   const input=document.getElementById('monitor-search');
   const val=(input?.value||'').trim();
@@ -6634,6 +6666,14 @@ async function addMonitorCompany(){
   const btn=document.getElementById('monitor-add-btn');
   if(btn){btn.disabled=true;btn.textContent='검색 중...';}
   showMonitorErr('');
+
+  // 영문 티커(NVDA·AAPL 등) → 미국 기업으로 처리. 실패하면 국내 검색으로 계속.
+  if(!_monitorSelectedCode&&/^[A-Za-z.\-]{1,10}$/.test(val)){
+    try{
+      const done=await _addUsCompany(val.toUpperCase());
+      if(done){if(btn){btn.disabled=false;btn.textContent='추가';}return;}
+    }catch(e){}
+  }
 
   // stockCode 결정: 드롭다운 선택 > 6자리 직접입력 > Naver 검색
   let stockCode=_monitorSelectedCode||'';
@@ -6721,9 +6761,32 @@ function showMonitorErr(msg){
 }
 
 // ── 데이터 로드 ───────────────────────────
+// 미국 기업 카드 데이터: 시세(Finnhub) + 공시(SEC submissions) + 내부자(Form 4)
+async function _loadUsCompanyData(co){
+  const key=co.corp_code;
+  _monitorCache[key]=_monitorCache[key]||{};
+  const call=(action,extra)=>fetch(DART_PROXY_URL,{method:'POST',headers:_apiHeaders(),
+    body:JSON.stringify({action,ticker:co.stock_code,...extra})}).then(r=>r.json());
+  const[q,f,ins]=await Promise.allSettled([
+    proxyApiCall('finnhub','quote',{symbol:co.stock_code}),
+    call('sec-filings'),
+    call('sec-insider-stock')
+  ]);
+  if(q.status==='fulfilled'&&q.value&&q.value.c!=null){
+    const d=q.value;
+    _monitorCache[key].price={price:d.c,change:d.d||0,changePct:(d.dp||0).toFixed(2)};
+  }
+  if(f.status==='fulfilled'&&Array.isArray(f.value?.rows))_monitorCache[key].filings=f.value.rows;
+  if(ins.status==='fulfilled'&&Array.isArray(ins.value?.rows))_monitorCache[key].insider=ins.value.rows;
+  _monitorCache[key].loaded=true;
+  _renderCardContent(key);
+  if(monitorView==='table')renderMonitorTable();
+}
+
 async function loadCompanyData(corpCode){
   const co=monitorCompanies.find(c=>c.corp_code===corpCode);
   if(!co)return;
+  if(_isUsCo(co))return _loadUsCompanyData(co);
   _monitorCache[corpCode]=_monitorCache[corpCode]||{};
   const[priceRes,discRes,ownRes]=await Promise.allSettled([
     _fetchCompanyPrice(co.stock_code,co.market),
@@ -6964,7 +7027,89 @@ function _createCardEl(co){
   return div;
 }
 
+// 미국 기업 카드: 공시(SEC) + 내부자(Form 4). DART 전용 섹션(타법인 출자·보유변동)은 없음.
+function _buildUsCardHTML(co){
+  const cache=_monitorCache[co.corp_code]||{};
+  const p=cache.price;
+  // 시세는 서버(fh-call)가 로그인 토큰을 요구 → 비로그인은 '조회 중' 고착 대신 안내를 띄운다
+  const priceHtml=p
+    ?`<span class="mc-price">$${Number(p.price).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}</span><span class="mc-change ${parseFloat(p.change)>=0?'up':'down'}">${parseFloat(p.change)>=0?'+':''}${Number(p.change).toFixed(2)} (${parseFloat(p.changePct)>=0?'+':''}${p.changePct}%)</span>`
+    :(!_currentUser&&cache.loaded)
+      ?`<span class="mc-price-loading">🔒 시세는 로그인 후 표시됩니다</span>`
+      :`<span class="mc-price-loading">가격 조회 중...</span>`;
+  const filings=cache.filings||[];
+  const discHtml=cache.loaded
+    ?(filings.length?filings.slice(0,6).map(d=>{
+        const dt=(d.date||'').replace(/(\d{4})(\d{2})(\d{2})/,'$2/$3');
+        // 서식명(8-K 등)은 배지에 이미 있으므로 제목이 비면 서식 뜻을 대신 보여준다
+        const FORM_KO={'8-K':'수시공시(주요 사건)','10-Q':'분기보고서','10-K':'연차보고서',
+          'DEF 14A':'주주총회 위임장','SC 13D':'5% 이상 지분 취득','SC 13G':'5% 이상 지분(수동)','S-1':'증권신고서'};
+        const title=d.title||FORM_KO[d.form]||d.form;
+        return`<div class="mc-disclosure-row">
+          <span class="mc-disc-date">${dt}</span>
+          <span class="mc-disc-type-badge tB">${escapeHtml(d.form)}</span>
+          <span class="mc-disc-title">${escapeHtml(title)}</span>
+          <a class="mc-disc-link" href="${safeUrl(d.url)}" target="_blank" rel="noopener">↗</a>
+        </div>`;
+      }).join(''):'<div class="mc-empty-state">최근 공시가 없습니다.</div>')
+    :_skLines(3);
+  const ins=(cache.insider||[]).slice(0,5);
+  const insHtml=cache.loaded
+    ?(ins.length?ins.map(x=>`<div class="mc-disclosure-row">
+        <span class="mc-disc-date">${escapeHtml((x.date||'').slice(5))}</span>
+        <span class="mc-disc-type-badge ${x.code==='S'?'tC':'tA'}">${x.code==='S'?'매도':'매수'}</span>
+        <span class="mc-disc-title">${escapeHtml(x.owner)}${x.role?` · ${escapeHtml(x.role)}`:''} — ${x.shares.toLocaleString()}주 ($${x.amount.toLocaleString()})</span>
+      </div>`).join(''):'<div class="mc-empty-state">최근 내부자 거래가 없습니다.</div>')
+    :_skLines(2);
+  const memosHtml=(co.memos||[]).map(m=>`
+    <div class="mc-memo-item" id="mmi-${co.corp_code}-${m.id}">
+      <div class="mc-memo-text">${escapeHtml(m.text)}</div>
+      <div class="mc-memo-actions">${_mcMemoActionsHtml(co.corp_code,m)}</div>
+    </div>`).join('')||'<div class="mc-empty-state">팀 메모가 없습니다.</div>';
+  return`
+    <div class="mc-header">
+      <div class="mc-title-group">
+        <span class="mc-corp-name">${escapeHtml(co.corp_name)}</span>
+        <span class="mc-stock-code">${escapeHtml(co.stock_code)}</span>
+        <span class="mc-market">🇺🇸 ${escapeHtml(co.exchange||'US')}</span>
+      </div>
+      <div class="mc-header-actions">
+        <button class="mc-refresh-btn" onclick="refreshCompanyData('${co.corp_code}')" aria-label="새로고침" title="새로고침">↻</button>
+        <button class="mc-delete-btn" onclick="removeMonitorCompany('${co.corp_code}')">삭제</button>
+      </div>
+    </div>
+    <div class="mc-price-row">${priceHtml}</div>
+    <div class="mc-section">
+      <div class="mc-section-header">
+        <span class="mc-section-title">📋 최근 공시 (SEC)</span>
+        <a class="mc-dart-link" href="https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=${escapeHtml(co.cik||'')}&type=&dateb=&owner=include&count=40" target="_blank" rel="noopener">EDGAR 전체보기 ↗</a>
+      </div>
+      <div id="mc-disc-${co.corp_code}">${discHtml}</div>
+    </div>
+    <div class="mc-section">
+      <div class="mc-section-header">
+        <span class="mc-section-title">👔 내부자 거래 (Form 4)</span>
+      </div>
+      <div>${insHtml}</div>
+    </div>
+    <div class="mc-section">
+      <div class="mc-section-header">
+        <span class="mc-section-title">📝 팀 메모</span>
+        <button class="mc-memo-add-btn" onclick="openInlineMemoForm('${co.corp_code}')">+ 메모 추가</button>
+      </div>
+      <div id="mc-memo-form-${co.corp_code}" class="mc-memo-form" style="display:none">
+        <textarea id="mc-memo-input-${co.corp_code}" placeholder="메모를 입력하세요..." rows="2"></textarea>
+        <div class="mc-memo-form-actions">
+          <button onclick="saveMonitorMemo('${co.corp_code}')">저장</button>
+          <button onclick="closeInlineMemoForm('${co.corp_code}')">취소</button>
+        </div>
+      </div>
+      <div id="mc-memos-${co.corp_code}" class="mc-memos-list">${memosHtml}</div>
+    </div>`;
+}
+
 function _buildCardHeaderHTML(co){
+  if(_isUsCo(co))return _buildUsCardHTML(co);
   const cache=_monitorCache[co.corp_code]||{};
   const p=cache.price;
   const priceHtml=p
@@ -7513,10 +7658,14 @@ function renderMonitorTable(){
   const rows=monitorCompanies.map(co=>{
     const cache=_monitorCache[co.corp_code]||{};
     const p=cache.price;
-    const discs=cache.disclosures||[];
+    const us=_isUsCo(co);
+    // 미국 기업은 공시 스키마가 달라(SEC filings) DART 필드로 매핑해 같은 표에 표시
+    const discs=us
+      ?(cache.filings||[]).map(f=>({rcept_dt:f.date,report_nm:`${f.form} ${f.title||''}`.trim()}))
+      :(cache.disclosures||[]);
     const changes=cache.holdingChanges||[];
     const recent=discs[0];
-    const pCell=p?Math.round(p.price).toLocaleString():'—';
+    const pCell=p?(us?'$'+Number(p.price).toFixed(2):Math.round(p.price).toLocaleString()):'—';
     const chgCell=p?`<span class="${parseFloat(p.change)>=0?'mc-chg-up':'mc-chg-down'}">${parseFloat(p.change)>=0?'+':''}${p.changePct}%</span>`:'—';
     const dCell=recent?`${(recent.rcept_dt||'').replace(/(\d{4})(\d{2})(\d{2})/,'$2/$3')} ${(recent.report_nm||'').slice(0,14)}`:'—';
     return`<tr onclick="goToCard('${co.corp_code}')">
