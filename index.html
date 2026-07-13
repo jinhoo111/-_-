@@ -1829,6 +1829,12 @@ const SUPA_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJ
 const _sh={'Content-Type':'application/json','apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY};
 function _apiHeaders(){const t=_currentSession?.access_token||SUPA_KEY;return{'Content-Type':'application/json','apikey':SUPA_KEY,'Authorization':'Bearer '+t};}
 function escapeHtml(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+// SEC 원문(XML)은 "CFO &amp; SVP"처럼 엔티티가 인코딩된 채로 온다. 그대로 escapeHtml을
+// 태우면 &amp;amp;가 돼 화면에 "&amp;"가 그대로 보인다. 한 번 디코드한 뒤 escape한다.
+const _ENT={amp:'&',lt:'<',gt:'>',quot:'"',apos:"'",'#39':"'",'#x27':"'"};
+function escapeEnt(s){
+  return escapeHtml(String(s||'').replace(/&(amp|lt|gt|quot|apos|#39|#x27);/gi,(m,e)=>_ENT[e.toLowerCase()]));
+}
 function safeUrl(u){return(u&&/^https?:\/\//i.test(u))?u:'#';}
 function _jsStr(s){return String(s||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/\n/g,'\\n').replace(/\r/g,'');}
 function saveToMemo(headline,url){
@@ -1878,14 +1884,30 @@ async function _restSelectRow(path){
   const arr=await res.json();
   return Array.isArray(arr)?(arr[0]||null):null;
 }
-async function _restUpsert(table,row){
+// 페이지 로드 직후에는 Edge 함수·시세 요청이 한꺼번에 몰려 Supabase가 저장 요청만
+// 503/429로 잠깐 거부한다(권한 문제면 401/403이 온다). 잠시 뒤 같은 요청은 성공하므로
+// 일시 거부에 한해 백오프 재시도한다. 4xx는 재시도해도 같은 결과라 즉시 반환.
+async function _restUpsert(table,row,attempt){
+  const n=attempt||0;
   try{
     const res=await fetch(`${SUPA_BASE}/rest/v1/${table}`,{method:'POST',
       headers:{..._apiHeaders(),'Prefer':'resolution=merge-duplicates,return=minimal'},
       body:JSON.stringify(row)});
-    if(!res.ok)return{error:{message:'rest_'+res.status}};
-    return{error:null};
-  }catch(e){return{error:{message:String(e)}};}
+    if(res.ok)return{error:null};
+    if(res.status>=500||res.status===429){
+      if(n<2){
+        await new Promise(r=>setTimeout(r,800*(n+1)));
+        return _restUpsert(table,row,n+1);
+      }
+    }
+    return{error:{message:'rest_'+res.status}};
+  }catch(e){
+    if(n<2){
+      await new Promise(r=>setTimeout(r,800*(n+1)));
+      return _restUpsert(table,row,n+1);
+    }
+    return{error:{message:String(e)}};
+  }
 }
 // REST RPC 호출(보안definer 함수 등). 실패 시 null.
 async function _restRpc(fn,args){
@@ -3879,13 +3901,13 @@ function renderInsider(){
         <span class="ins-badge ${sell?'sell':'buy'}">${sell?'📉 매도':'📈 매수'}</span>
         <span class="ins-date">${escapeHtml(x.date||x.filedAt||'')}</span>
       </div>
-      <div class="ins-who">${escapeHtml(x.owner)}${x.role?` · <span class="ins-role">${escapeHtml(x.role)}</span>`:''}</div>
+      <div class="ins-who">${escapeEnt(x.owner)}${x.role?` · <span class="ins-role">${escapeEnt(x.role)}</span>`:''}</div>
       <div class="ins-nums">
         <span><b>${x.shares.toLocaleString()}</b>주</span>
         <span>@ $${x.price.toLocaleString(undefined,{maximumFractionDigits:2})}</span>
         <span class="ins-amt ${sell?'sell':'buy'}">$${x.amount.toLocaleString()}</span>
       </div>
-      <div class="ins-foot">${escapeHtml(x.issuer)} · 거래 후 보유 ${x.sharesAfter.toLocaleString()}주</div>
+      <div class="ins-foot">${escapeEnt(x.issuer)} · 거래 후 보유 ${x.sharesAfter.toLocaleString()}주</div>
     </div>`;
   }).join('');
 }
@@ -3952,19 +3974,19 @@ function renderF13(d){
   body.innerHTML=
     sec('🆕 신규 편입','매수 시점: '+span+' · 금액은 매입가가 아닌 <b>'+per+' 평가액</b>',d.added,
       x=>`<div class="f13-row">
-        <span class="f13-name">${escapeHtml(x.name)}</span>
+        <span class="f13-name">${escapeEnt(x.name)}</span>
         <span class="f13-val buy">${_f13Money(x.value)} · ${x.shares.toLocaleString()}주<span class="f13-sub">${px(x.endPrice)}</span></span></div>`,'buy')
    +sec('🚪 전량 매도','매도 시점: '+span+' · 금액은 <b>직전 분기말('+(d.prevPeriod||'—')+') 평가액</b>',d.exited,
       x=>`<div class="f13-row">
-        <span class="f13-name">${escapeHtml(x.name)}</span>
+        <span class="f13-name">${escapeEnt(x.name)}</span>
         <span class="f13-val sell">${_f13Money(x.prevValue)} · ${x.prevShares.toLocaleString()}주<span class="f13-sub">${px(x.prevEndPrice)}</span></span></div>`,'sell')
    +sec('🔀 비중 변화','증감 시점: '+span+' · 주식 수 기준',d.changed,
       x=>`<div class="f13-row">
-        <span class="f13-name">${escapeHtml(x.name)}</span>
+        <span class="f13-name">${escapeEnt(x.name)}</span>
         <span class="f13-val ${x.diff>=0?'buy':'sell'}">${x.diff>=0?'+':''}${x.pct}% (${x.diff>=0?'+':''}${x.diff.toLocaleString()}주)<span class="f13-sub">보유 ${x.shares.toLocaleString()}주</span></span></div>`)
    +sec('📊 상위 보유',per+' 기준 · 비중은 분기말 평가액 기준',d.top,
       x=>`<div class="f13-row">
-        <span class="f13-name">${escapeHtml(x.name)}</span>
+        <span class="f13-name">${escapeEnt(x.name)}</span>
         <span class="f13-val">${x.weight}% · ${_f13Money(x.value)}<span class="f13-sub">${px(x.endPrice)}</span></span></div>`);
 }
 
