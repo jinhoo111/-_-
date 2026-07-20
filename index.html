@@ -2469,7 +2469,7 @@ async function saveProfile(){
 // 같은 브라우저에서 계정 전환 시 이전 계정 데이터가 새 계정으로 새는 것을 방지.
 function _clearLocalUserData(){
   clearTimeout(_syncTimer); // 이전 계정의 지연 동기화가 빈 데이터를 덮어쓰지 않도록 취소
-  stocks=[];memos=[];memoArchive=[];ledger=[];health={goal:null,entries:[],monthlyGoals:{},weeklyActual:{},workouts:{}};budget={};impulseTrades=[];cashKRW=0;cashUSD=0;
+  stocks=[];memos=[];memoArchive=[];ledger=[];health={goal:null,entries:[],monthlyGoals:{},weeklyActual:{},workouts:{},glucose:[],glucoseGoals:{}};budget={};impulseTrades=[];cashKRW=0;cashUSD=0;
   quoteSymbols=['NVDA','AAPL','TSLA','MSFT'];notifyMaster=false;investPhilosophy=[];
   monitorCompanies=[];_monitorCache={};dartKeyStored=false;
   FKEY='';CKEY='';_fhKey='';_dartKey='';
@@ -2541,7 +2541,7 @@ async function _loadFromCloud(user){
     localStorage.setItem('pf_ledger',JSON.stringify(ledger));
   }
   if(data.health&&typeof data.health==='object'&&!Array.isArray(data.health)){
-    health={goal:(data.health.goal!=null?data.health.goal:null),entries:Array.isArray(data.health.entries)?data.health.entries:[],monthlyGoals:(data.health.monthlyGoals&&typeof data.health.monthlyGoals==='object'&&!Array.isArray(data.health.monthlyGoals))?data.health.monthlyGoals:{},weeklyActual:(data.health.weeklyActual&&typeof data.health.weeklyActual==='object'&&!Array.isArray(data.health.weeklyActual))?data.health.weeklyActual:{},workouts:(data.health.workouts&&typeof data.health.workouts==='object'&&!Array.isArray(data.health.workouts))?data.health.workouts:{}};
+    health={goal:(data.health.goal!=null?data.health.goal:null),entries:Array.isArray(data.health.entries)?data.health.entries:[],monthlyGoals:(data.health.monthlyGoals&&typeof data.health.monthlyGoals==='object'&&!Array.isArray(data.health.monthlyGoals))?data.health.monthlyGoals:{},weeklyActual:(data.health.weeklyActual&&typeof data.health.weeklyActual==='object'&&!Array.isArray(data.health.weeklyActual))?data.health.weeklyActual:{},workouts:(data.health.workouts&&typeof data.health.workouts==='object'&&!Array.isArray(data.health.workouts))?data.health.workouts:{},glucose:Array.isArray(data.health.glucose)?data.health.glucose:[],glucoseGoals:(data.health.glucoseGoals&&typeof data.health.glucoseGoals==='object'&&!Array.isArray(data.health.glucoseGoals))?data.health.glucoseGoals:{}};
     localStorage.setItem('pf_health',JSON.stringify(health));
   }
   if(data.budget&&typeof data.budget==='object'&&!Array.isArray(data.budget)){
@@ -2786,12 +2786,13 @@ try{investPhilosophy=JSON.parse(localStorage.getItem('pf_phil')||'[]')}catch(e){
 let stocks=[],memos=[],memoArchive=[],memoView='calendar',selTagV='general',memoEditTag='general',archiveTagFilter='all',archiveViewMode='list',archiveSearch='',FKEY='',newsCat='general',quoteSymbols=['NVDA','AAPL','TSLA','MSFT'],stkFilter='all',stkMarket='all',stkStyle='all',stkSort='',stkSortDir='desc',fxRate=1400;
 let _editingIdx=null;  // 편집 토글로 열려 있는 종목의 stocks 인덱스(한 번에 하나). null=편집 없음
 let ledger=[];  // 가계부: {id,date:'YYYY-MM-DD',type:'income'|'expense',amount,cat,memo}
-let health={goal:null,entries:[],monthlyGoals:{},weeklyActual:{},workouts:{}};  // 몸무게: entries=[{date,kg}], goal=기본목표, monthlyGoals={'YYYY-MM':kg}, weeklyActual={'YYYY-MM':[kg|null,...주차]}(주차별 실제체중 직접입력 override)
+let health={goal:null,entries:[],monthlyGoals:{},weeklyActual:{},workouts:{},glucose:[],glucoseGoals:{}};  // 몸무게: entries=[{date,kg}], goal=기본목표, monthlyGoals={'YYYY-MM':kg}, weeklyActual={'YYYY-MM':[kg|null,...주차]}(주차별 실제체중 직접입력 override) / 혈당: glucose=[{date,slot,mgdl}](하루 1건 기본·시점별), glucoseGoals={'YYYY-MM':공복목표mg/dL}
 let budget={};  // 월별 예산: {'YYYY-MM':{income,expense,incomeWeeks?:[..주차],expenseWeeks?:[..주차]}} (주차 배열 없으면 월÷주수 균등분할 폴백)
 let impulseTrades=[];  // 뇌동매매: [{id,date:'YYYY-MM-DD',reason,createdAt}] (하루 1건, 투자철학 '절대 금지'에 자동 반영)
 let _impulseSort='desc';  // 뇌동매매 정렬: 'desc'=최신순 / 'asc'=오래된순
 let _rptYear=new Date().getFullYear(),_rptMonth=new Date().getMonth();  // 리포트 기준 기간(주차별 뷰)
 let _rptAllocOpen=false,_rptWeightWkOpen=false;  // 리포트 접이식 편집기 열림 상태(주차 금액배분 / 주차 실제체중)
+let _glucoseSlot='fasting';  // 혈당 입력 시 선택된 측정 시점(기본=공복). fasting|beforeMeal|afterMeal2|bedtime|random
 let notifyMaster=localStorage.getItem('pf_notify_master')==='true';
 let monitorCompanies=[],monitorView='card',dartKeyStored=false,_userType='personal',_bizApproved=false,_isAdmin=false,_monitorPollTimer=null,_monitorCache={};
 let _curMode=localStorage.getItem('cur_mode')||'USD';   // 총 평가금액 표시 통화(USD|KRW)
@@ -4817,6 +4818,128 @@ function _renderWeightSection(d){
   </div>`;
 }
 
+// ── 🩸 혈당 트래킹 (병원·보건소 방식: 측정 시점 + mg/dL + 참고범위) ──────────
+// 몸무게와 동일 저장 경로(health 안쪽 → _syncToCloud 단일 키). 하루 1건 기본, 시점별 갱신.
+const GLU_SLOTS=[['fasting','공복'],['beforeMeal','식전'],['afterMeal2','식후 2시간'],['bedtime','취침 전'],['random','무작위']];
+const GLU_ORDER={fasting:0,beforeMeal:1,afterMeal2:2,bedtime:3,random:4};
+function _gluSlotLabel(k){return (GLU_SLOTS.find(s=>s[0]===k)||[null,k])[1];}
+// 참고범위 판정(대한당뇨병학회 일반 기준). 진단 아님 — 값에 라벨만 붙인다.
+function _glucoseStatus(slot,mgdl){
+  if(mgdl<70)return{label:'저혈당',key:'low'};
+  const fastingType=(slot==='fasting'||slot==='beforeMeal');
+  if(fastingType){
+    if(mgdl<100)return{label:'정상',key:'normal'};
+    if(mgdl<126)return{label:'주의',key:'warn'};
+    return{label:'높음',key:'high'};
+  }
+  if(mgdl<140)return{label:'정상',key:'normal'};
+  if(mgdl<200)return{label:'주의',key:'warn'};
+  return{label:'높음',key:'high'};
+}
+function _gluColor(key){
+  return {
+    low:{bg:'var(--color-info-bg)',c:'var(--color-info)'},
+    normal:{bg:'var(--color-success-bg)',c:'var(--color-success-text)'},
+    warn:{bg:'var(--color-warning-subtle)',c:'var(--color-warning-dark)'},
+    high:{bg:'var(--color-error-bg)',c:'var(--color-error-text)'}
+  }[key]||{bg:'var(--color-bg-overlay)',c:'var(--color-text-muted)'};
+}
+function _gluRangeHint(slot){
+  return (slot==='fasting'||slot==='beforeMeal')
+    ?'공복 정상 70~99 · 주의 100~125 · 높음 ≥126 (저혈당 <70)'
+    :'식후 정상 <140 · 주의 140~199 · 높음 ≥200 (저혈당 <70)';
+}
+// 캘린더 칩용 대표값(그날 기록 중 공복 우선, 없으면 첫 기록)
+function _glucoseByDay(y,mo){
+  const by={},pre=`${y}-${String(mo+1).padStart(2,'0')}`;
+  (health.glucose||[]).forEach(e=>{
+    if(!(e.date||'').startsWith(pre)||!(e.mgdl>0))return;
+    const day=parseInt(e.date.slice(8,10),10),cur=by[day];
+    if(!cur){by[day]=e;return;}
+    if(e.slot==='fasting'&&cur.slot!=='fasting')by[day]=e;
+  });
+  return by;
+}
+function _glucoseStats(y,mo){
+  const pre=`${y}-${String(mo+1).padStart(2,'0')}`;
+  const es=(health.glucose||[]).filter(e=>(e.date||'').startsWith(pre)&&e.mgdl>0);
+  if(!es.length)return null;
+  const avg=a=>a.length?Math.round(a.reduce((s,v)=>s+v,0)/a.length):null;
+  const fast=es.filter(e=>e.slot==='fasting'||e.slot==='beforeMeal').map(e=>e.mgdl);
+  const post=es.filter(e=>e.slot==='afterMeal2'||e.slot==='random'||e.slot==='bedtime').map(e=>e.mgdl);
+  const max=es.reduce((m,e)=>e.mgdl>m.mgdl?e:m,es[0]);
+  const days=new Set(es.map(e=>e.date)).size;
+  return{fastAvg:avg(fast),postAvg:avg(post),max,days};
+}
+function selGlucoseSlot(slot,d){_glucoseSlot=slot;_calSelectedDay=null;selectCalDay(d);}
+function stepGlucose(delta){
+  const el=document.getElementById('glu-amt');if(!el)return;
+  const base=parseInt(el.value,10)||0;
+  el.value=Math.max(0,base+delta);el.focus();
+}
+function saveGlucose(d){
+  const el=document.getElementById('glu-amt');
+  const v=parseInt(el?.value,10);
+  if(!v||v<=0){if(el)el.focus();return;}
+  const date=_ymd(_calYear,_calMonth,d),slot=_glucoseSlot;
+  health.glucose=(health.glucose||[]).filter(e=>!(e.date===date&&e.slot===slot)); // 같은 날+시점 1건(갱신)
+  health.glucose.push({date,slot,mgdl:v});
+  localStorage.setItem('pf_health',JSON.stringify(health));_syncToCloud();
+  renderMemos();_calSelectedDay=null;selectCalDay(d);
+}
+function deleteGlucose(d,slot){
+  const date=_ymd(_calYear,_calMonth,d);
+  health.glucose=(health.glucose||[]).filter(e=>!(e.date===date&&e.slot===slot));
+  localStorage.setItem('pf_health',JSON.stringify(health));_syncToCloud();
+  renderMemos();_calSelectedDay=null;selectCalDay(d);
+}
+function saveGlucoseGoal(){
+  const v=parseInt(document.getElementById('glu-goal')?.value,10);
+  const ym=`${_calYear}-${String(_calMonth+1).padStart(2,'0')}`;
+  if(!health.glucoseGoals||typeof health.glucoseGoals!=='object')health.glucoseGoals={};
+  if(v&&v>0)health.glucoseGoals[ym]=v;
+  else delete health.glucoseGoals[ym];
+  localStorage.setItem('pf_health',JSON.stringify(health));_syncToCloud();
+  renderMemos();
+}
+function _renderGlucoseSection(d){
+  const date=_ymd(_calYear,_calMonth,d);
+  const todays=(health.glucose||[]).filter(e=>e.date===date&&e.mgdl>0);
+  const slot=_glucoseSlot,curForSlot=todays.find(e=>e.slot===slot);
+  const startVal=curForSlot?curForSlot.mgdl:'';
+  const chips=GLU_SLOTS.map(([k,lbl])=>{
+    const on=k===slot,has=todays.some(e=>e.slot===k);
+    return `<button type="button" onclick="selGlucoseSlot('${k}',${d})" style="font-size:var(--text-sm);font-weight:600;padding:6px 10px;border:1px solid ${on?'var(--color-accent-primary)':'var(--color-border-input)'};border-radius:8px;background:${on?'var(--color-accent-bg)':'var(--color-bg-surface)'};color:${on?'var(--color-accent-primary)':'var(--color-text-tertiary)'};cursor:pointer;font-family:inherit">${lbl}${has?' ✓':''}</button>`;
+  }).join('');
+  const stepBtn=(sym,delta,lbl)=>`<button type="button" class="btn btn-sm" style="width:var(--btn-h-md);padding:0;font-size:var(--text-lg)" onclick="stepGlucose(${delta})" aria-label="${lbl}">${sym}</button>`;
+  const headPill=curForSlot?`<span class="pill" style="background:var(--color-info-bg);color:var(--color-info)">${_gluSlotLabel(slot)} ${curForSlot.mgdl}</span>`:'';
+  const listHtml=todays.length?`<div style="margin-top:8px;display:flex;flex-direction:column;gap:5px">${
+    todays.slice().sort((a,b)=>(GLU_ORDER[a.slot]??9)-(GLU_ORDER[b.slot]??9)).map(e=>{
+      const st=_glucoseStatus(e.slot,e.mgdl),col=_gluColor(st.key);
+      return `<div style="display:flex;align-items:center;gap:8px;font-size:var(--text-sm)">
+        <span style="min-width:64px;color:var(--color-text-secondary)">${_gluSlotLabel(e.slot)}</span>
+        <b style="font-family:var(--font-mono)">${e.mgdl}</b>
+        <span class="pill" style="background:${col.bg};color:${col.c}">● ${st.label}</span>
+        <button type="button" class="mc-text-btn" style="color:var(--color-error);margin-left:auto" onclick="deleteGlucose(${d},'${e.slot}')">삭제</button>
+      </div>`;
+    }).join('')}</div>`:'';
+  return `<div class="ledger-sec">
+    <div class="ledger-head"><span style="font-weight:700">🩸 혈당</span>${headPill}</div>
+    <div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:6px">${chips}</div>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:8px">
+      ${stepBtn('−',-1,'1 감소')}
+      <input id="glu-amt" type="number" step="1" min="0" inputmode="numeric" placeholder="mg/dL" value="${startVal}" aria-label="혈당 값 (mg/dL)" style="width:94px;height:var(--btn-h-md);text-align:center;font-size:var(--text-lg);font-weight:700;box-sizing:border-box;border:1px solid var(--color-border-input);border-radius:var(--radius-control);font-family:inherit;color:var(--color-text-primary)"/>
+      ${stepBtn('＋',1,'1 증가')}
+      <span style="font-size:var(--text-md);color:var(--color-text-tertiary)">mg/dL</span>
+      <button type="button" class="btn btn-primary btn-sm" onclick="saveGlucose(${d})">${curForSlot?'수정 저장':'저장'}</button>
+      ${curForSlot?`<button type="button" class="btn btn-sm" onclick="deleteGlucose(${d},'${slot}')" style="color:var(--color-error);border-color:var(--color-error-border)">삭제</button>`:''}
+    </div>
+    <div style="margin-top:6px;font-size:var(--text-xs);color:var(--color-text-tertiary)">참고: ${_gluRangeHint(slot)}</div>
+    ${listHtml}
+    <div style="margin-top:8px;font-size:var(--text-xs);color:var(--color-text-tertiary);line-height:1.5">ⓘ 표시되는 정상/주의/높음은 일반 참고 범위이며 <b>진단이 아닙니다.</b> 개인별 판단은 의료진과 상담하세요.</div>
+  </div>`;
+}
+
 // ── 🧨 뇌동매매(감정적 매매) 체크 ─────────────────────────────
 // 원칙을 어긴 충동 매매를 날짜별로 기록. 체크 시 '이유' 필수 → 투자철학 '절대 금지'에 자동 반영.
 function _impulseByDay(y,mo){
@@ -5276,6 +5399,8 @@ function renderArchiveCalendar(el){
   // 몸무게 월 통계 + 일별
   const _ws=_healthStats(y,mo);
   const wByDay=_healthByDay(y,mo);
+  // 혈당 일별(대표값)
+  const gluByDay=_glucoseByDay(y,mo);
   // 뇌동매매 일별
   const impByDay=_impulseByDay(y,mo);
   // 운동 일별
@@ -5292,9 +5417,10 @@ function renderArchiveCalendar(el){
     const dl=byLedger[d]||[];
     let dexp=0,dinc=0;dl.forEach(e=>{if(e.type==='income')dinc+=(+e.amount||0);else dexp+=(+e.amount||0);});
     const wkg=wByDay[d];
+    const glu=gluByDay[d];
     const imp=impByDay[d];
     const wo=woByDay[d];
-    const hasAny=dayMemos.length||dayEvents.length||dl.length||wkg||imp||wo;
+    const hasAny=dayMemos.length||dayEvents.length||dl.length||wkg||glu||imp||wo;
     const isToday=today.getFullYear()===y&&today.getMonth()===mo&&today.getDate()===d;
     const dow=(firstDay+d-1)%7;
     const cls=['arc-cal-day','clickable',hasAny?'has-memo':'',isToday?'today':'',dow===0?'sun':dow===6?'sat':''].filter(Boolean).join(' ');
@@ -5314,6 +5440,8 @@ function renderArchiveCalendar(el){
     if(dexp>0)ledgerChip=`<span class="arc-tag-chip" style="background:var(--color-error-bg);color:var(--color-error-text)">💸 ${_fmtWon(dexp)}</span>`;
     else if(dinc>0)ledgerChip=`<span class="arc-tag-chip" style="background:var(--color-success-bg);color:var(--color-success-text)">💰 ${_fmtWon(dinc)}</span>`;
     const weightChip=wkg?`<span class="arc-tag-chip" style="background:var(--color-info-bg);color:var(--color-info)">⚖️ ${wkg}</span>`:'';
+    let glucoseChip='';
+    if(glu){const gst=_glucoseStatus(glu.slot,glu.mgdl);const gc=(gst.key==='high'||gst.key==='low')?_gluColor(gst.key):{bg:'var(--color-info-bg)',c:'var(--color-info)'};glucoseChip=`<span class="arc-tag-chip" style="background:${gc.bg};color:${gc.c}">🩸 ${glu.mgdl}</span>`;}
     const impulseChip=imp?`<span class="arc-tag-chip" style="background:var(--color-error-bg);color:var(--color-error-text);font-weight:700">🧨 뇌동매매</span>`:'';
     const workoutChip=wo?(wo==='done'
       ?`<span class="arc-tag-chip" style="background:var(--color-success-bg);color:var(--color-success-text)">💪 운동</span>`
@@ -5321,7 +5449,7 @@ function renderArchiveCalendar(el){
 
     cells.push(`<div class="${cls}" id="cal-day-${d}" onclick="selectCalDay(${d})">
       <span class="arc-cal-num">${d}</span>
-      <div>${evChips}${memoChips}${impulseChip}${ledgerChip}${weightChip}${workoutChip}</div>
+      <div>${evChips}${memoChips}${impulseChip}${ledgerChip}${weightChip}${glucoseChip}${workoutChip}</div>
     </div>`);
   }
 
@@ -5338,6 +5466,21 @@ function renderArchiveCalendar(el){
     wLine=`⚖️ 시작 ${_ws.start} → 현재 ${_ws.latest} <b class="${_ws.diff<=0?'up':'down'}">(${sgn(_ws.diff)}${_ws.diff.toFixed(1)}kg, ${sgn(_ws.pct)}${_ws.pct.toFixed(1)}%)</b>${g}${dod}`;
   }else wLine='⚖️ 이번 달 몸무게 기록이 없습니다. 날짜를 눌러 기록하세요.';
   const weightBar=`<div class="ledger-summary">${wLine} <span style="white-space:nowrap;margin-left:6px">🎯 목표 <input id="wt-goal" type="number" step="0.1" min="0" value="${goalVal}" style="width:64px;font-size:var(--text-xs);padding:2px 6px;border:1px solid var(--color-border-input);border-radius:6px;font-family:inherit"/> <button onclick="saveWeightGoal()" class="mc-text-btn">설정</button></span></div>`;
+  // 🩸 혈당 월 요약 + 목표 공복 혈당
+  const _gs=_glucoseStats(_calYear,_calMonth);
+  const _gGoal=(health.glucoseGoals||{})[`${_calYear}-${String(_calMonth+1).padStart(2,'0')}`];
+  const gGoalVal=_gGoal!=null?_gGoal:'';
+  let gLine;
+  if(_gs){
+    const parts=[];
+    if(_gs.fastAvg!=null)parts.push(`공복 평균 ${_gs.fastAvg}`);
+    if(_gs.postAvg!=null)parts.push(`식후 평균 ${_gs.postAvg}`);
+    const mx=_gs.max,mxDate=mx.date.slice(5).replace('-','/');
+    parts.push(`최고 ${mx.mgdl}(${mxDate} ${_gluSlotLabel(mx.slot)})`);
+    parts.push(`기록 ${_gs.days}일`);
+    gLine=`🩸 ${parts.join(' · ')}`;
+  }else gLine='🩸 이번 달 혈당 기록이 없습니다. 날짜를 눌러 기록하세요.';
+  const glucoseBar=`<div class="ledger-summary">${gLine} <span style="white-space:nowrap;margin-left:6px">🎯 목표 공복 <input id="glu-goal" type="number" step="1" min="0" value="${gGoalVal}" style="width:64px;font-size:var(--text-xs);padding:2px 6px;border:1px solid var(--color-border-input);border-radius:6px;font-family:inherit"/> mg/dL <button onclick="saveGlucoseGoal()" class="mc-text-btn">설정</button></span></div>`;
 
   el.innerHTML=`
     <div class="arc-cal-nav">
@@ -5347,6 +5490,7 @@ function renderArchiveCalendar(el){
     </div>
     ${summaryBar}
     ${weightBar}
+    ${glucoseBar}
     <div class="arc-cal-grid">${dowHtml}${cells.join('')}</div>
     <div id="arc-cal-detail"></div>`;
 }
@@ -5444,6 +5588,7 @@ function _renderCalDetail(d){
     ${_renderImpulseSection(d)}
     ${_renderLedgerSection(d)}
     ${_renderWeightSection(d)}
+    ${_renderGlucoseSection(d)}
     ${_renderWorkoutSection(d)}
   </div>`;
 }
