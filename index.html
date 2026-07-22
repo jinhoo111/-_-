@@ -1920,7 +1920,9 @@ async function _restUpsert(table,row,attempt){
         return _restUpsert(table,row,n+1);
       }
     }
-    return{error:{message:'rest_'+res.status}};
+    // 본문을 버리면 400의 원인(예: 컬럼 없음)을 알 수 없어 진단이 불가능했다 → 함께 반환.
+    let body='';try{body=await res.text();}catch(e){}
+    return{error:{message:'rest_'+res.status+(body?' '+body.slice(0,300):''),status:res.status}};
   }catch(e){
     if(n<2){
       await new Promise(r=>setTimeout(r,800*(n+1)));
@@ -2524,12 +2526,12 @@ async function saveProfile(){
 // 같은 브라우저에서 계정 전환 시 이전 계정 데이터가 새 계정으로 새는 것을 방지.
 function _clearLocalUserData(){
   clearTimeout(_syncTimer); // 이전 계정의 지연 동기화가 빈 데이터를 덮어쓰지 않도록 취소
-  stocks=[];memos=[];memoArchive=[];ledger=[];health={goal:null,entries:[],monthlyGoals:{},weeklyActual:{},workouts:{},glucose:[],glucoseGoals:{}};budget={};impulseTrades=[];cashKRW=0;cashUSD=0;
+  stocks=[];memos=[];memoArchive=[];ledger=[];health={goal:null,entries:[],monthlyGoals:{},weeklyActual:{},workouts:{},glucose:[],glucoseGoals:{}};budget={};impulseTrades=[];schedules=[];cashKRW=0;cashUSD=0;
   quoteSymbols=['NVDA','AAPL','TSLA','MSFT'];notifyMaster=false;investPhilosophy=[];
   monitorCompanies=[];_monitorCache={};dartKeyStored=false;
   FKEY='';CKEY='';_fhKey='';_dartKey='';
   _techResults={}; // 기술 신호 스캔 결과(계정 격리)
-  ['pf_s','pf_m','pf_ma','pf_ledger','pf_health','pf_budget','pf_impulse','cash_krw','cash_usd','fh_q','pf_notify_master','pf_phil',
+  ['pf_s','pf_m','pf_ma','pf_ledger','pf_health','pf_budget','pf_impulse','pf_sched','cash_krw','cash_usd','fh_q','pf_notify_master','pf_phil',
    'monitor_co','pf_is_sample','fhkey_stored','ck_stored','fhkey','tech_scan']
     .forEach(k=>localStorage.removeItem(k));
   _cloudLoadedFor=null;_apiKeysRestoredFor=null;
@@ -2605,6 +2607,9 @@ async function _loadFromCloud(user){
   if(Array.isArray(data.impulse_trades)){
     impulseTrades=data.impulse_trades;localStorage.setItem('pf_impulse',JSON.stringify(impulseTrades));
   }
+  if(Array.isArray(data.schedules)){
+    schedules=data.schedules;localStorage.setItem('pf_sched',JSON.stringify(schedules));
+  }
   _migrateActiveMemos(); // 활성 일지 제거: 기존 memos를 캘린더/아카이브(memoArchive)로 이관
   if(data.cash_krw!=null){cashKRW=parseFloat(data.cash_krw)||0;localStorage.setItem('cash_krw',cashKRW);}
   if(data.cash_usd!=null){cashUSD=parseFloat(data.cash_usd)||0;localStorage.setItem('cash_usd',cashUSD);}
@@ -2630,11 +2635,21 @@ async function _loadFromCloud(user){
   //  호출부(init IIFE / onAuthStateChange)에서 직접 _restoreApiKeyState()를 호출한다)
 }
 
+// user_data에 아직 없는 컬럼(마이그레이션 미적용)을 기억해 다음 저장부터 아예 제외한다.
+// 배경: 페이로드에 새 필드를 추가하고 컬럼을 안 만들면 upsert '전체'가 400으로 실패해
+//       포트폴리오·일지까지 통째로 클라우드 저장이 막힌다(impulse_trades에서 실제 발생).
+//       이제는 문제 컬럼만 빼고 재시도 → 나머지 데이터는 정상 저장되고, 해당 기능만
+//       localStorage에 남는다(마이그레이션 실행하면 자동 복구).
+let _syncSkipCols=[];
+function _missingColumn(msg){
+  const m=String(msg||'');
+  return (m.match(/Could not find the '([^']+)' column/i)||m.match(/column "([^"]+)" of relation/i)||[])[1]||null;
+}
 function _syncToCloud(immediate){
   if(!_currentUser)return;
   clearTimeout(_syncTimer);
   const doSync=async()=>{
-    const{error}=await _restUpsert('user_data',{
+    const payload={
       user_id:_currentUser.id,
       stocks:stocks,
       memos:memos,
@@ -2649,8 +2664,20 @@ function _syncToCloud(immediate){
       health:health,
       budget:budget,
       impulse_trades:impulseTrades,
+      schedules:schedules,
       updated_at:new Date().toISOString()
-    });
+    };
+    _syncSkipCols.forEach(c=>{delete payload[c];});
+    let{error}=await _restUpsert('user_data',payload);
+    if(error){
+      const col=_missingColumn(error.message);
+      if(col&&payload[col]!==undefined&&col!=='user_id'){
+        _syncSkipCols.push(col);
+        console.warn('[sync] user_data.%s 컬럼 없음 → 해당 항목 제외하고 재시도. 마이그레이션 실행 필요.',col);
+        const retry={...payload};delete retry[col];
+        ({error}=await _restUpsert('user_data',retry));
+      }
+    }
     if(error)console.warn('[sync] 클라우드 저장 실패:',error.message);
   };
   if(immediate)doSync();
@@ -2844,6 +2871,9 @@ let ledger=[];  // 가계부: {id,date:'YYYY-MM-DD',type:'income'|'expense',amou
 let health={goal:null,entries:[],monthlyGoals:{},weeklyActual:{},workouts:{},glucose:[],glucoseGoals:{}};  // 몸무게: entries=[{date,kg}], goal=기본목표, monthlyGoals={'YYYY-MM':kg}, weeklyActual={'YYYY-MM':[kg|null,...주차]}(주차별 실제체중 직접입력 override) / 혈당: glucose=[{date,slot,mgdl}](하루 1건 기본·시점별), glucoseGoals={'YYYY-MM':공복목표mg/dL}
 let budget={};  // 월별 예산: {'YYYY-MM':{income,expense,incomeWeeks?:[..주차],expenseWeeks?:[..주차]}} (주차 배열 없으면 월÷주수 균등분할 폴백)
 let impulseTrades=[];  // 뇌동매매: [{id,date:'YYYY-MM-DD',reason,createdAt}] (하루 1건, 투자철학 '절대 금지'에 자동 반영)
+// 개인 일정: [{id,date:'YYYY-MM-DD',time:'HH:MM'|'',title,memo}] 하루 여러 건·시간순.
+// 투자 판단 기록이 아니므로 memoArchive(일지)와 분리 → 투자습관리포트·태그 집계에 섞이지 않는다.
+let schedules=[];
 let _impulseSort='desc';  // 뇌동매매 정렬: 'desc'=최신순 / 'asc'=오래된순
 let _rptYear=new Date().getFullYear(),_rptMonth=new Date().getMonth();  // 리포트 기준 기간(주차별 뷰)
 let _rptAllocOpen=false,_rptWeightWkOpen=false;  // 리포트 접이식 편집기 열림 상태(주차 금액배분 / 주차 실제체중)
@@ -2901,6 +2931,7 @@ try{ledger=JSON.parse(localStorage.getItem('pf_ledger')||'[]')}catch(e){}
 try{const _h=JSON.parse(localStorage.getItem('pf_health')||'{}');health={goal:(_h.goal!=null?_h.goal:null),entries:Array.isArray(_h.entries)?_h.entries:[],monthlyGoals:(_h.monthlyGoals&&typeof _h.monthlyGoals==='object'&&!Array.isArray(_h.monthlyGoals))?_h.monthlyGoals:{},weeklyActual:(_h.weeklyActual&&typeof _h.weeklyActual==='object'&&!Array.isArray(_h.weeklyActual))?_h.weeklyActual:{},workouts:(_h.workouts&&typeof _h.workouts==='object'&&!Array.isArray(_h.workouts))?_h.workouts:{}};}catch(e){}
 try{const _b=JSON.parse(localStorage.getItem('pf_budget')||'{}');budget=(_b&&typeof _b==='object'&&!Array.isArray(_b))?_b:{};}catch(e){}
 try{impulseTrades=JSON.parse(localStorage.getItem('pf_impulse')||'[]')}catch(e){}
+try{const _sc=JSON.parse(localStorage.getItem('pf_sched')||'[]');schedules=Array.isArray(_sc)?_sc:[];}catch(e){}
 _migrateActiveMemos();
 try{FKEY=localStorage.getItem('fhkey_stored')?'***':''}catch(e){}
 try{quoteSymbols=JSON.parse(localStorage.getItem('fh_q')||'["NVDA","AAPL","TSLA","MSFT"]')}catch(e){}
@@ -4768,6 +4799,97 @@ function deleteLedgerEntry(id,d){
   renderMemos();_calSelectedDay=null;selectCalDay(d);
 }
 
+// ── 개인 일정 (시간 + 제목) ────────────────────────────────────
+// 병원 예약·약속처럼 투자와 무관한 일정. memoArchive(투자 일지)와 별도로 저장해
+// 투자 통계에 섞이지 않게 한다. 하루 여러 건 등록 가능하며 시간순으로 정렬한다.
+// 시간 미입력('')은 '종일' 취급하고 시간이 있는 일정보다 앞에 둔다.
+function _schedSort(a,b){
+  const ta=a.time||'',tb=b.time||'';
+  if(ta===tb)return (a.id||0)-(b.id||0);
+  if(!ta)return -1;
+  if(!tb)return 1;
+  return ta.localeCompare(tb);
+}
+function _schedOfDay(d){
+  const date=_ymd(_calYear,_calMonth,d);
+  return schedules.filter(s=>s.date===date).sort(_schedSort);
+}
+function _scheduleByDay(y,mo){
+  const by={},pre=`${y}-${String(mo+1).padStart(2,'0')}`;
+  schedules.forEach(s=>{
+    if(!(s.date||'').startsWith(pre))return;
+    const d=parseInt((s.date||'').slice(8,10),10);
+    (by[d]=by[d]||[]).push(s);
+  });
+  Object.values(by).forEach(a=>a.sort(_schedSort));
+  return by;
+}
+function _schedTimeLabel(t){return t||'종일';}
+
+function _renderScheduleSection(d){
+  const items=_schedOfDay(d);
+  const rows=items.map(s=>`<div class="ledger-row">
+    <span style="display:flex;align-items:center;gap:8px;min-width:0">
+      <span style="font-weight:700;color:var(--color-accent-indigo);white-space:nowrap;font-variant-numeric:tabular-nums">${escapeHtml(_schedTimeLabel(s.time))}</span>
+      <span style="min-width:0"><b>${escapeHtml(s.title)}</b>${s.memo?`<span style="color:var(--color-text-tertiary)"> · ${escapeHtml(s.memo)}</span>`:''}</span>
+    </span>
+    <span style="display:flex;gap:6px;white-space:nowrap">
+      <button type="button" class="mc-text-btn" onclick="openScheduleForm(${d},${s.id})">편집</button>
+      <button type="button" class="mc-text-btn" style="color:var(--color-error)" onclick="deleteSchedule(${s.id},${d})">삭제</button>
+    </span>
+  </div>`).join('');
+  return `<div class="ledger-sec">
+    <div class="ledger-head"><span style="font-weight:700">📅 개인 일정${items.length?` <span style="font-weight:400;color:var(--color-text-muted)">(${items.length}건)</span>`:''}</span>
+      <button type="button" class="tbtn" style="border-color:var(--color-accent-border-soft);color:var(--color-accent-indigo)" onclick="openScheduleForm(${d})">＋ 일정 추가</button></div>
+    <div id="sched-form-wrap"></div>
+    ${rows||'<div style="font-size:var(--text-sm);color:var(--color-text-tertiary);padding:4px 0">이 날의 개인 일정이 없습니다. 병원 예약·약속 등을 등록해보세요.</div>'}
+  </div>`;
+}
+
+function openScheduleForm(d,editId){
+  const wrap=document.getElementById('sched-form-wrap');if(!wrap)return;
+  const key=String(editId||'new');
+  if(wrap.dataset.key===key){wrap.innerHTML='';wrap.dataset.key='';return;} // 같은 버튼 재클릭 = 닫기
+  wrap.dataset.key=key;
+  const cur=editId?schedules.find(s=>s.id===editId):null;
+  const inp='font-size:var(--text-base);padding:5px 8px;border:1px solid var(--color-border-input);border-radius:7px;font-family:inherit;color:var(--color-text-primary);background:var(--color-bg-surface)';
+  wrap.innerHTML=`<div class="cal-compose" style="margin:6px 0">
+    <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+      <input id="sched-time" type="time" value="${cur?escapeHtml(cur.time||''):''}" style="${inp};width:120px"/>
+      <input id="sched-title" type="text" maxlength="60" placeholder="일정 제목 (예: 병원 예약)" value="${cur?escapeHtml(cur.title||''):''}" style="${inp};flex:1;min-width:140px"/>
+    </div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:6px">
+      <input id="sched-memo" type="text" maxlength="200" placeholder="메모(선택)" value="${cur?escapeHtml(cur.memo||''):''}" style="${inp};flex:1;min-width:140px"/>
+      <button type="button" onclick="saveSchedule(${d},${editId||'null'})" style="font-size:var(--text-sm);padding:5px 14px;border:1px solid var(--color-accent-border-soft);border-radius:6px;background:var(--color-accent-subtle);cursor:pointer;color:var(--color-accent-indigo);font-weight:700">${cur?'수정 저장':'일정 저장'}</button>
+    </div>
+    <div id="sched-err" style="font-size:var(--text-sm);color:var(--color-error-text);margin-top:6px"></div>
+    <div style="font-size:var(--text-xs);color:var(--color-text-tertiary);margin-top:4px">시간을 비우면 ‘종일’ 일정으로 저장됩니다. 개인 일정은 투자 통계에 포함되지 않습니다.</div>
+  </div>`;
+  const t=document.getElementById('sched-title');if(t)t.focus();
+}
+
+function saveSchedule(d,editId){
+  const errEl=document.getElementById('sched-err');
+  const title=(document.getElementById('sched-title')?.value||'').trim();
+  if(!title){if(errEl)errEl.textContent='일정 제목을 입력해주세요.';document.getElementById('sched-title')?.focus();return;}
+  const time=(document.getElementById('sched-time')?.value||'').trim();
+  const memo=(document.getElementById('sched-memo')?.value||'').trim();
+  if(editId){
+    const s=schedules.find(x=>x.id===editId);
+    if(s){s.title=title;s.time=time;s.memo=memo;}
+  }else{
+    schedules.push({id:Date.now(),date:_ymd(_calYear,_calMonth,d),time,title,memo});
+  }
+  localStorage.setItem('pf_sched',JSON.stringify(schedules));_syncToCloud();
+  renderMemos();_calSelectedDay=null;selectCalDay(d);
+}
+
+function deleteSchedule(id,d){
+  schedules=schedules.filter(s=>s.id!==id);
+  localStorage.setItem('pf_sched',JSON.stringify(schedules));_syncToCloud();
+  renderMemos();_calSelectedDay=null;selectCalDay(d);
+}
+
 // ── 몸무게 트래킹 (목표 + 등락률 종합) ──────────────────────────
 function _healthByDay(y,mo){
   const by={},pre=`${y}-${String(mo+1).padStart(2,'0')}`;
@@ -5460,6 +5582,8 @@ function renderArchiveCalendar(el){
   const impByDay=_impulseByDay(y,mo);
   // 운동 일별
   const woByDay=_workoutByDay(y,mo);
+  // 개인 일정 일별
+  const schByDay=_scheduleByDay(y,mo);
 
   const DOW=['일','월','화','수','목','금','토'];
   const dowHtml=DOW.map(d=>`<div class="arc-cal-dow">${d}</div>`).join('');
@@ -5475,7 +5599,8 @@ function renderArchiveCalendar(el){
     const glu=gluByDay[d];
     const imp=impByDay[d];
     const wo=woByDay[d];
-    const hasAny=dayMemos.length||dayEvents.length||dl.length||wkg||glu||imp||wo;
+    const daySched=schByDay[d]||[];
+    const hasAny=dayMemos.length||dayEvents.length||dl.length||wkg||glu||imp||wo||daySched.length;
     const isToday=today.getFullYear()===y&&today.getMonth()===mo&&today.getDate()===d;
     const dow=(firstDay+d-1)%7;
     const cls=['arc-cal-day','clickable',hasAny?'has-memo':'',isToday?'today':'',dow===0?'sun':dow===6?'sat':''].filter(Boolean).join(' ');
@@ -5491,6 +5616,11 @@ function renderArchiveCalendar(el){
       return`<span class="arc-tag-chip" style="background:${c.bg};color:${c.c}">${c.l}</span>`;
     }).join('')+(dayMemos.length>2?`<span class="arc-tag-chip" style="background:var(--color-bg-overlay);color:var(--color-text-muted)">+${dayMemos.length-2}</span>`:'');
 
+    // 개인 일정 칩 (최대 2개, 시간순) — '📅 14:00 병원' 형태
+    const schedChips=daySched.slice(0,2).map(s=>
+      `<span class="arc-tag-chip" style="background:var(--color-accent-subtle);color:var(--color-accent-indigo);font-weight:600">📅 ${escapeHtml((s.time?s.time+' ':'')+s.title)}</span>`
+    ).join('')+(daySched.length>2?`<span class="arc-tag-chip" style="background:var(--color-bg-overlay);color:var(--color-text-muted)">+${daySched.length-2}</span>`:'');
+
     let ledgerChip='';
     if(dexp>0)ledgerChip=`<span class="arc-tag-chip" style="background:var(--color-error-bg);color:var(--color-error-text)">💸 ${_fmtWon(dexp)}</span>`;
     else if(dinc>0)ledgerChip=`<span class="arc-tag-chip" style="background:var(--color-success-bg);color:var(--color-success-text)">💰 ${_fmtWon(dinc)}</span>`;
@@ -5504,7 +5634,7 @@ function renderArchiveCalendar(el){
 
     cells.push(`<div class="${cls}" id="cal-day-${d}" onclick="selectCalDay(${d})">
       <span class="arc-cal-num">${d}</span>
-      <div>${evChips}${memoChips}${impulseChip}${ledgerChip}${weightChip}${glucoseChip}${workoutChip}</div>
+      <div>${evChips}${schedChips}${memoChips}${impulseChip}${ledgerChip}${weightChip}${glucoseChip}${workoutChip}</div>
     </div>`);
   }
 
@@ -5610,8 +5740,8 @@ function _renderCalDetail(d){
       </div>${detail}
     </div>`;
   }).join('');
-  const emptyHint=(!dayEvents.length&&!dayMemos.length)
-    ?`<div style="font-size:var(--text-sm);color:var(--color-text-tertiary);padding:6px 0 2px">이 날의 기록이 없습니다. <span style="color:var(--color-text-secondary)">‘✏️ 이 날 일지 쓰기’</span>로 추가해보세요.</div>`:'';
+  const emptyHint=(!dayEvents.length&&!dayMemos.length&&!_schedOfDay(d).length)
+    ?`<div style="font-size:var(--text-sm);color:var(--color-text-tertiary);padding:6px 0 2px">이 날의 기록이 없습니다. <span style="color:var(--color-text-secondary)">‘✏️ 이 날 일지 쓰기’</span>로 투자 판단을, 아래 <span style="color:var(--color-text-secondary)">‘📅 개인 일정’</span>으로 약속을 남겨보세요.</div>`:'';
   det.innerHTML=`<div class="arc-cal-detail">
     <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px">
       <div style="font-size:var(--text-base);font-weight:700;color:var(--color-text-secondary)">${mo+1}월 ${d}일 ${dow}요일</div>
@@ -5640,6 +5770,7 @@ function _renderCalDetail(d){
         <div class="memo-text" style="color:var(--color-text-secondary)">${escapeHtml(m.text)}</div>
       </div>`;
     }).join('')}
+    ${_renderScheduleSection(d)}
     ${_renderImpulseSection(d)}
     ${_renderLedgerSection(d)}
     ${_renderWeightSection(d)}
