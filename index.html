@@ -2852,8 +2852,13 @@ async function stockCodeToCorp(stockCode){
 async function _tryProxy(url,ms=6000){
   const _parse=t=>{const s=(t||'').trim();if(!s.startsWith('{')&&!s.startsWith('['))throw new Error('bad-json');return new Response(s,{status:200,headers:{'content-type':'application/json'}});};
   const p1=fetch(DART_PROXY_URL,{method:'POST',headers:{'Content-Type':'application/json','apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY},body:JSON.stringify({action:'yahoo-finance',url})}).then(r=>{if(!r.ok)throw 0;return r.text();}).then(_parse);
-  const p2=fetch('https://corsproxy.io/?'+encodeURIComponent(url)).then(r=>{if(!r.ok)throw 0;return r.text();}).then(_parse);
-  return Promise.race([Promise.any([p1,p2]),new Promise((_,rej)=>setTimeout(()=>rej(new Error('timeout')),ms))]);
+  const attempts=[p1];
+  // corsproxy.io는 네이버 요청을 403으로 차단한다(서버 경로 p1은 정상 동작). 네이버 URL엔 공개 프록시를
+  // 태우지 않아, 지수/시세를 로드할 때마다 발생하던 무의미한 403 실패요청을 없앤다. Yahoo는 종전대로 병행 경쟁.
+  if(!/naver\.com/.test(url)){
+    attempts.push(fetch('https://corsproxy.io/?'+encodeURIComponent(url)).then(r=>{if(!r.ok)throw 0;return r.text();}).then(_parse));
+  }
+  return Promise.race([Promise.any(attempts),new Promise((_,rej)=>setTimeout(()=>rej(new Error('timeout')),ms))]);
 }
 // Yahoo Finance용 세마포어 (max 3: rate limit 방지 + 병렬성 향상)
 const _ySem=(()=>{let n=0,q=[];return{get:()=>n<3?(n++,Promise.resolve()):new Promise(r=>q.push(r)),put:()=>{n--;if(q.length)q.shift()();}};})();
