@@ -36,6 +36,9 @@ const SHARED_FH_TTL_MS: Record<string, number> = {
   "company-news": 300_000,
   "stock/recommendation": 3_600_000,
   "stock/price-target": 3_600_000,
+  // Scheduled earnings dates barely move, and the journal calendar fans out one call per
+  // held ticker on every visit — cache hard so it costs ~nothing against the Finnhub quota.
+  "calendar/earnings": 21_600_000,
 };
 // 저장소는 DB(api_cache). Edge Function의 메모리는 요청마다 다른 isolate가 처리할 수 있어
 // 요청 간 공유되지 않는다(실측: 모듈 레벨 Map은 연속 호출에도 전부 MISS).
@@ -465,7 +468,10 @@ serve(async (req: Request) => {
       const { path, params = {} } = body;
       if (!path || typeof path !== "string") return err("path_required");
 
-      const allowedPaths = ["quote", "company-news", "news", "stock/candle", "search", "stock/recommendation", "stock/price-target"];
+      // "calendar/earnings" powers the earnings markers on the journal calendar. It was
+      // missing here, so even after the client moved off the dead proxy-api route the call
+      // came back path_not_allowed.
+      const allowedPaths = ["quote", "company-news", "news", "stock/candle", "search", "stock/recommendation", "stock/price-target", "calendar/earnings"];
       const basePath = path.split("?")[0].replace(/^\/+/, "");
       if (!allowedPaths.some((p) => basePath.startsWith(p))) return err("path_not_allowed");
 
