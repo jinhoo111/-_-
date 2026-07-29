@@ -6435,28 +6435,16 @@ function renderIdxCard(item,d,sec){
   return`<div ${wrap}>${icon}<div class="idx-sec">${sec}<span style="font-size:var(--text-2xs);color:var(--color-text-disabled);margin-left:4px">${d.stateLabel||''}</span></div><div class="idx-name">${item.n}</div><div class="idx-val ${cls}">${fmt}</div>${d.chg!=null?`<div class="idx-chg ${cls}">${d.chg>=0?'▲':'▼'} ${Math.abs(d.chg).toFixed(2)}%</div>`:''}</div>`;
 }
 
-// ── Yahoo Finance 배치 조회 (심볼 여러 개를 프록시 1회 호출로 처리, 5초 타임아웃)
+// ── Yahoo Finance 배치 조회 (v7/finance/quote는 크럼/쿠키 인증이 필요해져 401 고정 발생 →
+// 심볼별 v8/finance/chart를 병렬 호출해 동일한 맵 형태로 반환. loadYahoo()와 동일 로직)
 async function loadYahooBatch(syms){
   if(!syms.length)return{};
-  try{
-    const url=`https://query1.finance.yahoo.com/v7/finance/quote?symbols=${syms.map(encodeURIComponent).join(',')}&fields=regularMarketPrice,regularMarketPreviousClose,preMarketPrice,postMarketPrice,marketState`;
-    const r=await proxyFetch(url,5000);
-    const results=(await r.json())?.quoteResponse?.result;
-    if(!results?.length)return{};
-    const map={};
-    for(const q of results){
-      const state=q.marketState||'CLOSED';
-      let price=q.regularMarketPrice,stateLabel=' 종가';
-      if(state==='PRE'&&q.preMarketPrice){price=q.preMarketPrice;stateLabel=' 프리';}
-      else if(state==='POST'&&q.postMarketPrice){price=q.postMarketPrice;stateLabel=' 애프터';}
-      else if(state==='REGULAR'){stateLabel=' 지연';}
-      const prev=q.regularMarketPreviousClose;
-      const chg=prev?((price-prev)/prev*100):null;
-      map[q.symbol]={val:price,chg,state,stateLabel};
-    }
-    return map;
-  }catch(e){}
-  return{};
+  const map={};
+  await Promise.allSettled(syms.map(async sym=>{
+    const d=await loadYahoo(sym);
+    if(d)map[sym]=d;
+  }));
+  return map;
 }
 
 // ── 그룹 조회 및 렌더링 (배치 데이터 우선, 없으면 개별 폴백)
