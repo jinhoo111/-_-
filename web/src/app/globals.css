@@ -1,0 +1,203 @@
+@import "tailwindcss";
+
+/* Ported verbatim from designsystem_richbuild_v2.md so the rewrite keeps the
+   same Toss-style token values as the original index.html. */
+:root {
+  /* Price direction (KR convention: up=red, down=blue) */
+  --color-up: #f04452;
+  --color-down: #2e7cf6;
+  --color-flat: #8b95a1;
+
+  /* Text */
+  --color-text-primary: #1a1a1a;
+  --color-text-secondary: #555;
+  --color-text-subtle: #666;
+  --color-text-tertiary: #888;
+  --color-text-muted: #bbb;
+  --color-text-disabled: #aaa;
+  --color-text-strong: #333;
+  --color-text-warm: #44403c;
+  --color-text-placeholder: #9ca3af;
+  --color-text-secondary-alt: #374151;
+
+  /* Surface */
+  --color-bg-base: #f2f4f6;
+  --color-bg-surface: #fff;
+  --color-bg-subtle: #fafafa;
+  --color-bg-muted: #f5f5f3;
+  --color-bg-overlay: #f0efec;
+  --color-bg-archive: #f8f8f8;
+  --color-bg-badge: #f3f4f6;
+  --color-edit-highlight: #fffef0;
+
+  /* Border */
+  --color-border-default: #e8e8e8;
+  --color-border-input: #ddd;
+  --color-border-strong: #999;
+  --color-border-subtle: #e5e7eb;
+  --color-border-muted: #e5e5e5;
+  --color-border-faint: #f5f5f5;
+
+  /* Semantic — Success */
+  --color-success: #0a8a57;
+  --color-success-dark: #15803d;
+  --color-success-deep: #065f46;
+  --color-success-deeper: #064e3b;
+  --color-success-text: #166534;
+  --color-success-bg: #dcfce7;
+  --color-success-bg-soft: #d1fae5;
+  --color-success-bg-light: #f0fdf4;
+  --color-success-border: #bbf7d0;
+
+  /* Semantic — Error */
+  --color-error: #d63031;
+  --color-error-text: #991b1b;
+  --color-error-bg: #fee2e2;
+  --color-error-subtle: #fef2f2;
+  --color-error-border: #fecaca;
+
+  /* Semantic — Warning */
+  --color-warning: #d97706;
+  --color-warning-bright: #f59e0b;
+  --color-warning-dark: #b45309;
+  --color-warning-deeper: #78350f;
+  --color-warning-text: #92400e;
+  --color-warning-bg: #fef3c7;
+  --color-warning-subtle: #fffbeb;
+  --color-warning-border: #fde68a;
+
+  /* Semantic — Info */
+  --color-info: #1e40af;
+  --color-info-text: #1e3a8a;
+  --color-info-deep: #075985;
+  --color-info-bg: #dbeafe;
+  --color-info-border: #bfdbfe;
+  --color-trade-long-bg: #eff6ff;
+
+  /* Accent / Purple */
+  --color-accent: #6b21a8;
+  --color-accent-dark: #5b21b6;
+  --color-accent-mid: #6d28d9;
+  --color-accent-deeper: #4c1d95;
+  --color-accent-indigo: #4f46e5;
+  --color-accent-soft: #6366f1;
+  --color-accent-bg: #f3e8ff;
+  --color-accent-bg-soft: #ede9fe;
+  --color-accent-subtle: #eef2ff;
+  --color-accent-border: #c4b5fd;
+  --color-accent-border-soft: #c7d2fe;
+
+  /* Accent — Brand (Toss blue, interaction only — unrelated to price up/down colors) */
+  --color-accent-primary: #3182f6;
+  --color-accent-hover: #1b64da;
+  --color-accent-weak: #4593fc;
+  --color-accent-on: #ffffff;
+
+  /* Trade type */
+  --color-trade-short-bg: #fff7ed;
+  --color-trade-short-text: #c2410c;
+  --color-trade-long-text: #1d4ed8;
+
+  /* Broker badges */
+  --color-broker-kakao-bg: #fef9c3;
+  --color-broker-kakao-text: #854d0e;
+  --color-broker-mirae-bg: #e0e7ff;
+  --color-broker-mirae-text: #3730a3;
+  --color-broker-shinhan-bg: #e0f2fe;
+  --color-broker-hanhwa-bg: #ffedd5;
+  --color-broker-hanhwa-text: #9a3412;
+  --color-broker-daesin-bg: #ccfbf1;
+  --color-broker-daesin-text: #134e4a;
+
+  /* Typography */
+  --text-2xs: 9px;
+  --text-xs: 10px;
+  --text-sm: 11px;
+  --text-base: 12px;
+  --text-table: 12.5px;
+  --text-md: 13px;
+  --text-lg: 14px;
+  --text-xl: 15px;
+  --text-2xl: 16px;
+  --text-3xl: 17px;
+
+  /* Spacing (4pt grid) */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-7: 28px;
+  --space-8: 32px;
+
+  /* Radius */
+  --radius-control: 10px; /* buttons, inputs, small chips */
+  --radius-sm: var(--radius-control);
+  --radius-md: var(--radius-control);
+  --radius-lg: var(--radius-control);
+  --radius-xl: var(--radius-control);
+  --radius-2xl: 12px;
+  --radius-3xl: 16px;
+  --radius-pill: 20px;
+  --radius-full: 50%;
+
+  /* Button heights */
+  --btn-h-sm: 34px;
+  --btn-h-md: 40px;
+  --btn-h-lg: 48px;
+
+  /* Shadow */
+  --shadow-card: 0 1px 3px rgba(17, 24, 39, 0.06);
+  --shadow-hover: 0 4px 16px rgba(17, 24, 39, 0.09);
+  --shadow-pop: 0 8px 28px rgba(17, 24, 39, 0.12);
+  --shadow-nav: 0 -1px 0 rgba(17, 24, 39, 0.06);
+}
+
+.dark {
+  --color-text-primary: #ededed;
+  --color-text-secondary: #b3b3b3;
+  --color-text-subtle: #a3a3a3;
+  --color-text-tertiary: #8a8a8a;
+  --color-text-muted: #666;
+  --color-text-disabled: #6b6b6b;
+  --color-text-strong: #d4d4d4;
+  --color-text-warm: #d6d3d1;
+  --color-text-placeholder: #71717a;
+  --color-text-secondary-alt: #b4becd;
+
+  --color-bg-base: #0a0a0a;
+  --color-bg-surface: #171717;
+  --color-bg-subtle: #1c1c1c;
+  --color-bg-muted: #1f1f1d;
+  --color-bg-overlay: #262624;
+  --color-bg-archive: #1a1a1a;
+  --color-bg-badge: #27272a;
+  --color-edit-highlight: #2a2a1a;
+
+  --color-border-default: #2e2e2e;
+  --color-border-input: #3a3a3a;
+  --color-border-strong: #525252;
+  --color-border-subtle: #27272a;
+  --color-border-muted: #262626;
+  --color-border-faint: #1f1f1f;
+
+  --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.4);
+  --shadow-hover: 0 4px 16px rgba(0, 0, 0, 0.5);
+  --shadow-pop: 0 8px 28px rgba(0, 0, 0, 0.6);
+  --shadow-nav: 0 -1px 0 rgba(255, 255, 255, 0.06);
+}
+
+@theme inline {
+  --color-bg-base: var(--color-bg-base);
+  --color-bg-surface: var(--color-bg-surface);
+  --color-text-primary: var(--color-text-primary);
+  --color-text-secondary: var(--color-text-secondary);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+body {
+  background: var(--color-bg-base);
+  color: var(--color-text-primary);
+}
