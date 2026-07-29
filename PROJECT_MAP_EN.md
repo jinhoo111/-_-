@@ -60,18 +60,8 @@
 ```
 index.html                          # Entire frontend (HTML + CSS + JS)
 corp_map.json                       # KR ticker (6 digits) → DART corp_code mapping
-01_IDEATION_GUIDE.md                # Ideation methodology guide (Kim Geun-bae + JTBD)
-02_DESIGN_GUIDE.md                  # BX/design system guide
 designsystem_richbuild_v2.md        # Currently applied design token reference
-DEVELOPMENT_HISTORY_EN.md           # English dev history (2026-06-16 ~ 2026-07-23, 171 commits)
-IR_서비스기획서_투자허브.md            # IR service plan (Korean)
-개발내역.md                           # Detailed Korean session-by-session dev log
-개발일지_2026-07-02.md                # 2026-07-02 work summary
-개발_백로그_v1.1.md                   # Competitor monitoring v1.1 backlog
-기획_KRX_지표_v3.md                  # KRX official data feature plan
-기획_수급페이지_기관매매_v2.md         # Supply/Flow page + overseas expansion plan
-레퍼런스/                             # Competitor reverse-engineering docs
-ss_*.png                            # 7 UI screenshots
+web/                                 # Next.js rewrite (rewrite/next branch)
 supabase/
   functions/market-data/index.ts    # Single Edge Function (canonical)
   migrations/0001_*.sql ~ 0010_*.sql # DB migrations
@@ -83,13 +73,9 @@ supabase/
 
 | You want to know… | Read this first |
 |-------------------|-----------------|
-| What the service is, revenue model | `IR_서비스기획서_투자허브.md` |
-| What has been built and what bugs were hit | `DEVELOPMENT_HISTORY_EN.md` (very detailed) |
-| Recent session changes / troubleshooting | `개발내역.md` |
 | Colors/fonts/tokens | `designsystem_richbuild_v2.md` |
-| Future development plans | `개발_백로그_v1.1.md`, `기획_KRX_지표_v3.md` |
-| Ideation rules for new features | `01_IDEATION_GUIDE.md` |
-| Design/BX deliverable rules | `02_DESIGN_GUIDE.md` |
+| What has been built and what bugs were hit | `git log` |
+| Rewrite progress/plan | `web/` (rewrite/next branch) |
 
 ---
 

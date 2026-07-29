@@ -60,18 +60,8 @@
 ```
 index.html                          # 전체 프론트엔드 (HTML + CSS + JS)
 corp_map.json                       # KR 티커(6자리) → DART corp_code 매핑
-01_IDEATION_GUIDE.md                # 아이디에이션 방법론 가이드 (김근배+JTBD)
-02_DESIGN_GUIDE.md                  # BX/디자인 시스템 설계 가이드
 designsystem_richbuild_v2.md        # 실제 적용 중인 디자인 토큰 문서
-DEVELOPMENT_HISTORY_EN.md           # 영문 개발 역사 (2026-06-16 ~ 2026-07-23, 171 commits)
-IR_서비스기획서_투자허브.md            # IR용 서비스 기획서
-개발내역.md                           # 한글 세션별 개발 내역 (상세)
-개발일지_2026-07-02.md                # 2026-07-02 당일 작업 요약
-개발_백로그_v1.1.md                   # 경쟁사 모니터링 v1.1 백로그
-기획_KRX_지표_v3.md                  # KRX 공식 데이터 활용 기획
-기획_수급페이지_기관매매_v2.md         # 수급 페이지 + 해외 기업 확대 기획
-레퍼런스/                             # 경쟁사 리버스 엔지니어링 문서
-ss_*.png                            # UI 스크린샷 7장
+web/                                 # Next.js 재작성 (rewrite/next 브랜치)
 supabase/
   functions/market-data/index.ts    # 단일 Edge Function (정본)
   migrations/0001_*.sql ~ 0010_*.sql # DB 마이그레이션
@@ -83,13 +73,9 @@ supabase/
 
 | 궁금한 것 | 먼저 볼 파일 |
 |-----------|--------------|
-| "이 서비스가 뭔지, 수익모델은?" | `IR_서비스기획서_투자허브.md` |
-| "지금까지 뭘 개발했고, 어떤 버그를 겪었나?" | `DEVELOPMENT_HISTORY_EN.md` (매우 상세) |
-| "최근 세션의 구체적 변경/트러블슈팅" | `개발내역.md` |
 | "색상/폰트/토큰 값" | `designsystem_richbuild_v2.md` |
-| "향후 개발 계획" | `개발_백로그_v1.1.md`, `기획_KRX_지표_v3.md` |
-| "신규 기능 아이디에이션 규칙" | `01_IDEATION_GUIDE.md` |
-| "디자인/BX 산출물 규칙" | `02_DESIGN_GUIDE.md` |
+| "지금까지 뭘 개발했고, 어떤 버그를 겪었나?" | `git log` |
+| "재작성 진행 상황/계획" | `web/` (rewrite/next 브랜치) |
 
 ---
 
