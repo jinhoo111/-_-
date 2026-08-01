@@ -4,13 +4,30 @@ import { useMemo, useState } from "react";
 import { useUserData, useUpdateUserData } from "@/lib/queries/useUserData";
 import { useFxRate, useQuotes } from "@/lib/queries/useQuotes";
 import { isKrTicker, type Stock, type StockStatus, type StockStyle } from "@/lib/types/userData";
-import { ACCOUNT_LIST, STATUS_LABEL, STYLE_LABEL, acctColor, resolveTickerFromName } from "@/lib/portfolio/constants";
+import {
+  ACCOUNT_LIST,
+  STATUS_LABEL_KEY,
+  STYLE_LABEL_KEY,
+  STYLE_ABBR_KEY,
+  acctColor,
+  resolveTickerFromName,
+  type TickerSearchResult,
+} from "@/lib/portfolio/constants";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
+import { TickerSearchInput } from "@/components/portfolio/TickerSearchInput";
 import { Card } from "@/components/ui/Card";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { useToast } from "@/components/ui/Toast";
+import { useT } from "@/lib/i18n/LanguageProvider";
+
+const MARKET_STATE_KEY: Record<string, string> = {
+  PRE: "market.state.pre",
+  POST: "market.state.after",
+  REGULAR: "market.state.delayed",
+  CLOSED: "market.state.close",
+};
 
 type StatusFilter = "all" | "hidden" | StockStatus;
 type MarketFilter = "all" | "kr" | "us";
@@ -28,6 +45,7 @@ function fmtPrice(n: number, isKR: boolean) {
 }
 
 export default function PortfolioPage() {
+  const t = useT();
   const { data: userData, isLoading } = useUserData();
   const updateUserData = useUpdateUserData();
   const { data: fxRate = 1400 } = useFxRate();
@@ -65,7 +83,7 @@ export default function PortfolioPage() {
       const next = stocks.map((s) => {
         const q = result.data![s.ticker];
         if (!q) return s;
-        return { ...s, cur: q.price, marketState: q.stateLabel };
+        return { ...s, cur: q.price, marketState: q.state };
       });
       patchStocks(next);
     }
@@ -76,7 +94,7 @@ export default function PortfolioPage() {
     const name = addForm.name.trim();
     const buy = parseFloat(addForm.buy);
     if (!name || isNaN(buy)) {
-      setAddError("종목명과 매수가를 입력해주세요.");
+      setAddError(t("portfolio.addStock.fillRequired"));
       return;
     }
     const qty = parseInt(addForm.qty) || 1;
@@ -93,7 +111,7 @@ export default function PortfolioPage() {
       const q = data?.[ticker];
       if (q) {
         newStock.cur = q.price;
-        newStock.marketState = q.stateLabel;
+        newStock.marketState = q.state;
       }
     } catch {
       // fall through — cur stays 0, user can edit manually
@@ -101,11 +119,15 @@ export default function PortfolioPage() {
     setAddPending(false);
 
     if (newStock.cur === 0) {
-      setAddError(`가격 조회 실패: ${ticker} — 티커를 확인하세요 (예: AAPL, NVDA, 005930.KS)`);
+      setAddError(t("portfolio.addStock.quoteFailed", { ticker }));
     }
     patchStocks([...stocks, newStock]);
     setAddForm({ name: "", ticker: "", buy: "", qty: "1", status: "hold" });
-    toast.show(`${name} 추가됨`, "success");
+    toast.show(t("portfolio.addStock.added", { name }), "success");
+  }
+
+  function handlePickTicker(r: TickerSearchResult) {
+    setAddForm((f) => ({ ...f, name: r.name, ticker: r.symbol }));
   }
 
   function handleRemove(i: number) {
@@ -132,6 +154,9 @@ export default function PortfolioPage() {
 
   const fmtTop = (n: number) => (curMode === "KRW" ? fmtKRW(n * fxRate) : fmtUSD(n));
 
+  const addBuyTicker = addForm.ticker.trim().toUpperCase() || resolveTickerFromName(addForm.name.trim()) || "";
+  const addBuyCurrency = isKrTicker(addBuyTicker) ? "₩" : "$";
+
   const filtered = stocks
     .map((s, i) => ({ s, i }))
     .filter(({ s }) => {
@@ -152,7 +177,7 @@ export default function PortfolioPage() {
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <Card className="flex flex-col gap-1">
           <div className="flex items-center justify-between text-[var(--text-sm)] text-[var(--color-text-tertiary)]">
-            <span>총 평가금액</span>
+            <span>{t("portfolio.totalValue")}</span>
             <span className="flex overflow-hidden rounded-[var(--radius-control)] border border-[var(--color-border-input)]">
               <button
                 onClick={() => setCurMode("USD")}
@@ -173,50 +198,56 @@ export default function PortfolioPage() {
           </div>
         </Card>
         <Card className="flex flex-col gap-1">
-          <div className="text-[var(--text-sm)] text-[var(--color-text-tertiary)]">총 손익</div>
+          <div className="text-[var(--text-sm)] text-[var(--color-text-tertiary)]">{t("portfolio.totalProfit")}</div>
           <div className={`text-[var(--text-2xl)] font-semibold ${profitUSD >= 0 ? "text-[var(--color-up)]" : "text-[var(--color-down)]"}`}>
             {totalValueUSD ? (profitUSD >= 0 ? "+" : "-") + fmtTop(Math.abs(profitUSD)) : "—"}
           </div>
         </Card>
         <Card className="flex flex-col gap-1">
-          <div className="text-[var(--text-sm)] text-[var(--color-text-tertiary)]">수익률</div>
+          <div className="text-[var(--text-sm)] text-[var(--color-text-tertiary)]">{t("portfolio.profitRate")}</div>
           <div className={`text-[var(--text-2xl)] font-semibold ${profitRate >= 0 ? "text-[var(--color-up)]" : "text-[var(--color-down)]"}`}>
             {totalValueUSD ? (profitRate >= 0 ? "+" : "") + profitRate.toFixed(2) + "%" : "—"}
           </div>
         </Card>
         <Card className="flex flex-col gap-1">
-          <div className="text-[var(--text-sm)] text-[var(--color-text-tertiary)]">보유 종목</div>
+          <div className="text-[var(--text-sm)] text-[var(--color-text-tertiary)]">{t("portfolio.heldCount")}</div>
           <div className="text-[var(--text-2xl)] font-semibold text-[var(--color-text-primary)]">
-            {held.length ? held.length + "개" : "—"}
+            {held.length ? t("portfolio.count", { count: held.length }) : "—"}
           </div>
         </Card>
       </div>
 
       <Card className="flex flex-col gap-3">
-        <div className="text-[var(--text-md)] font-semibold text-[var(--color-text-primary)]">종목 추가</div>
+        <div className="text-[var(--text-md)] font-semibold text-[var(--color-text-primary)]">{t("portfolio.addStock.title")}</div>
         <div className="flex flex-wrap gap-2">
-          <Input
-            placeholder="종목명 (예: 삼성전자, NVDA)"
+          <TickerSearchInput
+            placeholder={t("portfolio.addStock.namePlaceholder")}
             value={addForm.name}
-            onChange={(e) => setAddForm({ ...addForm, name: e.target.value })}
-            className="w-40"
+            onChange={(name) => setAddForm({ ...addForm, name })}
+            onPick={handlePickTicker}
+            className="w-85"
           />
           <Input
-            placeholder="티커 (선택)"
+            placeholder={t("portfolio.addStock.tickerPlaceholder")}
             value={addForm.ticker}
             onChange={(e) => setAddForm({ ...addForm, ticker: e.target.value })}
             className="w-32"
           />
+          <div className="relative w-85">
+            <span className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-[var(--text-lg)] text-[var(--color-text-placeholder)]">
+              {addBuyCurrency}
+            </span>
+            <Input
+              type="number"
+              placeholder={t("portfolio.addStock.buyPlaceholder")}
+              value={addForm.buy}
+              onChange={(e) => setAddForm({ ...addForm, buy: e.target.value })}
+              className="pl-6"
+            />
+          </div>
           <Input
             type="number"
-            placeholder="매수가"
-            value={addForm.buy}
-            onChange={(e) => setAddForm({ ...addForm, buy: e.target.value })}
-            className="w-24"
-          />
-          <Input
-            type="number"
-            placeholder="수량"
+            placeholder={t("portfolio.addStock.qtyPlaceholder")}
             value={addForm.qty}
             onChange={(e) => setAddForm({ ...addForm, qty: e.target.value })}
             className="w-20"
@@ -226,14 +257,14 @@ export default function PortfolioPage() {
             onChange={(e) => setAddForm({ ...addForm, status: e.target.value as StockStatus })}
             className="h-[var(--btn-h-md)] rounded-[var(--radius-control)] border border-[var(--color-border-input)] bg-[var(--color-bg-surface)] px-2 text-[var(--text-lg)] text-[var(--color-text-primary)]"
           >
-            {Object.entries(STATUS_LABEL).map(([v, l]) => (
+            {Object.entries(STATUS_LABEL_KEY).map(([v, key]) => (
               <option key={v} value={v}>
-                {l}
+                {t(key)}
               </option>
             ))}
           </select>
           <Button variant="primary" onClick={handleAddStock} disabled={addPending}>
-            {addPending ? "조회 중..." : "추가"}
+            {addPending ? t("portfolio.addStock.submitting") : t("portfolio.addStock.submit")}
           </Button>
         </div>
         {addError && <p className="text-[var(--text-md)] text-[var(--color-error-text)]">{addError}</p>}
@@ -252,7 +283,7 @@ export default function PortfolioPage() {
                     : "bg-[var(--color-bg-badge)] text-[var(--color-text-secondary)]"
                 }`}
               >
-                {v === "all" ? "전체" : v === "hidden" ? "숨김" : STATUS_LABEL[v]}
+                {v === "all" ? t("portfolio.filter.all") : v === "hidden" ? t("portfolio.filter.hidden") : t(STATUS_LABEL_KEY[v])}
               </button>
             ))}
             <span className="mx-1 w-px self-stretch bg-[var(--color-border-default)]" />
@@ -266,7 +297,7 @@ export default function PortfolioPage() {
                     : "bg-[var(--color-bg-badge)] text-[var(--color-text-secondary)]"
                 }`}
               >
-                {v === "all" ? "전체" : v === "kr" ? "국내" : "미국"}
+                {v === "all" ? t("portfolio.filter.all") : v === "kr" ? t("portfolio.filter.kr") : t("portfolio.filter.us")}
               </button>
             ))}
             <span className="mx-1 w-px self-stretch bg-[var(--color-border-default)]" />
@@ -280,33 +311,33 @@ export default function PortfolioPage() {
                     : "bg-[var(--color-bg-badge)] text-[var(--color-text-secondary)]"
                 }`}
               >
-                {v === "all" ? "전체" : STYLE_LABEL[v]}
+                {v === "all" ? t("portfolio.filter.all") : t(STYLE_LABEL_KEY[v])}
               </button>
             ))}
           </div>
           <Button size="sm" onClick={handleRefresh} disabled={quotesFetching}>
-            {quotesFetching ? "갱신 중..." : "시세 갱신"}
+            {quotesFetching ? t("portfolio.refreshing") : t("portfolio.refresh")}
           </Button>
         </div>
 
         {filtered.length === 0 ? (
-          <EmptyState title="종목이 없어요" description="위에서 종목을 추가해보세요." />
+          <EmptyState title={t("portfolio.empty.title")} description={t("portfolio.empty.description")} />
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full border-collapse text-left text-[var(--text-table)]">
               <thead>
                 <tr className="border-b border-[var(--color-border-default)] text-[var(--text-sm)] text-[var(--color-text-tertiary)]">
-                  <th className="py-2 pr-2">종목</th>
-                  <th className="py-2 pr-2">티커</th>
-                  <th className="py-2 pr-2">매수가</th>
-                  <th className="py-2 pr-2">현재가</th>
-                  <th className="py-2 pr-2">수량</th>
-                  <th className="py-2 pr-2">평가금액</th>
-                  <th className="py-2 pr-2">수익률</th>
-                  <th className="py-2 pr-2">비중</th>
-                  <th className="py-2 pr-2">상태</th>
-                  <th className="py-2 pr-2">스타일</th>
-                  <th className="py-2 pr-2">계좌</th>
+                  <th className="py-2 pr-2">{t("portfolio.table.name")}</th>
+                  <th className="py-2 pr-2">{t("portfolio.table.ticker")}</th>
+                  <th className="py-2 pr-2">{t("portfolio.table.buy")}</th>
+                  <th className="py-2 pr-2">{t("portfolio.table.current")}</th>
+                  <th className="py-2 pr-2">{t("portfolio.table.qty")}</th>
+                  <th className="py-2 pr-2">{t("portfolio.table.value")}</th>
+                  <th className="py-2 pr-2">{t("portfolio.table.return")}</th>
+                  <th className="py-2 pr-2">{t("portfolio.table.weight")}</th>
+                  <th className="py-2 pr-2">{t("portfolio.table.status")}</th>
+                  <th className="py-2 pr-2">{t("portfolio.table.style")}</th>
+                  <th className="py-2 pr-2">{t("portfolio.table.account")}</th>
                   <th className="py-2 pr-2"></th>
                 </tr>
               </thead>
@@ -350,6 +381,7 @@ function StockRow({
   onRemove: () => void;
   onToggleHidden: () => void;
 }) {
+  const t = useT();
   const isKR = isKrTicker(s.ticker);
   const v = s.cur * s.qty;
   const vUSD = isKR ? v / fxRate : v;
@@ -377,7 +409,7 @@ function StockRow({
             isKR ? "bg-[var(--color-warning-bg)] text-[var(--color-warning-text)]" : "bg-[var(--color-info-bg)] text-[var(--color-info)]"
           }`}
         >
-          {isKR ? "국" : "미"}
+          {isKR ? t("portfolio.market.kr") : t("portfolio.market.us")}
         </span>
         {s.name}
       </td>
@@ -385,7 +417,11 @@ function StockRow({
       <td className="py-2 pr-2">{fmtPrice(s.buy, isKR)}</td>
       <td className="py-2 pr-2 font-semibold">
         {fmtPrice(s.cur, isKR)}
-        {s.marketState && <span className="ml-1 text-[var(--text-2xs)] text-[var(--color-text-disabled)]">{s.marketState}</span>}
+        {s.marketState && (
+          <span className="ml-1 text-[var(--text-2xs)] text-[var(--color-text-disabled)]">
+            {t(MARKET_STATE_KEY[s.marketState] || "market.state.close")}
+          </span>
+        )}
       </td>
       <td className="py-2 pr-2">{s.qty}</td>
       <td className="py-2 pr-2">{isKR ? fmtKRW(v) : fmtUSD(v)}</td>
@@ -395,17 +431,17 @@ function StockRow({
       <td className="py-2 pr-2">{s.status === "hold" ? w.toFixed(1) + "%" : "—"}</td>
       <td className="py-2 pr-2">
         <span className={`rounded-[var(--radius-pill)] px-2 py-0.5 text-[var(--text-sm)] font-bold ${statusClass}`}>
-          {STATUS_LABEL[s.status]}
+          {t(STATUS_LABEL_KEY[s.status])}
         </span>
       </td>
       <td className="py-2 pr-2">
         <span className={`rounded-[var(--radius-pill)] px-2 py-0.5 text-[var(--text-sm)] font-bold ${styleClass}`}>
-          {s.style === "short" ? "단" : s.style === "long" ? "장" : "미"}
+          {t(STYLE_ABBR_KEY[s.style || ""])}
         </span>
       </td>
       <td className="py-2 pr-2">
         <span className="rounded px-1.5 py-0.5 text-[var(--text-sm)] font-bold" style={{ background: ac.bg, color: ac.c }}>
-          {(s.account || "기타").slice(0, 2)}
+          {s.account === "기타" ? t("portfolio.account.other").slice(0, 2) : (s.account || "기타").slice(0, 2)}
         </span>
       </td>
       <td className="whitespace-nowrap py-2 pr-2">
@@ -413,13 +449,13 @@ function StockRow({
           onClick={onEdit}
           className="mr-1 rounded-[var(--radius-control)] border border-[var(--color-border-input)] px-2 py-1 text-[var(--text-sm)] text-[var(--color-text-secondary)]"
         >
-          편집
+          {t("portfolio.action.edit")}
         </button>
         <button
           onClick={onRemove}
           className="mr-1 rounded-[var(--radius-control)] border border-[var(--color-error-border)] px-2 py-1 text-[var(--text-sm)] text-[var(--color-error)]"
         >
-          삭제
+          {t("portfolio.action.remove")}
         </button>
         <button
           onClick={onToggleHidden}
@@ -430,7 +466,7 @@ function StockRow({
             color: s.hidden ? "var(--color-accent)" : "var(--color-text-placeholder)",
           }}
         >
-          {s.hidden ? "복원" : "숨김"}
+          {s.hidden ? t("portfolio.action.restore") : t("portfolio.action.hide")}
         </button>
       </td>
     </tr>
@@ -452,6 +488,7 @@ function EditRow({
   const [style, setStyle] = useState<StockStyle>(s.style || "");
   const [account, setAccount] = useState(s.account || "기타");
   const [hidden, setHidden] = useState(!!s.hidden);
+  const t = useT();
 
   function handleSave() {
     const patch: Partial<Stock> = { status, style, account, hidden };
@@ -490,9 +527,9 @@ function EditRow({
           onChange={(e) => setStatus(e.target.value as StockStatus)}
           className="rounded-[var(--radius-control)] border border-[var(--color-border-input)] px-1.5 py-1 text-[var(--text-sm)]"
         >
-          {Object.entries(STATUS_LABEL).map(([v, l]) => (
+          {Object.entries(STATUS_LABEL_KEY).map(([v, key]) => (
             <option key={v} value={v}>
-              {l}
+              {t(key)}
             </option>
           ))}
         </select>
@@ -503,9 +540,9 @@ function EditRow({
           onChange={(e) => setStyle(e.target.value as StockStyle)}
           className="rounded-[var(--radius-control)] border border-[var(--color-border-input)] px-1.5 py-1 text-[var(--text-sm)]"
         >
-          {Object.entries(STYLE_LABEL).map(([v, l]) => (
+          {Object.entries(STYLE_LABEL_KEY).map(([v, key]) => (
             <option key={v} value={v}>
-              {l}
+              {t(key)}
             </option>
           ))}
         </select>
@@ -533,7 +570,7 @@ function EditRow({
             color: hidden ? "var(--color-accent)" : "var(--color-text-placeholder)",
           }}
         >
-          {hidden ? "숨김 ON" : "숨김 OFF"}
+          {hidden ? t("portfolio.action.hiddenOn") : t("portfolio.action.hiddenOff")}
         </button>
         <button
           onClick={handleSave}

@@ -8,8 +8,8 @@ import { authErrIsRateLimit, authErrText, passwordStrength } from "@/lib/auth/er
 import { useResendCooldown } from "@/lib/auth/useResendCooldown";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
+import { useT } from "@/lib/i18n/LanguageProvider";
 
-const STRENGTH_LABEL = ["", "약해요 — 영문과 숫자를 섞어보세요.", "적당해요.", "안전해요 👍"];
 const STRENGTH_COLOR = ["", "bg-[var(--color-error)]", "bg-[var(--color-warning)]", "bg-[var(--color-success)]"];
 
 export default function SignupPage() {
@@ -21,6 +21,7 @@ export default function SignupPage() {
 }
 
 function SignupForm() {
+  const t = useT();
   const searchParams = useSearchParams();
   const [view, setView] = useState<"form" | "verify">(searchParams.get("verify") === "1" ? "verify" : "form");
   const [email, setEmail] = useState(searchParams.get("email") || "");
@@ -39,15 +40,15 @@ function SignupForm() {
     setError("");
     const trimmedEmail = email.trim();
     if (!trimmedEmail || !password) {
-      setError("이메일과 비밀번호를 입력해주세요.");
+      setError(t("auth.signup.fillRequired"));
       return;
     }
     if (password.length < 8) {
-      setError("비밀번호는 8자 이상이어야 합니다.");
+      setError(t("auth.signup.passwordTooShort"));
       return;
     }
     if (password !== password2) {
-      setError("비밀번호가 일치하지 않습니다.");
+      setError(t("auth.signup.passwordMismatch"));
       return;
     }
 
@@ -64,7 +65,7 @@ function SignupForm() {
 
     if (signUpError) {
       console.warn("[signUp] status=%s code=%s msg=%s", signUpError.status, signUpError.code, signUpError.message);
-      setError(authErrText(signUpError));
+      setError(t(authErrText(signUpError)));
       return;
     }
 
@@ -72,7 +73,7 @@ function SignupForm() {
     // already-registered address instead of an error (avoids leaking account
     // existence). Detect that here rather than trusting the absence of an error.
     if (data?.user && Array.isArray(data.user.identities) && data.user.identities.length === 0) {
-      setError("이미 가입된 이메일입니다. 로그인하거나 비밀번호 찾기를 이용해주세요.");
+      setError(t("auth.signup.alreadyRegistered"));
       return;
     }
 
@@ -88,11 +89,11 @@ function SignupForm() {
     const trimmedEmail = email.trim();
     if (!trimmedEmail) {
       setResendIsError(true);
-      setResendMsg("이메일 정보가 없습니다. 회원가입을 다시 진행해주세요.");
+      setResendMsg(t("auth.signup.verify.noEmail"));
       return;
     }
     setResendIsError(false);
-    setResendMsg("발송 중...");
+    setResendMsg(t("auth.signup.verify.sending"));
     const supabase = createClient();
     const { error: resendError } = await supabase.auth.resend({
       type: "signup",
@@ -105,30 +106,27 @@ function SignupForm() {
       setResendIsError(true);
       const lm = (resendError.message || "").toLowerCase();
       if (authErrIsRateLimit(resendError)) {
-        setResendMsg(
-          "메일 발송 한도에 걸렸습니다(서비스 전체 기준). 60초 후 다시 시도해주세요. 계속 안 오면 스팸함 확인 후 관리자에게 문의해주세요.",
-        );
+        setResendMsg(t("auth.signup.verify.rateLimited"));
         cooldown.start(60);
       } else if (lm.includes("already confirmed") || resendError.code === "email_already_confirmed") {
-        setResendMsg("이미 인증이 완료된 계정입니다. 로그인해주세요.");
+        setResendMsg(t("auth.signup.verify.alreadyConfirmed"));
       } else {
-        setResendMsg("재발송 실패: " + authErrText(resendError));
+        setResendMsg(t("auth.signup.verify.resendFailed", { reason: t(authErrText(resendError)) }));
       }
       return;
     }
 
     setResendIsError(false);
-    setResendMsg("인증 이메일을 재발송했습니다. 도착까지 1~2분 걸릴 수 있고, 스팸함도 확인해주세요.");
+    setResendMsg(t("auth.signup.verify.resendSuccess"));
     cooldown.start(60);
   }
 
   if (view === "verify") {
     return (
       <>
-        <h1 className="text-[var(--text-xl)] font-semibold text-[var(--color-text-primary)]">이메일 인증</h1>
+        <h1 className="text-[var(--text-xl)] font-semibold text-[var(--color-text-primary)]">{t("auth.signup.verify.title")}</h1>
         <p className="mt-4 text-[var(--text-md)] text-[var(--color-text-tertiary)]">
-          <span className="font-medium text-[var(--color-text-primary)]">{email}</span> 주소로 인증 링크를
-          발송했습니다. 받은 편지함(스팸함 포함)을 확인해주세요.
+          {t("auth.signup.verify.sentTo", { email })}
         </p>
         {resendMsg && (
           <p
@@ -138,11 +136,11 @@ function SignupForm() {
           </p>
         )}
         <Button type="button" onClick={handleResend} disabled={cooldown.remaining > 0} className="mt-4 w-full">
-          {cooldown.remaining > 0 ? `재발송 (${cooldown.remaining}초)` : "인증 이메일 재발송"}
+          {cooldown.remaining > 0 ? t("auth.signup.verify.resendCooldown", { seconds: cooldown.remaining }) : t("auth.signup.verify.resend")}
         </Button>
         <div className="mt-4 text-center text-[var(--text-sm)] text-[var(--color-text-tertiary)]">
           <Link href="/login" className="hover:underline">
-            로그인으로 돌아가기
+            {t("auth.signup.verify.backToLogin")}
           </Link>
         </div>
       </>
@@ -151,11 +149,11 @@ function SignupForm() {
 
   return (
     <>
-      <h1 className="text-[var(--text-xl)] font-semibold text-[var(--color-text-primary)]">회원가입</h1>
+      <h1 className="text-[var(--text-xl)] font-semibold text-[var(--color-text-primary)]">{t("auth.signup.title")}</h1>
       <form onSubmit={handleSubmit} className="mt-6 flex flex-col gap-4">
         <div>
           <label htmlFor="signup-email" className="mb-1 block text-[var(--text-sm)] text-[var(--color-text-tertiary)]">
-            이메일
+            {t("auth.signup.email")}
           </label>
           <Input
             id="signup-email"
@@ -168,13 +166,13 @@ function SignupForm() {
             <p
               className={`mt-1 text-[var(--text-xs)] ${/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ? "text-[var(--color-success-text)]" : "text-[var(--color-warning-text)]"}`}
             >
-              {/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ? "✓ 사용 가능한 형식이에요." : "이메일 형식을 확인해주세요."}
+              {/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ? t("auth.signup.emailFormatOk") : t("auth.signup.emailFormatBad")}
             </p>
           )}
         </div>
         <div>
           <label htmlFor="signup-pw" className="mb-1 block text-[var(--text-sm)] text-[var(--color-text-tertiary)]">
-            비밀번호
+            {t("auth.signup.password")}
           </label>
           <Input
             id="signup-pw"
@@ -194,14 +192,14 @@ function SignupForm() {
                 ))}
               </div>
               <p className="mt-1 text-[var(--text-xs)] text-[var(--color-text-tertiary)]">
-                {password.length < 8 ? "최소 8자가 필요해요." : STRENGTH_LABEL[strength]}
+                {password.length < 8 ? t("auth.signup.passwordMinHint") : t(`auth.signup.strength.${strength}`)}
               </p>
             </>
           )}
         </div>
         <div>
           <label htmlFor="signup-pw2" className="mb-1 block text-[var(--text-sm)] text-[var(--color-text-tertiary)]">
-            비밀번호 확인
+            {t("auth.signup.passwordConfirm")}
           </label>
           <Input
             id="signup-pw2"
@@ -214,19 +212,19 @@ function SignupForm() {
             <p
               className={`mt-1 text-[var(--text-xs)] ${password === password2 ? "text-[var(--color-success-text)]" : "text-[var(--color-warning-text)]"}`}
             >
-              {password === password2 ? "✓ 비밀번호가 일치해요." : "비밀번호가 일치하지 않아요."}
+              {password === password2 ? t("auth.signup.passwordMatchOk") : t("auth.signup.passwordMatchBad")}
             </p>
           )}
         </div>
         {error && <p className="text-[var(--text-md)] text-[var(--color-error-text)]">{error}</p>}
         <Button type="submit" variant="primary" disabled={pending} className="mt-2 w-full">
-          {pending ? "처리 중..." : "회원가입"}
+          {pending ? t("auth.signup.submitting") : t("auth.signup.submit")}
         </Button>
       </form>
       <div className="mt-4 text-center text-[var(--text-sm)] text-[var(--color-text-tertiary)]">
-        이미 계정이 있으신가요?{" "}
+        {t("auth.signup.haveAccount")}{" "}
         <Link href="/login" className="hover:underline">
-          로그인
+          {t("auth.signup.login")}
         </Link>
       </div>
     </>

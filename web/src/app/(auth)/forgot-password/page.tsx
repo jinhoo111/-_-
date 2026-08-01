@@ -6,8 +6,10 @@ import { createClient } from "@/lib/supabase/browser";
 import { authErrText } from "@/lib/auth/errors";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
+import { useT } from "@/lib/i18n/LanguageProvider";
 
 export default function ForgotPasswordPage() {
+  const t = useT();
   const [email, setEmail] = useState("");
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
@@ -19,10 +21,10 @@ export default function ForgotPasswordPage() {
     setMessage("");
     const trimmedEmail = email.trim();
     if (!trimmedEmail) {
-      setError("이메일을 입력해주세요.");
+      setError(t("auth.forgot.emailRequired"));
       return;
     }
-    setError("처리 중...");
+    setError(t("auth.forgot.processing"));
     setPending(true);
     const supabase = createClient();
     const { error: resetError } = await supabase.auth.resetPasswordForEmail(trimmedEmail, {
@@ -34,19 +36,19 @@ export default function ForgotPasswordPage() {
     if (resetError) {
       console.warn("[forgotPw] status=%s code=%s msg=%s", resetError.status, resetError.code, resetError.message);
       // Reset emails share the same send-rate limit as signup — same mapper.
-      setError(authErrText(resetError));
+      setError(t(authErrText(resetError)));
       return;
     }
-    setMessage("재설정 링크를 발송했습니다. 이메일을 확인해주세요.");
+    setMessage(t("auth.forgot.sent"));
   }
 
   return (
     <>
-      <h1 className="text-[var(--text-xl)] font-semibold text-[var(--color-text-primary)]">비밀번호 찾기</h1>
+      <h1 className="text-[var(--text-xl)] font-semibold text-[var(--color-text-primary)]">{t("auth.forgot.title")}</h1>
       <form onSubmit={handleSubmit} className="mt-6 flex flex-col gap-4">
         <div>
           <label htmlFor="forgot-email" className="mb-1 block text-[var(--text-sm)] text-[var(--color-text-tertiary)]">
-            이메일
+            {t("auth.forgot.email")}
           </label>
           <Input
             id="forgot-email"
@@ -59,12 +61,12 @@ export default function ForgotPasswordPage() {
         {error && <p className="text-[var(--text-md)] text-[var(--color-error-text)]">{error}</p>}
         {message && <p className="text-[var(--text-md)] text-[var(--color-success-text)]">{message}</p>}
         <Button type="submit" variant="primary" disabled={pending} className="mt-2 w-full">
-          재설정 링크 보내기
+          {t("auth.forgot.submit")}
         </Button>
       </form>
       <div className="mt-4 text-center text-[var(--text-sm)] text-[var(--color-text-tertiary)]">
         <Link href="/login" className="hover:underline">
-          로그인으로 돌아가기
+          {t("auth.forgot.backToLogin")}
         </Link>
       </div>
     </>

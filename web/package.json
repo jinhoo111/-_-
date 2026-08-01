@@ -6,7 +6,10 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "end-to-end": "playwright test",
+    "end-to-end:ui": "playwright test --ui",
+    "end-to-end:report": "playwright show-report"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.4",
@@ -19,6 +22,7 @@
     "server-only": "^0.0.1"
   },
   "devDependencies": {
+    "@playwright/test": "^1.62.1",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",

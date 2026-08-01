@@ -2,9 +2,14 @@
 
 > **이 문서의 목적:** 다음 세션에서 전체 프로젝트를 빠르게 파악하기 위한 단일 레퍼런스.  
 > **최신화 날짜:** 2026-07-29  
-> **핵심 코드:** `index.html` (9,279 LOC), `supabase/functions/market-data/index.ts` (1,186 LOC)  
+> **핵심 코드 (레거시, 라이브):** `index.html` (9,279 LOC), `supabase/functions/market-data/index.ts` (1,186 LOC)  
+> **핵심 코드 (재작성, 진행 중):** `web/` — Next.js + TypeScript, `rewrite/next` 브랜치 (§13 참고)  
 > **라이브:** https://jinhoo111.github.io/-_-/  
 > **백엔드:** Supabase (`yijkwuiqnviapztqskak`)
+>
+> **두 구현체가 의도적으로 공존한다.** `main`/`index.html`은 그대로 라이브 유지하고,
+> `rewrite/next`/`web/`은 단계별로 완전 기능 동등성까지 빌드 중. 재작성 작업 중에는
+> `index.html`을 수정하지 말 것 — 동작 동등성 확인용 레퍼런스이다. §13 참고.
 
 ---
 
@@ -58,13 +63,13 @@
 ## 3. 파일/디렉터리 지도
 
 ```
-index.html                          # 전체 프론트엔드 (HTML + CSS + JS)
+index.html                          # 전체 레거시 프론트엔드 (HTML + CSS + JS) — 레퍼런스, 재작성 작업 중 수정 금지
 corp_map.json                       # KR 티커(6자리) → DART corp_code 매핑
 designsystem_richbuild_v2.md        # 실제 적용 중인 디자인 토큰 문서
-web/                                 # Next.js 재작성 (rewrite/next 브랜치)
+web/                                 # Next.js 재작성 (rewrite/next 브랜치) — 내부 구조는 §13 참고
 supabase/
-  functions/market-data/index.ts    # 단일 Edge Function (정본)
-  migrations/0001_*.sql ~ 0010_*.sql # DB 마이그레이션
+  functions/market-data/index.ts    # 단일 Edge Function (정본, 레거시)
+  migrations/0001_*.sql ~ 0010_*.sql # DB 마이그레이션 (두 구현체가 공유)
 ```
 
 ---
@@ -75,7 +80,7 @@ supabase/
 |-----------|--------------|
 | "색상/폰트/토큰 값" | `designsystem_richbuild_v2.md` |
 | "지금까지 뭘 개발했고, 어떤 버그를 겪었나?" | `git log` |
-| "재작성 진행 상황/계획" | `web/` (rewrite/next 브랜치) |
+| "재작성 진행 상황/계획/구조" | 아래 §13, 그리고 저장소 루트의 `CLAUDE.md` |
 
 ---
 
@@ -285,6 +290,155 @@ bb44e4a fix(indices): correct sign-inverted KR index rate, plus live QA sweep fi
 | Supabase Project | `yijkwuiqnviapztqskak` |
 | Edge Function | `https://yijkwuiqnviapztqskak.supabase.co/functions/v1/market-data` |
 | Legacy Edge Function | `.../functions/v1/proxy-api` (GoogleAI 키 등 일부 잔존) |
+
+---
+
+## 13. `web/` — Next.js 재작성 (`rewrite/next` 브랜치)
+
+전체 재작성 계획과 단계 순서는 저장소 루트의 `CLAUDE.md`가 참조하는 계획 문서 참고
+(커밋된 파일은 아니며, 필요 시 요청). 아래는 계획의 의도가 아니라 **실제 코드와 동기화된
+현재 상태**의 맵이다.
+
+### 현재 상태
+
+**Phase 0(스캐폴드 + 인증 + Portfolio)은 배포됨**, 그리고 원래 Phase 0 범위는 아니었지만
+나중에 모든 후속 Phase에 소급 적용하는 것이 훨씬 비쌀 것이라 판단해 앞당긴 **EN/KO 언어
+토글**도 함께 배포됨. Indices, Journal, News/Research, Flow, Monitor, Security admin은
+**아직 미구현** — 앱이 404를 노출하지 않도록 해당 페이지들의 네비게이션 항목은 (숨긴 게
+아니라) `AppNav`에서 아예 제외되어 있다.
+
+### 스택
+
+Next.js (App Router) + TypeScript + Tailwind CSS v4, TanStack React Query, `@supabase/ssr`.
+i18n 라이브러리 없음(커스텀 Context, 아래 참고), 컴포넌트 라이브러리 없음(`designsystem_richbuild_v2.md`의
+디자인 토큰 위에 직접 만든 프리미티브).
+
+### 디렉터리 지도 (실제 구현 기준)
+
+```
+web/src/
+  app/
+    layout.tsx                    # 루트 서버 레이아웃 — lang="ko" 고정, <Providers> 래핑
+    providers.tsx                 # "use client" — LanguageProvider > ThemeProvider > QueryClientProvider > ToastProvider
+    page.tsx                      # "/" — 세션 여부로 /portfolio 또는 /login 리다이렉트
+    (auth)/layout.tsx             # 서버 컴포넌트 — 인증 카드 셸 + LanguageToggle 아일랜드
+    (auth)/login/page.tsx
+    (auth)/signup/page.tsx        # 폼 + 이메일 인증 대기 뷰, 재발송 쿨다운
+    (auth)/forgot-password/page.tsx
+    (auth)/reset-password/page.tsx
+    (app)/layout.tsx              # 서버 컴포넌트 — 인증 후 셸, <AppNav/> 렌더
+    (app)/portfolio/page.tsx      # 보유종목, 손익, 추가/수정/숨김, 실시간 시세
+    api/market/quote/route.ts     # GET — Naver(KR) / Yahoo v8(US, 프리/포스트 포함) 시세 프록시
+    auth/callback/route.ts        # Supabase 이메일 링크 콜백 (가입 인증, 비밀번호 재설정)
+    auth/signout/route.ts
+  components/
+    layout/AppNav.tsx             # "use client" 아일랜드 — 네비 링크 + LanguageToggle + 로그아웃, (app)/layout.tsx에서 사용
+    ui/                           # Button, Card, Input, EmptyState, Skeleton, Toast (ToastProvider/useToast), LanguageToggle
+  lib/
+    supabase/{browser,server,admin,middleware}.ts   # @supabase/ssr 클라이언트 팩토리
+    auth/errors.ts                 # authErrText() → i18n 메시지 키(텍스트 아님), authErrIsRateLimit, passwordStrength
+    auth/useResendCooldown.ts
+    portfolio/constants.ts         # ACCOUNT_LIST (한글 증권사명, 데이터), STATUS_LABEL_KEY/STYLE_LABEL_KEY/STYLE_ABBR_KEY, KR_TICKER_MAP/US_TICKER_MAP, resolveTickerFromName()
+    queries/useUserData.ts         # useUserData() + useUpdateUserData() — 1.2초 디바운스 후 user_data upsert, 레거시 _syncToCloud 미러
+    queries/useQuotes.ts           # /api/market/quote용 React Query 훅
+    types/userData.ts              # UserData, Stock, EMPTY_USER_DATA, isKrTicker()
+    i18n/messages.ts               # Lang, messages.{ko,en}, t(lang, key, params?)
+    i18n/LanguageProvider.tsx      # "use client" — Context + localStorage("rh_lang") + useLang()/useT()
+  proxy.ts                         # Next의 "proxy" export (미들웨어) — updateSession()으로 세션 갱신, matcher는 _next/static/image + 이미지 확장자 제외
+```
+
+### EN/KO 언어 토글 (크로스커팅, 완료)
+
+- **패턴:** 가벼운 커스텀 React Context (`lib/i18n/LanguageProvider.tsx`), `next-intl` 아님 —
+  기존 `ToastProvider`, `next-themes`(`storageKey="rh_theme"`) 패턴을 그대로 미러링. URL locale
+  세그먼트 없음.
+- **기본값:** 한국어이지만 첫 마운트 시 `navigator.language`를 자동 감지(영어 브라우저 →
+  영어로 시작). 토글 선택은 `localStorage`의 `rh_lang`에 저장되어 이후 방문 시 자동감지를
+  덮어씀.
+- **상승/하락 색상은 두 언어 모두 한국식 관례(빨강=상승/파랑=하락) 유지** — 언어에 따라
+  절대 반전하지 않음.
+- **고유명사는 두 언어 모두 한국어 유지:** `ACCOUNT_LIST`의 증권사명, `lib/portfolio/constants.ts`의
+  `KR_TICKER_MAP`/`US_TICKER_MAP` 조회 키 — 이것들은 UI 텍스트가 아니라 데이터다. 저장/조회
+  값 `"기타"`는 절대 번역하지 않고, *표시*되는 라벨만 `t("portfolio.account.other")`로 해석.
+- **로케일 무관 API 계약:** `/api/market/quote`는 마켓 `state` 코드만 반환하고
+  (`PRE`/`POST`/`REGULAR`/`CLOSED`) 지역화된 라벨은 절대 반환하지 않음. 클라이언트가
+  `portfolio/page.tsx`에서 `MARKET_STATE_KEY` + `t()`로 라벨을 해석. 앞으로 추가되는 서버
+  라우트도 이 방식으로 로케일 무관을 유지할 것.
+- **메시지 키 간접화:** 클라이언트 컴포넌트가 아닌 일반 모듈(`lib/auth/errors.ts`,
+  `lib/portfolio/constants.ts`)은 리터럴 문자열이 아니라 **메시지 키**를 반환/보관한다
+  (예: `"authError.invalidCredentials"`, `"portfolio.status.buy"`) — `useT()`가 스코프에
+  있는 UI 레이어만 `t(key)`를 호출.
+- 새 UI 문자열 추가 방법: `lib/i18n/messages.ts`의 `ko`와 `en` **양쪽 모두**에 키를 추가한 뒤,
+  클라이언트 컴포넌트에서 `t("your.key")` (또는 `{param}` 보간이 필요하면
+  `t("your.key", { param })`)를 호출. `useT()`의 `t`는 엄격한 키 유니온이 아니라 일반
+  `string`을 받음 — `` `auth.signup.strength.${strength}` `` 같은 동적으로 만들어지는 키와의
+  마찰을 피하기 위한 의도적 선택.
+
+### 명령어 (`web/`에서 실행)
+
+```bash
+npm run dev      # localhost:3000
+npm run build    # CI와 동일 — 작업 완료로 간주하기 전에 반드시 통과해야 함
+npm run lint     # eslint (react-hooks v7 규칙 포함 — 아래 set-state-in-effect 참고)
+npx tsc --noEmit
+```
+
+CI(`.github/workflows/web-ci.yml`)는 `web/**`를 건드리는 모든 push/PR에서 `main`과
+`rewrite/next` 양쪽에 대해 `tsc --noEmit`, `lint`, `build`(secrets:
+`NEXT_PUBLIC_SUPABASE_URL`/`NEXT_PUBLIC_SUPABASE_ANON_KEY`)를 실행한다.
+
+### 알려진 lint 함정
+
+`eslint-plugin-react-hooks` v7의 `set-state-in-effect` 규칙은 `useEffect` 안의 `setState`
+호출을 잡아낸다. `LanguageProvider.tsx`의 마운트 이펙트(클라이언트에서만 `localStorage`를
+읽어 `lang`을 하이드레이션 — SSR은 반드시 정적 `"ko"` 기본값으로 시작해야 하므로)는 이
+패턴의 의도적이고 올바른 사용이다 — 구조를 바꿔 회피하지 않고, 이유를 설명하는 주석과
+함께 인라인으로 비활성화했다.
+
+### 자동 QA (Playwright, headless)
+
+`web/e2e/`에는 실제 headless Chromium 브라우저로 실행 중인 앱을 구동하는 Playwright E2E
+스위트가 있다 — 인증 우회/모킹 없이, 실제 Supabase 테스트 계정으로 진짜 `/login` 폼을
+통해 로그인한다.
+
+```text
+web/
+  playwright.config.ts     # E2E_BASE_URL이 없으면 webServer가 포트 3100에서
+                            # `npm run dev`를 자동 실행 (Vercel 프리뷰 URL을 가리키게 할 수도 있음)
+  e2e/
+    auth.setup.ts          # "setup" 프로젝트 — 실제 로그인 폼으로 테스트 유저/관리자
+                            # 로그인 후 Playwright storageState를 e2e/.auth/{user,admin}.json에
+                            # 저장해 다른 스펙들이 재사용
+    public/*.spec.ts        # "public" 프로젝트 — 비인증: 로그인/가입/비번찾기 렌더링,
+                            # i18n 토글, 미인증 라우트 리다이렉트 검증
+    authed/*.spec.ts        # "authenticated" 프로젝트 — user.json storageState 재사용
+    admin/*.spec.ts         # "admin" 프로젝트 — admin.json storageState 재사용
+```
+
+**설정(개발자별 최초 1회):** Supabase에 일반 사용자 하나, (선택) `user_profiles.is_admin
+= true`인 관리자 사용자 하나를 만든 뒤 `web/.env.local`에 `E2E_TEST_EMAIL`/
+`E2E_TEST_PASSWORD`, `E2E_ADMIN_EMAIL`/`E2E_ADMIN_PASSWORD`를 채운다. 관리자 자격증명이
+비어 있으면 admin 전용 스펙은 실패가 아니라 자동으로 skip된다. `E2E_BASE_URL`은
+선택사항 — 비워두면 Playwright가 자체 dev 서버를 띄운다.
+
+**명령 (`web/`에서 실행):**
+
+```bash
+npm run e2e          # headless 전체 프로젝트 실행
+npm run e2e:ui       # Playwright 대화형 UI 모드
+npm run e2e:report   # 마지막 HTML 리포트 열기
+```
+
+**CI:** `.github/workflows/web-ci.yml`의 별도 `e2e` job이 메인 `ci` job 이후 실행되지만,
+저장소 변수 `E2E_ENABLED`가 `"true"`일 때만 동작한다(기본은 off — 실제 `E2E_TEST_*`/
+`E2E_ADMIN_*` secrets 설정이 먼저 필요). 성공/실패 관계없이 매 실행마다 HTML 리포트를
+아티팩트로 업로드한다.
+
+### 아직 시작 안 함 (전체 단계 순서는 계획 문서 참고)
+
+Indices, Journal, News+Research, Flow, Monitor, Security admin, 그리고 cutover(도메인
+이전, SMTP, GitHub Pages/Edge Functions 단계적 폐기)는 `web/`에서 아직 미구현. 각각은
+별도의 향후 Phase이며, 관련 없는 작업에서 범위를 넘겨짚지 말 것.
 
 ---
 

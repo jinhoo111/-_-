@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/browser";
 import { authErrIsEmailNotConfirmed, authErrText } from "@/lib/auth/errors";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
+import { useT } from "@/lib/i18n/LanguageProvider";
 
 export default function LoginPage() {
   return (
@@ -17,6 +18,7 @@ export default function LoginPage() {
 }
 
 function LoginForm() {
+  const t = useT();
   const router = useRouter();
   const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
@@ -28,7 +30,7 @@ function LoginForm() {
     e.preventDefault();
     setError("");
     if (!email.trim() || !password) {
-      setError("이메일과 비밀번호를 입력해주세요.");
+      setError(t("auth.login.fillRequired"));
       return;
     }
     setPending(true);
@@ -41,7 +43,7 @@ function LoginForm() {
 
     if (signInError) {
       console.warn("[signIn] status=%s code=%s msg=%s", signInError.status, signInError.code, signInError.message);
-      setError(authErrText(signInError));
+      setError(t(authErrText(signInError)));
       if (authErrIsEmailNotConfirmed(signInError)) {
         router.push(`/signup?verify=1&email=${encodeURIComponent(email.trim())}`);
       }
@@ -53,11 +55,11 @@ function LoginForm() {
 
   return (
     <>
-      <h1 className="text-[var(--text-xl)] font-semibold text-[var(--color-text-primary)]">로그인</h1>
+      <h1 className="text-[var(--text-xl)] font-semibold text-[var(--color-text-primary)]">{t("auth.login.title")}</h1>
       <form onSubmit={handleSubmit} className="mt-6 flex flex-col gap-4">
         <div>
           <label htmlFor="login-email" className="mb-1 block text-[var(--text-sm)] text-[var(--color-text-tertiary)]">
-            이메일
+            {t("auth.login.email")}
           </label>
           <Input
             id="login-email"
@@ -69,7 +71,7 @@ function LoginForm() {
         </div>
         <div>
           <label htmlFor="login-pw" className="mb-1 block text-[var(--text-sm)] text-[var(--color-text-tertiary)]">
-            비밀번호
+            {t("auth.login.password")}
           </label>
           <Input
             id="login-pw"
@@ -81,15 +83,15 @@ function LoginForm() {
         </div>
         {error && <p className="text-[var(--text-md)] text-[var(--color-error-text)]">{error}</p>}
         <Button type="submit" variant="primary" disabled={pending} className="mt-2 w-full">
-          {pending ? "로그인 중..." : "로그인"}
+          {pending ? t("auth.login.submitting") : t("auth.login.submit")}
         </Button>
       </form>
       <div className="mt-4 flex justify-between text-[var(--text-sm)] text-[var(--color-text-tertiary)]">
         <Link href="/forgot-password" className="hover:underline">
-          비밀번호 찾기
+          {t("auth.login.forgotPassword")}
         </Link>
         <Link href="/signup" className="hover:underline">
-          회원가입
+          {t("auth.login.signup")}
         </Link>
       </div>
     </>

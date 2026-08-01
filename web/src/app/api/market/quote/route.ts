@@ -1,16 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { YAHOO_HEADERS, fetchYahooQuote, type YahooQuote } from "@/lib/market/yahoo";
 
-type Quote = {
-  price: number;
-  changePercent: number | null;
-  state: string;
-  stateLabel: string;
-};
-
-const YAHOO_HEADERS = {
-  "User-Agent": "Mozilla/5.0 (compatible; RichHub/1.0)",
-  Accept: "application/json, text/plain, */*",
-};
+type Quote = YahooQuote;
 
 function isKrTicker(symbol: string): boolean {
   return /\.(KS|KQ)$/i.test(symbol);
@@ -34,46 +25,10 @@ async function fetchNaverQuote(symbol: string): Promise<Quote | null> {
     const ratio = parseFloat(d.fluctuationsRatio || "0");
     const flat = d.compareToPreviousPrice?.code === "3";
     const isOpen = d.marketStatus === "OPEN";
-    return { price, changePercent: flat ? 0 : ratio, state: isOpen ? "REGULAR" : "CLOSED", stateLabel: isOpen ? "지연" : "종가" };
+    return { price, changePercent: flat ? 0 : ratio, state: isOpen ? "REGULAR" : "CLOSED" };
   } catch {
     return null;
   }
-}
-
-// query1 -> query2 fallback per symbol. v7/finance/quote (batch) is permanently
-// broken (401, requires cookie/crumb auth) — do not reintroduce it.
-async function fetchYahooQuote(symbol: string): Promise<Quote | null> {
-  for (const host of ["query1", "query2"]) {
-    try {
-      const url = `https://${host}.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=2m&range=1d&includePrePost=true`;
-      const res = await fetch(url, { headers: YAHOO_HEADERS, signal: AbortSignal.timeout(7000) });
-      if (!res.ok) continue;
-      const data = await res.json();
-      const meta = data?.chart?.result?.[0]?.meta;
-      if (!meta) continue;
-
-      const state = meta.marketState || "CLOSED";
-      let price = meta.regularMarketPrice;
-      let stateLabel = "종가";
-      if (state === "PRE" && meta.preMarketPrice) {
-        price = meta.preMarketPrice;
-        stateLabel = "프리";
-      } else if (state === "POST" && meta.postMarketPrice) {
-        price = meta.postMarketPrice;
-        stateLabel = "애프터";
-      } else if (state === "REGULAR") {
-        stateLabel = "지연";
-      }
-      if (price == null) continue;
-
-      const prev = meta.previousClose ?? meta.chartPreviousClose;
-      const changePercent = prev ? ((price - prev) / prev) * 100 : null;
-      return { price, changePercent, state, stateLabel };
-    } catch {
-      // try next host
-    }
-  }
-  return null;
 }
 
 async function fetchQuote(symbol: string): Promise<Quote | null> {

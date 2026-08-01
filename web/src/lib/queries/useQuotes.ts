@@ -6,7 +6,6 @@ export type Quote = {
   price: number;
   changePercent: number | null;
   state: string;
-  stateLabel: string;
 };
 
 async function fetchQuotes(symbols: string[]): Promise<Record<string, Quote | null>> {

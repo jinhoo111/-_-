@@ -6,8 +6,10 @@ import { createClient } from "@/lib/supabase/browser";
 import { authErrText } from "@/lib/auth/errors";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
+import { useT } from "@/lib/i18n/LanguageProvider";
 
 export default function ResetPasswordPage() {
+  const t = useT();
   const router = useRouter();
   const [password, setPassword] = useState("");
   const [password2, setPassword2] = useState("");
@@ -18,11 +20,11 @@ export default function ResetPasswordPage() {
     e.preventDefault();
     setError("");
     if (password.length < 8) {
-      setError("비밀번호는 8자 이상이어야 합니다.");
+      setError(t("auth.signup.passwordTooShort"));
       return;
     }
     if (password !== password2) {
-      setError("비밀번호가 일치하지 않습니다.");
+      setError(t("auth.signup.passwordMismatch"));
       return;
     }
     setPending(true);
@@ -32,7 +34,7 @@ export default function ResetPasswordPage() {
 
     if (updateError) {
       console.warn("[resetPw] status=%s code=%s msg=%s", updateError.status, updateError.code, updateError.message);
-      setError(authErrText(updateError));
+      setError(t(authErrText(updateError)));
       return;
     }
     router.push("/portfolio");
@@ -40,11 +42,11 @@ export default function ResetPasswordPage() {
 
   return (
     <>
-      <h1 className="text-[var(--text-xl)] font-semibold text-[var(--color-text-primary)]">새 비밀번호 설정</h1>
+      <h1 className="text-[var(--text-xl)] font-semibold text-[var(--color-text-primary)]">{t("auth.reset.title")}</h1>
       <form onSubmit={handleSubmit} className="mt-6 flex flex-col gap-4">
         <div>
           <label htmlFor="reset-pw" className="mb-1 block text-[var(--text-sm)] text-[var(--color-text-tertiary)]">
-            새 비밀번호
+            {t("auth.reset.newPassword")}
           </label>
           <Input
             id="reset-pw"
@@ -56,7 +58,7 @@ export default function ResetPasswordPage() {
         </div>
         <div>
           <label htmlFor="reset-pw2" className="mb-1 block text-[var(--text-sm)] text-[var(--color-text-tertiary)]">
-            비밀번호 확인
+            {t("auth.reset.confirmPassword")}
           </label>
           <Input
             id="reset-pw2"
@@ -68,7 +70,7 @@ export default function ResetPasswordPage() {
         </div>
         {error && <p className="text-[var(--text-md)] text-[var(--color-error-text)]">{error}</p>}
         <Button type="submit" variant="primary" disabled={pending} className="mt-2 w-full">
-          비밀번호 변경
+          {t("auth.reset.submit")}
         </Button>
       </form>
     </>

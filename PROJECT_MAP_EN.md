@@ -2,9 +2,14 @@
 
 > **Purpose:** A single reference for quickly understanding the whole project in your next session.  
 > **Last updated:** 2026-07-29  
-> **Core code:** `index.html` (9,279 LOC), `supabase/functions/market-data/index.ts` (1,186 LOC)  
+> **Core code (legacy, live):** `index.html` (9,279 LOC), `supabase/functions/market-data/index.ts` (1,186 LOC)  
+> **Core code (rewrite, in progress):** `web/` — Next.js + TypeScript, branch `rewrite/next` (see §13)  
 > **Live site:** https://jinhoo111.github.io/-_-/  
 > **Backend:** Supabase (`yijkwuiqnviapztqskak`)
+>
+> **Two implementations coexist on purpose.** `main`/`index.html` stays untouched and live
+> while `rewrite/next`/`web/` is built phase-by-phase to full parity. Do not edit `index.html`
+> as part of rewrite work — it's the reference for behavior parity. See §13.
 
 ---
 
@@ -58,13 +63,13 @@
 ## 3. File/directory map
 
 ```
-index.html                          # Entire frontend (HTML + CSS + JS)
+index.html                          # Entire legacy frontend (HTML + CSS + JS) — reference, do not edit for rewrite work
 corp_map.json                       # KR ticker (6 digits) → DART corp_code mapping
 designsystem_richbuild_v2.md        # Currently applied design token reference
-web/                                 # Next.js rewrite (rewrite/next branch)
+web/                                 # Next.js rewrite (rewrite/next branch) — see §13 for internal layout
 supabase/
-  functions/market-data/index.ts    # Single Edge Function (canonical)
-  migrations/0001_*.sql ~ 0010_*.sql # DB migrations
+  functions/market-data/index.ts    # Single Edge Function (canonical, legacy)
+  migrations/0001_*.sql ~ 0010_*.sql # DB migrations (shared by both implementations)
 ```
 
 ---
@@ -75,7 +80,7 @@ supabase/
 |-------------------|-----------------|
 | Colors/fonts/tokens | `designsystem_richbuild_v2.md` |
 | What has been built and what bugs were hit | `git log` |
-| Rewrite progress/plan | `web/` (rewrite/next branch) |
+| Rewrite progress/plan/structure | §13 below, and `CLAUDE.md` at the repo root |
 
 ---
 
@@ -273,6 +278,155 @@ bb44e4a fix(indices): correct sign-inverted KR index rate, plus live QA sweep fi
 | Supabase Project | `yijkwuiqnviapztqskak` |
 | Edge Function | `https://yijkwuiqnviapztqskak.supabase.co/functions/v1/market-data` |
 | Legacy Edge Function | `.../functions/v1/proxy-api` (some GoogleAI paths remain) |
+
+---
+
+## 13. `web/` — Next.js rewrite (branch `rewrite/next`)
+
+Full rewrite plan and phase order: see the plan doc referenced from `CLAUDE.md` at the repo
+root (or ask for it — it isn't checked in as a committed file). Below is the as-built map of
+what exists today, kept in sync with actual code rather than the plan's intent.
+
+### Status
+
+**Phase 0 (scaffold + auth + Portfolio) is shipped**, plus a cross-cutting **EN/KO language
+toggle** (not in the original phase-0 scope, pulled forward because retrofitting it later
+across every future phase would be far more expensive). Indices, Journal, News/Research,
+Flow, Monitor, and Security admin are **not yet built** — their nav entries are deliberately
+omitted (not hidden) from `AppNav` so the app doesn't advertise 404s.
+
+### Stack
+
+Next.js (App Router) + TypeScript + Tailwind CSS v4, TanStack React Query, `@supabase/ssr`.
+No i18n library (custom Context, see below), no component library (hand-built primitives on
+design tokens from `designsystem_richbuild_v2.md`).
+
+### Directory map (as built)
+
+```
+web/src/
+  app/
+    layout.tsx                    # root server layout — static lang="ko", wraps <Providers>
+    providers.tsx                 # "use client" — LanguageProvider > ThemeProvider > QueryClientProvider > ToastProvider
+    page.tsx                      # "/" — redirects to /portfolio or /login based on session
+    (auth)/layout.tsx             # server component — auth card shell + LanguageToggle island
+    (auth)/login/page.tsx
+    (auth)/signup/page.tsx        # form + email-verify views, resend cooldown
+    (auth)/forgot-password/page.tsx
+    (auth)/reset-password/page.tsx
+    (app)/layout.tsx              # server component — authed shell, renders <AppNav/>
+    (app)/portfolio/page.tsx      # holdings, P&L, add/edit/hide, live quotes
+    api/market/quote/route.ts     # GET — Naver (KR) / Yahoo v8 (US, w/ pre/post) quote proxy
+    auth/callback/route.ts        # Supabase email-link callback (signup verify, password reset)
+    auth/signout/route.ts
+  components/
+    layout/AppNav.tsx             # "use client" island — nav links + LanguageToggle + logout, imported into (app)/layout.tsx
+    ui/                           # Button, Card, Input, EmptyState, Skeleton, Toast (ToastProvider/useToast), LanguageToggle
+  lib/
+    supabase/{browser,server,admin,middleware}.ts   # @supabase/ssr client factories
+    auth/errors.ts                 # authErrText() → i18n message KEY (not text), authErrIsRateLimit, passwordStrength
+    auth/useResendCooldown.ts
+    portfolio/constants.ts         # ACCOUNT_LIST (Korean broker names, DATA), STATUS_LABEL_KEY/STYLE_LABEL_KEY/STYLE_ABBR_KEY, KR_TICKER_MAP/US_TICKER_MAP, resolveTickerFromName()
+    queries/useUserData.ts         # useUserData() + useUpdateUserData() — debounced (1.2s) upsert into user_data, mirrors legacy _syncToCloud
+    queries/useQuotes.ts           # React Query hook over /api/market/quote
+    types/userData.ts              # UserData, Stock, EMPTY_USER_DATA, isKrTicker()
+    i18n/messages.ts               # Lang, messages.{ko,en}, t(lang, key, params?)
+    i18n/LanguageProvider.tsx      # "use client" — Context + localStorage("rh_lang") + useLang()/useT()
+  proxy.ts                         # Next "proxy" export (middleware) — session refresh via updateSession(), matcher excludes _next/static/image + image exts
+```
+
+### EN/KO language toggle (cross-cutting, done)
+
+- **Pattern:** lightweight custom React Context (`lib/i18n/LanguageProvider.tsx`), not
+  `next-intl` — mirrors the existing `ToastProvider` and `next-themes` (`storageKey="rh_theme"`)
+  patterns. No URL locale segments.
+- **Default:** Korean, but auto-detects `navigator.language` on first mount (English browser →
+  starts in English). Toggle choice persists to `localStorage` under `rh_lang` and overrides
+  auto-detection on every later visit.
+- **Up/down colors stay Korean convention (red=up/blue=down) in both languages** — never
+  flipped by language.
+- **Proper nouns stay Korean in both languages:** broker names in `ACCOUNT_LIST`, and the
+  `KR_TICKER_MAP`/`US_TICKER_MAP` lookup keys in `lib/portfolio/constants.ts` — these are data,
+  not UI copy. The stored/lookup value `"기타"` (Other) is never translated; only its
+  *displayed* label resolves through `t("portfolio.account.other")`.
+- **Locale-free API contract:** `/api/market/quote` returns only a market `state` code
+  (`PRE`/`POST`/`REGULAR`/`CLOSED`) — no localized label. The client resolves the label via
+  `MARKET_STATE_KEY` + `t()` in `portfolio/page.tsx`. Keep future server routes locale-agnostic
+  the same way.
+- **Message-key indirection:** plain modules that aren't client components (`lib/auth/errors.ts`,
+  `lib/portfolio/constants.ts`) return/hold **message keys** (e.g. `"authError.invalidCredentials"`,
+  `"portfolio.status.buy"`), never literal strings — only the UI layer (which has `useT()` in
+  scope) calls `t(key)`.
+- To add a new UI string: add the key to **both** `ko` and `en` in `lib/i18n/messages.ts`, then
+  call `t("your.key")` (or `t("your.key", { param })` for `{param}`-style interpolation) from a
+  client component. `useT()`'s `t` takes a plain `string`, not a strict key union — intentional,
+  to avoid friction with dynamically-built keys like `` `auth.signup.strength.${strength}` ``.
+
+### Commands (run from `web/`)
+
+```bash
+npm run dev      # localhost:3000
+npm run build    # matches CI — must pass before considering a change done
+npm run lint     # eslint (react-hooks v7 rules included — see set-state-in-effect note below)
+npx tsc --noEmit
+```
+
+CI (`.github/workflows/web-ci.yml`) runs `tsc --noEmit`, `lint`, and `build` (with
+`NEXT_PUBLIC_SUPABASE_URL`/`NEXT_PUBLIC_SUPABASE_ANON_KEY` secrets) on every push/PR touching
+`web/**`, on both `main` and `rewrite/next`.
+
+### Known lint gotcha
+
+`eslint-plugin-react-hooks` v7's `set-state-in-effect` rule flags `setState` calls inside
+`useEffect` bodies. `LanguageProvider.tsx`'s mount effect (reading `localStorage` to hydrate
+`lang` client-side, since SSR must start from a static `"ko"` default) is an intentional,
+correct use of this pattern — disabled inline with a comment explaining why, not worked around
+by restructuring.
+
+### Automated QA (Playwright, headless)
+
+`web/e2e/` holds a Playwright E2E suite that drives a real headless Chromium browser
+against a running instance of the app — no auth mocking or bypass, it logs in through
+the actual `/login` form using real Supabase test accounts.
+
+```text
+web/
+  playwright.config.ts     # webServer auto-starts `npm run dev` on port 3100 unless
+                            # E2E_BASE_URL is set (e.g. to point at a Vercel preview URL)
+  e2e/
+    auth.setup.ts          # "setup" project — logs in as the test user / admin user via
+                            # the real login form, saves Playwright storageState to
+                            # e2e/.auth/{user,admin}.json for reuse by other specs
+    public/*.spec.ts        # "public" project — no auth: login/signup/forgot-password
+                            # rendering, i18n toggle, unauthenticated route-redirect checks
+    authed/*.spec.ts        # "authenticated" project — reuses user.json storageState
+    admin/*.spec.ts         # "admin" project — reuses admin.json storageState
+```
+
+**Setup (one-time, per developer):** create a normal Supabase user and (optionally) a
+second user with `user_profiles.is_admin = true`, then fill in `web/.env.local`:
+`E2E_TEST_EMAIL`/`E2E_TEST_PASSWORD`, `E2E_ADMIN_EMAIL`/`E2E_ADMIN_PASSWORD`. Admin-only
+specs are skipped automatically (not failed) when the admin credentials are blank.
+`E2E_BASE_URL` is optional — omit it to let Playwright manage its own dev server.
+
+**Commands (from `web/`):**
+
+```bash
+npm run e2e          # headless run, all projects
+npm run e2e:ui       # Playwright's interactive UI mode
+npm run e2e:report   # open the last HTML report
+```
+
+**CI:** a separate `e2e` job in `.github/workflows/web-ci.yml` runs after the main `ci`
+job, but only when the repo variable `E2E_ENABLED` is `"true"` (off by default — it
+needs real `E2E_TEST_*`/`E2E_ADMIN_*` secrets configured first). Uploads the HTML report
+as an artifact on every run, pass or fail.
+
+### Not yet started (see plan for full phase order)
+
+Indices, Journal, News+Research, Flow, Monitor, Security admin, and cutover (domain repoint,
+SMTP, decommissioning GitHub Pages/Edge Functions) are unbuilt in `web/`. Each is its own
+future phase; do not scope-creep into them from an unrelated task.
 
 ---
 

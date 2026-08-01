@@ -16,16 +16,22 @@ export const ACCOUNT_LIST = [
   "기타",
 ] as const;
 
-export const STATUS_LABEL: Record<StockStatus, string> = {
-  buy: "매수",
-  hold: "보유",
-  watch: "관심",
+export const STATUS_LABEL_KEY: Record<StockStatus, string> = {
+  buy: "portfolio.status.buy",
+  hold: "portfolio.status.hold",
+  watch: "portfolio.status.watch",
 };
 
-export const STYLE_LABEL: Record<StockStyle, string> = {
-  "": "미설정",
-  short: "단타",
-  long: "장타",
+export const STYLE_LABEL_KEY: Record<StockStyle, string> = {
+  "": "portfolio.style.unset",
+  short: "portfolio.style.short",
+  long: "portfolio.style.long",
+};
+
+export const STYLE_ABBR_KEY: Record<StockStyle, string> = {
+  "": "portfolio.style.unsetAbbr",
+  short: "portfolio.style.shortAbbr",
+  long: "portfolio.style.longAbbr",
 };
 
 const ACCOUNT_COLOR: Record<string, { bg: string; c: string }> = {
@@ -175,4 +181,35 @@ export function resolveTickerFromName(name: string): string | null {
     if (k.toLowerCase() === lower) return v;
   }
   return null;
+}
+
+export type TickerSearchResult = { symbol: string; name: string; market: "kr" | "us" };
+
+// Instant, no-network results from the built-in ticker maps — shown immediately
+// while the debounced Naver/Yahoo remote search (see useTickerSearch) is in flight.
+export function searchLocalTickers(query: string): TickerSearchResult[] {
+  const lower = query.trim().toLowerCase();
+  if (!lower) return [];
+  const results: TickerSearchResult[] = [];
+  const seen = new Set<string>();
+  for (const [k, v] of Object.entries(KR_TICKER_MAP)) {
+    if (k.toLowerCase().includes(lower) && !seen.has(v)) {
+      seen.add(v);
+      results.push({ symbol: v, name: k, market: "kr" });
+    }
+  }
+  for (const [k, v] of Object.entries(US_TICKER_MAP)) {
+    if (k.toLowerCase().includes(lower) && !seen.has(v)) {
+      seen.add(v);
+      results.push({ symbol: v, name: k, market: "us" });
+    }
+  }
+  const upper = query.trim().toUpperCase();
+  for (const v of Object.values(US_TICKER_MAP)) {
+    if (v.startsWith(upper) && !seen.has(v)) {
+      seen.add(v);
+      results.push({ symbol: v, name: v, market: "us" });
+    }
+  }
+  return results.slice(0, 6);
 }
