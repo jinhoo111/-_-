@@ -12,6 +12,8 @@ test.describe("authenticated smoke", () => {
     for (const [href, marker] of [
       ["/indices", /\/indices/],
       ["/journal", /\/journal/],
+      ["/news", /\/news/],
+      ["/research", /\/research/],
       ["/flow", /\/flow/],
       ["/monitor", /\/monitor/],
     ] as const) {

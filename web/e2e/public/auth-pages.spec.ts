@@ -42,7 +42,7 @@ test.describe("public auth pages", () => {
 });
 
 test.describe("route protection", () => {
-  for (const path of ["/portfolio", "/indices", "/journal", "/flow", "/monitor", "/security"]) {
+  for (const path of ["/portfolio", "/indices", "/journal", "/news", "/research", "/flow", "/monitor", "/security"]) {
     test(`unauthenticated visit to ${path} redirects to /login`, async ({ page }) => {
       await page.goto(path);
       await expect(page).toHaveURL(/\/login/);
