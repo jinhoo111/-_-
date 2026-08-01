@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useT } from "@/lib/i18n/LanguageProvider";
 import { LanguageToggle } from "@/components/ui/LanguageToggle";
+import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import { useIsAdmin } from "@/lib/admin/useIsAdmin";
 
 const NAV_ITEMS = [
@@ -33,6 +34,7 @@ export function AppNav() {
         </Link>
       ))}
       <LanguageToggle className="ml-4" />
+      <ThemeToggle className="ml-2" />
       <form action="/auth/signout" method="post" className="ml-auto">
         <button
           type="submit"

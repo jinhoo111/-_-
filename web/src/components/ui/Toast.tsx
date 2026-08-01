@@ -8,7 +8,7 @@ type ToastContextValue = { show: (message: string, variant?: Toast["variant"]) =
 const ToastContext = createContext<ToastContextValue | null>(null);
 
 const VARIANT_CLASS: Record<Toast["variant"], string> = {
-  default: "bg-[var(--color-text-primary)] text-white",
+  default: "bg-[var(--color-text-strong)] text-[var(--color-bg-surface)]",
   error: "bg-[var(--color-error)] text-white",
   success: "bg-[var(--color-success)] text-white",
 };

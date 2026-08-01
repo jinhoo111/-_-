@@ -186,6 +186,68 @@
   --shadow-hover: 0 4px 16px rgba(0, 0, 0, 0.5);
   --shadow-pop: 0 8px 28px rgba(0, 0, 0, 0.6);
   --shadow-nav: 0 -1px 0 rgba(255, 255, 255, 0.06);
+
+  /* Semantic text/bg/border pairs are tuned for a light surface by default —
+     without dark overrides, dark-on-dark text (e.g. #991b1b on #0a0a0a) is
+     nearly unreadable. Lighten the text/border variants and darken the bg
+     variants for dark surfaces. */
+  --color-success: #22c55e;
+  --color-success-dark: #4ade80;
+  --color-success-deep: #86efac;
+  --color-success-deeper: #bbf7d0;
+  --color-success-text: #4ade80;
+  --color-success-bg: #052e1a;
+  --color-success-bg-soft: #06371f;
+  --color-success-bg-light: #042317;
+  --color-success-border: #166534;
+
+  --color-error: #f87171;
+  --color-error-text: #f87171;
+  --color-error-bg: #3f1212;
+  --color-error-subtle: #2c0d0d;
+  --color-error-border: #7f1d1d;
+
+  --color-warning: #fbbf24;
+  --color-warning-bright: #fcd34d;
+  --color-warning-dark: #fde68a;
+  --color-warning-deeper: #fef3c7;
+  --color-warning-text: #fbbf24;
+  --color-warning-bg: #3f2d05;
+  --color-warning-subtle: #2c1f04;
+  --color-warning-border: #92400e;
+
+  --color-info: #60a5fa;
+  --color-info-text: #93c5fd;
+  --color-info-deep: #bfdbfe;
+  --color-info-bg: #0f2540;
+  --color-info-border: #1e3a5f;
+  --color-trade-long-bg: #0f2540;
+
+  --color-accent: #c084fc;
+  --color-accent-dark: #d8b4fe;
+  --color-accent-mid: #a855f7;
+  --color-accent-deeper: #e9d5ff;
+  --color-accent-indigo: #818cf8;
+  --color-accent-soft: #a5b4fc;
+  --color-accent-bg: #2e1a47;
+  --color-accent-bg-soft: #33245c;
+  --color-accent-subtle: #1e2044;
+  --color-accent-border: #6d28d9;
+  --color-accent-border-soft: #4338ca;
+
+  --color-trade-short-bg: #3a230f;
+  --color-trade-short-text: #fb923c;
+  --color-trade-long-text: #60a5fa;
+
+  --color-broker-kakao-bg: #4d4111;
+  --color-broker-kakao-text: #fde68a;
+  --color-broker-mirae-bg: #2b2a52;
+  --color-broker-mirae-text: #c7d2fe;
+  --color-broker-shinhan-bg: #10344a;
+  --color-broker-hanhwa-bg: #4a2a10;
+  --color-broker-hanhwa-text: #fdba74;
+  --color-broker-daesin-bg: #0f3d38;
+  --color-broker-daesin-text: #5eead4;
 }
 
 @theme inline {
