@@ -618,6 +618,10 @@ const ko: Messages = {
   "research.sites.cat.kr": "국내",
 
   "notice.dismiss": "닫기",
+
+  "footer.disclaimer.title": "투자 유의 안내",
+  "footer.disclaimer.body": "본 서비스는 투자 정보·기록 관리 도구이며 투자자문이나 매매 추천이 아닙니다. 시세·데이터는 지연되거나 부정확할 수 있으며(예: 국내 시세 및 Yahoo Finance 지수·선물·원자재는 최대 15분 지연), 모든 투자 판단과 책임은 이용자 본인에게 있습니다.",
+  "footer.sources": "데이터 출처: Finnhub · Yahoo Finance · Naver · CoinGecko · exchangerate-api · DART · SEC",
 };
 
 const en: Messages = {
@@ -1236,6 +1240,10 @@ const en: Messages = {
   "research.sites.cat.kr": "Korea",
 
   "notice.dismiss": "Dismiss",
+
+  "footer.disclaimer.title": "Investment Notice",
+  "footer.disclaimer.body": "This service is an investment information and record-keeping tool, not investment advice or a trading recommendation. Quotes and data may be delayed or inaccurate (e.g. domestic quotes and Yahoo Finance indices/futures/commodities may be delayed up to 15 minutes), and all investment decisions and responsibility rest solely with the user.",
+  "footer.sources": "Data sources: Finnhub · Yahoo Finance · Naver · CoinGecko · exchangerate-api · DART · SEC",
 };
 
 export const messages: Record<Lang, Messages> = { ko, en };
