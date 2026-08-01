@@ -9,6 +9,8 @@ const NAV_ITEMS = [
   { href: "/portfolio", key: "nav.portfolio" as const },
   { href: "/indices", key: "nav.indices" as const },
   { href: "/journal", key: "nav.journal" as const },
+  { href: "/news", key: "nav.news" as const },
+  { href: "/research", key: "nav.research" as const },
   { href: "/flow", key: "nav.flow" as const },
   { href: "/monitor", key: "nav.monitor" as const },
 ];
