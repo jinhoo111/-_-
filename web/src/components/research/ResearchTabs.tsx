@@ -2,14 +2,13 @@
 
 import { useT } from "@/lib/i18n/LanguageProvider";
 
-export type ResearchView = "regFeeds" | "regSearch" | "sites";
+export type ResearchView = "sites" | "regFeeds";
 
 export function ResearchTabs({ view, onChange }: { view: ResearchView; onChange: (v: ResearchView) => void }) {
   const t = useT();
   const tabs: { key: ResearchView; labelKey: string }[] = [
-    { key: "regFeeds", labelKey: "research.tab.regFeeds" },
-    { key: "regSearch", labelKey: "research.tab.regSearch" },
     { key: "sites", labelKey: "research.tab.sites" },
+    { key: "regFeeds", labelKey: "research.tab.regFeeds" },
   ];
   return (
     <div className="flex gap-1">

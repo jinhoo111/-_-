@@ -27,16 +27,25 @@ export function SitesView() {
           </button>
         ))}
       </Card>
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3">
         {sites.map((site) => (
           <a
             key={site.url}
             href={site.url}
             target="_blank"
             rel="noopener noreferrer"
-            className="rounded-[var(--radius-control)] border border-[var(--color-border-faint)] p-3 text-center text-[var(--text-sm)] font-medium text-[var(--color-text-primary)] hover:bg-[var(--color-bg-overlay)]"
+            className="rounded-xl border border-[var(--color-border-default)] p-3 text-[var(--text-sm)] text-[var(--color-text-primary)] hover:bg-[var(--color-bg-overlay)]"
           >
-            {site.name}
+            <div className="mb-1 flex items-start justify-between gap-1.5">
+              <span className="text-[var(--text-md)] font-semibold">{site.name}</span>
+              <span
+                className="shrink-0 rounded-[var(--radius-pill)] px-[11px] py-1 text-[var(--text-xs)] font-bold"
+                style={{ background: site.bg, color: site.fg }}
+              >
+                {site.badge}
+              </span>
+            </div>
+            <div className="text-[var(--text-base)] leading-relaxed text-[var(--color-text-subtle)]">{site.desc}</div>
           </a>
         ))}
       </div>
