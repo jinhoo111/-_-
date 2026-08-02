@@ -232,7 +232,7 @@ export async function briefSignal(corpName: string, stockCode: string, reportNm:
   if (!key) return { ok: false, reason: "no_key" };
   const prompt = `너는 기업 전략기획 애널리스트야. 아래 경쟁사 공시를 보고 딱 3줄로만 답해. 각 줄 라벨 유지:\n무엇이 바뀜: ...\n왜 중요: ...\n다음 할 일: ...\n\n회사: ${corpName} (${stockCode})\n공시: ${reportNm}\n전략분류: ${categoryLabel}`;
   try {
-    const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${key}`, {
+    const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${key}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
