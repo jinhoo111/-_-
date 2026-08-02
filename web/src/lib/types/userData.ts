@@ -32,6 +32,7 @@ export interface MemoArchiveEntry {
   time: string;
   completedAt: string;
   important?: boolean;
+  notify?: boolean;
   source?: FlowAlertMemoSource | MonitorMemoSource;
 }
 
@@ -160,6 +161,7 @@ export interface UserData {
   cash_usd: number;
   quote_symbols: string[];
   notify_master: boolean;
+  notify_enabled: boolean;
   invest_philosophy: PhilosophyEntry[];
   monitor_companies: MonitorCompany[];
   ledger: LedgerEntry[];
@@ -179,6 +181,7 @@ export const EMPTY_USER_DATA: Omit<UserData, "user_id" | "updated_at"> = {
   cash_usd: 0,
   quote_symbols: ["NVDA", "AAPL", "TSLA", "MSFT"],
   notify_master: false,
+  notify_enabled: true,
   invest_philosophy: [],
   monitor_companies: [],
   ledger: [],

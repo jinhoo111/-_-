@@ -11,6 +11,7 @@ import { MonitorCard } from "@/components/monitor/MonitorCard";
 import { MonitorTable } from "@/components/monitor/MonitorTable";
 import { MonitorRadar } from "@/components/monitor/MonitorRadar";
 import { MonitorDemo } from "@/components/monitor/MonitorDemo";
+import { MonitorTips } from "@/components/monitor/MonitorTips";
 import { MAX_COMPANIES } from "@/lib/monitor/constants";
 import type { ResolvedCompany } from "@/lib/monitor/server";
 import type { MonitorCompany, MonitorMemo } from "@/lib/types/userData";
@@ -21,6 +22,7 @@ export default function MonitorPage() {
   const updateUserData = useUpdateUserData();
   const [view, setView] = useState<MonitorView>("card");
   const [selectedCorpCode, setSelectedCorpCode] = useState<string | null>(null);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   if (isLoading) return <Skeleton className="h-96 w-full" />;
 
@@ -32,7 +34,11 @@ export default function MonitorPage() {
   }
 
   function handleAdd(resolved: ResolvedCompany) {
-    if (companies.some((c) => c.corp_code === resolved.corp_code)) return;
+    if (companies.some((c) => c.corp_code === resolved.corp_code)) {
+      setErrorMsg(t("monitor.err.alreadyAdded"));
+      return;
+    }
+    setErrorMsg(null);
     const next: MonitorCompany = {
       corp_code: resolved.corp_code,
       corp_name: resolved.corp_name,
@@ -93,6 +99,17 @@ export default function MonitorPage() {
 
   return (
     <div className="flex flex-col gap-4">
+      {errorMsg && (
+        <div className="flex items-center justify-between gap-2 rounded-[var(--radius-control)] border border-[var(--color-error)] bg-[var(--color-error-bg)] px-3 py-2 text-[var(--text-sm)] text-[var(--color-error-text)]">
+          <span>{errorMsg}</span>
+          <button onClick={() => setErrorMsg(null)} className="font-semibold">
+            {t("monitor.err.dismiss")}
+          </button>
+        </div>
+      )}
+
+      <MonitorTips />
+
       <MonitorSearch disabled={companies.length >= MAX_COMPANIES} onAdd={handleAdd} />
 
       {!companies.length ? (

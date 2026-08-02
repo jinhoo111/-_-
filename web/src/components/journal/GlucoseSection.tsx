@@ -3,9 +3,22 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
+import { LineChart } from "@/components/journal/charts/LineChart";
 import { GLU_SLOTS, glucoseSort, gluRangeHintKey, gluSlotLabelKey, gluStatusColor, glucoseStatus } from "@/lib/journal/constants";
 import type { GlucoseEntry, GlucoseSlot } from "@/lib/types/userData";
 import { useT } from "@/lib/i18n/LanguageProvider";
+
+function trendSlice(entries: GlucoseEntry[], date: string, days: number) {
+  const cutoff = new Date(date);
+  cutoff.setDate(cutoff.getDate() - (days - 1));
+  const cutoffKey = cutoff.toISOString().slice(0, 10);
+  const inRange = entries.filter((e) => e.date >= cutoffKey && e.date <= date && e.mgdl > 0);
+  const byDate = new Map<string, number[]>();
+  for (const e of inRange) byDate.set(e.date, [...(byDate.get(e.date) ?? []), e.mgdl]);
+  return [...byDate.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([d, vals]) => ({ date: d, avg: vals.reduce((s, v) => s + v, 0) / vals.length }));
+}
 
 export function GlucoseSection({
   date,
@@ -44,6 +57,8 @@ export function GlucoseSection({
   }
 
   const sorted = [...todays].sort(glucoseSort);
+  const trend7 = trendSlice(entries, date, 7);
+  const trend30 = trendSlice(entries, date, 30);
 
   return (
     <div className="flex flex-col gap-2 rounded-[var(--radius-control)] border border-[var(--color-border-default)] p-3">
@@ -125,6 +140,31 @@ export function GlucoseSection({
               </div>
             );
           })}
+        </div>
+      )}
+
+      {trend7.length >= 2 && (
+        <div className="flex flex-col gap-1">
+          <span className="text-[var(--text-xs)] text-[var(--color-text-tertiary)]">{t("journal.trend.7d")}</span>
+          <LineChart
+            w={280}
+            h={90}
+            xLabels={trend7.map((e) => e.date.slice(5))}
+            series={[{ label: "", color: "var(--color-accent-indigo)", points: trend7.map((e) => e.avg) }]}
+            noDataLabel=""
+          />
+        </div>
+      )}
+      {trend30.length >= 2 && (
+        <div className="flex flex-col gap-1">
+          <span className="text-[var(--text-xs)] text-[var(--color-text-tertiary)]">{t("journal.trend.30d")}</span>
+          <LineChart
+            w={280}
+            h={90}
+            xLabels={trend30.map((e) => e.date.slice(5))}
+            series={[{ label: "", color: "var(--color-accent-indigo)", points: trend30.map((e) => e.avg) }]}
+            noDataLabel=""
+          />
         </div>
       )}
 

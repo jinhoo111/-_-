@@ -5,6 +5,7 @@ import { useT } from "@/lib/i18n/LanguageProvider";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
+import { Select } from "@/components/ui/Select";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Skeleton } from "@/components/ui/Skeleton";
 import {
@@ -52,7 +53,7 @@ export function AccountsSection() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-5">
         {[
           [t("security.accounts.total"), total],
           [t("security.accounts.personal"), personal],
@@ -101,14 +102,14 @@ export function AccountsSection() {
                     )}
                   </td>
                   <td className="py-2 pr-2">
-                    <select
+                    <Select
                       value={r.user_type ?? "personal"}
                       onChange={(e) => setType.mutate({ userId: r.user_id, type: e.target.value as "personal" | "business" })}
-                      className="rounded-[var(--radius-control)] border border-[var(--color-border-input)] bg-[var(--color-bg-surface)] px-1 py-0.5 text-[var(--text-sm)]"
+                      className="text-[var(--text-sm)]"
                     >
                       <option value="personal">{t("security.accounts.type.personal")}</option>
                       <option value="business">{t("security.accounts.type.business")}</option>
-                    </select>
+                    </Select>
                   </td>
                   <td className="py-2 pr-2">
                     {r.user_type === "business" && (

@@ -49,6 +49,7 @@ export function ReportView({
   onResetWeeklyWeight: () => void;
 }) {
   const t = useT();
+  const exampleBadgeLabel = t("journal.chart.exampleBadge");
   const ym = ymKey(year, month);
   const weeks = rptWeeks(year, month);
   const weekLabels = weeks.map((w) => t("journal.report.allocWeek", { n: w.idx }));
@@ -204,6 +205,7 @@ export function ReportView({
           xLabels={weekLabels}
           fmtY={(v) => fmtWon(v)}
           fmtLabel={(v) => fmtWon(v)}
+          exampleBadgeLabel={exampleBadgeLabel}
           series={[
             { label: t("journal.report.seriesTarget"), color: "var(--color-info)", values: targets.inc, outline: true },
             { label: t("journal.report.seriesActual"), color: "var(--color-info)", values: actuals.inc },
@@ -217,6 +219,7 @@ export function ReportView({
           xLabels={weekLabels}
           fmtY={(v) => fmtWon(v)}
           fmtLabel={(v) => fmtWon(v)}
+          exampleBadgeLabel={exampleBadgeLabel}
           series={[
             { label: t("journal.report.seriesTarget"), color: "var(--color-error-text)", values: targets.exp, outline: true },
             { label: t("journal.report.seriesActual"), color: "var(--color-error-text)", values: actuals.exp },
@@ -226,7 +229,7 @@ export function ReportView({
       </Card>
 
       <Card title={t("journal.report.impulseChartTitle")}>
-        <BarChart xLabels={weekLabels} values={weeklyImpulseCounts} />
+        <BarChart xLabels={weekLabels} values={weeklyImpulseCounts} exampleBadgeLabel={exampleBadgeLabel} />
       </Card>
 
       <Card title={t("journal.report.weightGoalTitle")}>
@@ -299,6 +302,7 @@ export function ReportView({
         <LineChart
           xLabels={weekLabels}
           noDataLabel={t("journal.report.noData")}
+          exampleBadgeLabel={exampleBadgeLabel}
           series={[{ label: t("journal.report.seriesActual"), color: "var(--color-accent-indigo)", points: weights }]}
           hlines={goal != null ? [{ y: goal, color: "var(--color-error-text)", label: t("journal.report.seriesGoal") }] : []}
         />

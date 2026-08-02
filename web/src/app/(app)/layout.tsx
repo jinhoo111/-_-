@@ -9,7 +9,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         <AppNav />
       </header>
       <ServiceNoticeBanner />
-      <main className="mx-auto flex w-full max-w-4xl flex-1 flex-col gap-6 px-4 py-6">{children}</main>
+      <main className="mx-auto flex w-full max-w-4xl flex-1 flex-col gap-6 px-2 py-6 pb-[calc(64px+env(safe-area-inset-bottom))] sm:px-4 md:pb-6">
+        {children}
+      </main>
       <AppFooter />
     </div>
   );

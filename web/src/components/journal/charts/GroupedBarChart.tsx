@@ -7,6 +7,8 @@ export interface GroupedSeries {
   outline?: boolean;
 }
 
+const EXAMPLE_GRAY = "var(--color-text-tertiary)";
+
 // Ports legacy _groupedBarSVG: paired outline (target) vs filled (actual) bars per category.
 export function GroupedBarChart({
   w = 520,
@@ -15,6 +17,7 @@ export function GroupedBarChart({
   series,
   fmtY,
   fmtLabel,
+  exampleBadgeLabel,
 }: {
   w?: number;
   h?: number;
@@ -22,18 +25,30 @@ export function GroupedBarChart({
   series: GroupedSeries[];
   fmtY?: (v: number) => string;
   fmtLabel?: (v: number) => string;
+  exampleBadgeLabel?: string;
 }) {
   const padL = 46;
   const padR = 14;
   const padT = 18;
   const padB = 28;
   const n = xLabels.length;
-  const ns = series.length;
+
+  const hasRealData = series.some((s) => s.values.some((v) => v != null && isFinite(v) && v !== 0));
+  const isExample = !hasRealData && !!exampleBadgeLabel;
+  const effectiveSeries = isExample
+    ? series.map((s, si) => ({
+        ...s,
+        color: EXAMPLE_GRAY,
+        values: Array.from({ length: n }, (_, i) => (si === 0 ? 600000 : [550000, 620000, 480000, 700000, 580000, 500000][i % 6])),
+      }))
+    : series;
+
+  const ns = effectiveSeries.length;
   const iw = w - padL - padR;
   const ih = h - padT - padB;
 
   const ys: number[] = [];
-  series.forEach((s) => s.values.forEach((v) => { if (v != null && isFinite(v)) ys.push(v); }));
+  effectiveSeries.forEach((s) => s.values.forEach((v) => { if (v != null && isFinite(v)) ys.push(v); }));
   let ymax = Math.max(1, ...ys);
   ymax += ymax * 0.14;
   const Y = (v: number) => padT + ih - (ih * v) / ymax;
@@ -51,7 +66,7 @@ export function GroupedBarChart({
   const bars: ReactNode[] = [];
   for (let i = 0; i < n; i++) {
     const gx = padL + step * i + (step - groupW) / 2;
-    series.forEach((s, si) => {
+    effectiveSeries.forEach((s, si) => {
       const v = s.values[i];
       if (v == null || !isFinite(v)) return;
       const bx = gx + barW * si;
@@ -75,7 +90,7 @@ export function GroupedBarChart({
     });
   }
 
-  const legend = series.map((s) => (
+  const legend = effectiveSeries.map((s) => (
     <span key={s.label} className="mr-3 inline-flex items-center gap-1.5 text-[var(--text-xs)]">
       <span
         className="inline-block h-2.5 w-2.5 rounded-[3px]"
@@ -86,7 +101,12 @@ export function GroupedBarChart({
   ));
 
   return (
-    <div>
+    <div className="relative">
+      {isExample && (
+        <span className="absolute right-2.5 top-2 z-[2] rounded-[20px] border border-[var(--color-border-muted)] bg-[var(--color-bg-subtle)] px-2.5 py-0.5 text-[var(--text-xs)] font-semibold text-[var(--color-text-muted)]">
+          {exampleBadgeLabel}
+        </span>
+      )}
       <div className="overflow-x-auto">
         <svg viewBox={`0 0 ${w} ${h}`} width="100%" style={{ maxWidth: w, height: "auto" }}>
           {grid.map(({ v, yy }, i) => (

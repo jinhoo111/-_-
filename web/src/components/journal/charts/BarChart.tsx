@@ -1,3 +1,5 @@
+const EXAMPLE_GRAY = "var(--color-text-tertiary)";
+
 // Ports legacy _barChartSVG as a React component: single-series count bar chart.
 export function BarChart({
   w = 520,
@@ -5,12 +7,14 @@ export function BarChart({
   xLabels,
   values,
   color = "var(--color-error-text)",
+  exampleBadgeLabel,
 }: {
   w?: number;
   h?: number;
   xLabels: string[];
   values: number[];
   color?: string;
+  exampleBadgeLabel?: string;
 }) {
   const padL = 40;
   const padR = 14;
@@ -19,7 +23,15 @@ export function BarChart({
   const n = xLabels.length;
   const iw = w - padL - padR;
   const ih = h - padT - padB;
-  const ymax = Math.max(1, ...values);
+
+  const hasRealData = values.some((v) => v > 0);
+  const isExample = !hasRealData && !!exampleBadgeLabel;
+  const effectiveValues = isExample
+    ? Array.from({ length: n }, (_, i) => [1, 0, 2, 1, 0, 1][i % 6])
+    : values;
+  const effectiveColor = isExample ? EXAMPLE_GRAY : color;
+
+  const ymax = Math.max(1, ...effectiveValues);
   const step = iw / Math.max(1, n);
   const bw = Math.min(30, step * 0.62);
   const Y = (v: number) => padT + ih - (ih * v) / ymax;
@@ -31,7 +43,12 @@ export function BarChart({
   });
 
   return (
-    <div className="overflow-x-auto">
+    <div className="relative overflow-x-auto">
+      {isExample && (
+        <span className="absolute right-2.5 top-2 z-[2] rounded-[20px] border border-[var(--color-border-muted)] bg-[var(--color-bg-subtle)] px-2.5 py-0.5 text-[var(--text-xs)] font-semibold text-[var(--color-text-muted)]">
+          {exampleBadgeLabel}
+        </span>
+      )}
       <svg viewBox={`0 0 ${w} ${h}`} width="100%" style={{ maxWidth: w, height: "auto" }}>
         {grid.map(({ v, yy }, i) => (
           <g key={i}>
@@ -41,15 +58,15 @@ export function BarChart({
             </text>
           </g>
         ))}
-        {values.map((v, i) => {
+        {effectiveValues.map((v, i) => {
           const cx = padL + step * i + step / 2;
           const by = Y(v);
           const bh = Math.max(0, (ih * v) / ymax);
           return (
             <g key={i}>
-              <rect x={cx - bw / 2} y={by} width={bw} height={bh} rx={3} fill={color} opacity={v === 0 ? 0.12 : undefined} />
+              <rect x={cx - bw / 2} y={by} width={bw} height={bh} rx={3} fill={effectiveColor} opacity={v === 0 ? 0.12 : undefined} />
               {v > 0 && (
-                <text x={cx} y={by - 4} textAnchor="middle" fontSize={9} fontWeight={700} fill={color}>
+                <text x={cx} y={by - 4} textAnchor="middle" fontSize={9} fontWeight={700} fill={effectiveColor}>
                   {v}
                 </text>
               )}

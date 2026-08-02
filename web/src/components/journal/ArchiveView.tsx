@@ -12,14 +12,35 @@ import { useLang } from "@/lib/i18n/LanguageProvider";
 
 type ViewMode = "list" | "card";
 
+function NotifyPill({ entry, onToggle }: { entry: MemoArchiveEntry; onToggle?: (id: string) => void }) {
+  const t = useT();
+  if (!onToggle) return null;
+  const on = !!entry.notify;
+  return (
+    <button
+      type="button"
+      onClick={() => onToggle(entry.id)}
+      className={`whitespace-nowrap rounded-[5px] border px-1.5 py-0.5 text-[var(--text-xs)] ${
+        on
+          ? "border-[var(--color-success)] bg-[var(--color-success-bg-light)] text-[var(--color-success)]"
+          : "border-[var(--color-border-input)] bg-[var(--color-bg-surface)] text-[var(--color-text-tertiary)]"
+      }`}
+    >
+      {on ? t("journal.notify.entryOn") : t("journal.notify.entryOff")}
+    </button>
+  );
+}
+
 export function ArchiveView({
   entries,
   philosophy,
   onTogglePhilosophy,
+  onToggleNotify,
 }: {
   entries: MemoArchiveEntry[];
   philosophy: PhilosophyEntry[];
   onTogglePhilosophy: (sourceId: string, type: PhilosophyType) => void;
+  onToggleNotify?: (id: string) => void;
 }) {
   const t = useT();
   const { lang } = useLang();
@@ -112,6 +133,7 @@ export function ArchiveView({
                 {e.text}
               </p>
               <PhilosophyButtons sourceId={e.id} philosophy={philosophy} onToggle={onTogglePhilosophy} />
+              <NotifyPill entry={e} onToggle={onToggleNotify} />
               <span className="whitespace-nowrap text-[var(--text-xs)] text-[var(--color-text-tertiary)]">
                 {new Date(e.completedAt || e.time).toLocaleDateString(lang === "ko" ? "ko-KR" : "en-US")}
               </span>
@@ -132,6 +154,7 @@ export function ArchiveView({
                       {e.text}
                     </p>
                     <PhilosophyButtons sourceId={e.id} philosophy={philosophy} onToggle={onTogglePhilosophy} />
+              <NotifyPill entry={e} onToggle={onToggleNotify} />
                   </div>
                 ))}
               </div>

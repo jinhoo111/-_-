@@ -7,6 +7,8 @@ import { SecurityEventsSection } from "@/components/security/SecurityEventsSecti
 import { VocSection } from "@/components/security/VocSection";
 import { NoticeSection } from "@/components/security/NoticeSection";
 import { AccountsSection } from "@/components/security/AccountsSection";
+import { MarketEventsSection } from "@/components/security/MarketEventsSection";
+import { KeysSection } from "@/components/security/KeysSection";
 
 export default function SecurityPage() {
   const t = useT();
@@ -20,6 +22,8 @@ export default function SecurityPage() {
       {view === "voc" && <VocSection />}
       {view === "notice" && <NoticeSection />}
       {view === "accounts" && <AccountsSection />}
+      {view === "marketEvents" && <MarketEventsSection />}
+      {view === "keys" && <KeysSection />}
     </div>
   );
 }

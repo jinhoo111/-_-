@@ -2,18 +2,19 @@
 
 import { useState } from "react";
 import { Card } from "@/components/ui/Card";
-import { Skeleton } from "@/components/ui/Skeleton";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { useT } from "@/lib/i18n/LanguageProvider";
 import { useMarketNews } from "@/lib/queries/useNews";
 import { NewsList } from "@/components/news/NewsList";
+import { NewsCardSkeleton } from "@/components/news/NewsCardSkeleton";
 
 const CATEGORIES = ["general", "forex", "crypto", "merger"] as const;
+const MARKET_NEWS_LIMIT = 20;
 
 export function MarketNewsView() {
   const t = useT();
   const [category, setCategory] = useState<(typeof CATEGORIES)[number]>("general");
-  const { data, isLoading, error } = useMarketNews(category);
+  const { data, isLoading, error, refetch } = useMarketNews(category);
 
   return (
     <div className="flex flex-col gap-4">
@@ -31,12 +32,12 @@ export function MarketNewsView() {
         ))}
       </Card>
       {isLoading ? (
-        <Skeleton className="h-96 w-full" />
+        <NewsCardSkeleton count={5} />
       ) : error || !data ? (
-        <EmptyState title={t("news.error")} />
+        <EmptyState title={t("news.error")} onRetry={() => refetch()} retryLabel={t("news.retry")} />
       ) : (
         <Card>
-          <NewsList items={data.items} />
+          <NewsList items={data.items} limit={MARKET_NEWS_LIMIT} />
         </Card>
       )}
     </div>

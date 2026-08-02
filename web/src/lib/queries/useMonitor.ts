@@ -3,11 +3,35 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
 import type { MonitorKrBundle, MonitorUsBundle, ResolvedCompany } from "@/lib/monitor/server";
 import type { SignalCategory } from "@/lib/monitor/constants";
+import type { MonitorSearchSuggestion } from "@/app/api/monitor/search/route";
 
 async function fetchJson<T>(url: string): Promise<T> {
   const res = await fetch(url);
   if (!res.ok) throw new Error(`monitor_fetch_failed:${url}`);
   return res.json();
+}
+
+// Debounced live-suggestion dropdown (Naver-backed autocomplete), mirroring legacy's
+// monitorSearchInput -> _monitorNaverSearch (300ms debounce). Query key includes the raw,
+// un-debounced value only via the caller's own debounced state.
+export function useMonitorSearchSuggestions(q: string | null) {
+  return useQuery({
+    queryKey: ["monitor", "search", q],
+    queryFn: async () => (await fetchJson<{ results: MonitorSearchSuggestion[] }>(`/api/monitor/search?q=${encodeURIComponent(q || "")}`)).results,
+    enabled: !!q && q.trim().length > 0,
+    staleTime: 30_000,
+    refetchOnWindowFocus: false,
+    retry: false,
+  });
+}
+
+export function useMonitorStatus() {
+  return useQuery({
+    queryKey: ["monitor", "status"],
+    queryFn: () => fetchJson<{ ready: boolean }>("/api/monitor/status"),
+    staleTime: 5 * 60_000,
+    refetchOnWindowFocus: false,
+  });
 }
 
 export function useMonitorResolve(q: string | null) {

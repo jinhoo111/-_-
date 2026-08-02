@@ -33,7 +33,7 @@ export function ServiceNoticeBanner() {
 
   return (
     <div
-      className={`mx-auto flex w-full max-w-4xl flex-col gap-2 px-4 py-3 text-[var(--text-md)] ${
+      className={`mx-auto flex w-full max-w-4xl flex-col gap-2 px-2 py-3 text-[var(--text-md)] sm:px-4 ${
         notice.type === "warn"
           ? "bg-[var(--color-warning-bg)] text-[var(--color-warning-text)]"
           : "bg-[var(--color-info-bg)] text-[var(--color-info-text)]"
@@ -71,7 +71,9 @@ export function ServiceNoticeBanner() {
                 const pct = total ? Math.round((count / total) * 100) : 0;
                 return (
                   <div key={i} className="flex items-center gap-2 text-[var(--text-sm)]">
-                    <span className="w-24 truncate">{opt}</span>
+                    <span className="w-28 shrink-0 truncate" title={opt}>
+                      {opt}
+                    </span>
                     <div className="h-2 flex-1 rounded-full bg-black/10">
                       <div className="h-2 rounded-full bg-current" style={{ width: `${pct}%` }} />
                     </div>

@@ -3,9 +3,18 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
+import { LineChart } from "@/components/journal/charts/LineChart";
 import { roundKg, WEIGHT_GOAL_EPSILON } from "@/lib/journal/constants";
 import type { WeightEntry } from "@/lib/types/userData";
 import { useT } from "@/lib/i18n/LanguageProvider";
+
+function trendSlice(entries: WeightEntry[], date: string, days: number) {
+  const sorted = [...entries].sort((a, b) => a.date.localeCompare(b.date));
+  const cutoff = new Date(date);
+  cutoff.setDate(cutoff.getDate() - (days - 1));
+  const cutoffKey = cutoff.toISOString().slice(0, 10);
+  return sorted.filter((e) => e.date >= cutoffKey && e.date <= date);
+}
 
 export function WeightSection({
   date,
@@ -41,6 +50,9 @@ export function WeightSection({
 
   const dd = current && prev ? current.kg - prev.kg : null;
   const goalDiff = current && goal != null ? current.kg - goal : null;
+
+  const trend7 = trendSlice(entries, date, 7);
+  const trend30 = trendSlice(entries, date, 30);
 
   return (
     <div className="flex flex-col gap-2 rounded-[var(--radius-control)] border border-[var(--color-border-default)] p-3">
@@ -80,6 +92,31 @@ export function WeightSection({
               {t("journal.weight.vsGoal", { goal, diff: goalDiff.toFixed(1) })}
             </span>
           )}
+        </div>
+      )}
+
+      {trend7.length >= 2 && (
+        <div className="flex flex-col gap-1">
+          <span className="text-[var(--text-xs)] text-[var(--color-text-tertiary)]">{t("journal.trend.7d")}</span>
+          <LineChart
+            w={280}
+            h={90}
+            xLabels={trend7.map((e) => e.date.slice(5))}
+            series={[{ label: "", color: "var(--color-accent-indigo)", points: trend7.map((e) => e.kg) }]}
+            noDataLabel=""
+          />
+        </div>
+      )}
+      {trend30.length >= 2 && (
+        <div className="flex flex-col gap-1">
+          <span className="text-[var(--text-xs)] text-[var(--color-text-tertiary)]">{t("journal.trend.30d")}</span>
+          <LineChart
+            w={280}
+            h={90}
+            xLabels={trend30.map((e) => e.date.slice(5))}
+            series={[{ label: "", color: "var(--color-accent-indigo)", points: trend30.map((e) => e.kg) }]}
+            noDataLabel=""
+          />
         </div>
       )}
     </div>

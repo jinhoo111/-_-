@@ -7,7 +7,7 @@ import { useT } from "@/lib/i18n/LanguageProvider";
 import { useIsPro } from "@/lib/monitor/useIsPro";
 import { useMonitorBrief } from "@/lib/queries/useMonitor";
 import { ProLockCard } from "@/components/monitor/ProLockCard";
-import { SIGNAL_CATS, type SignalCategory } from "@/lib/monitor/constants";
+import { SIGNAL_CATS, daysAgoYmd, evalAlert, type SignalCategory } from "@/lib/monitor/constants";
 import type { MonitorCompany, MonitorSignal } from "@/lib/types/userData";
 
 interface RadarRow {
@@ -31,6 +31,14 @@ export function MonitorRadar({ companies }: { companies: MonitorCompany[] }) {
     return filter === "all" ? all : all.filter((r) => r.signal.category === filter);
   }, [companies, filter]);
 
+  const since7 = daysAgoYmd(7);
+  const weekHighCount = useMemo(
+    () =>
+      companies.reduce((n, co) => n + (co.signals ?? []).filter((s) => (s.date || "") >= since7 && s.weight === "high").length, 0),
+    [companies, since7],
+  );
+  const alertCompanyCount = useMemo(() => companies.filter((co) => evalAlert(co).severity !== "info").length, [companies]);
+
   if (!companies.some((co) => co.signals?.length)) {
     return <EmptyState title={t("monitor.radar.empty")} />;
   }
@@ -43,6 +51,10 @@ export function MonitorRadar({ companies }: { companies: MonitorCompany[] }) {
 
   return (
     <div className="flex flex-col gap-3">
+      <p className="text-[var(--text-md)] font-medium text-[var(--color-text-secondary)]">
+        {t("monitor.radar.summary", { count: weekHighCount, alertCount: alertCompanyCount })}
+      </p>
+
       <div className="flex flex-wrap gap-1.5">
         <button
           onClick={() => setFilter("all")}
@@ -66,6 +78,7 @@ export function MonitorRadar({ companies }: { companies: MonitorCompany[] }) {
           <li key={`${row.company.corp_code}-${row.signal.rcept_no}`} className="flex flex-col gap-1 rounded-[var(--radius-control)] bg-[var(--color-bg-overlay)] px-2.5 py-2">
             <div className="flex items-center justify-between gap-2">
               <div className="min-w-0 flex-1">
+                <span className="mr-1">{row.signal.weight === "high" ? "🔴" : "🟠"}</span>
                 <span className="font-semibold text-[var(--color-text-primary)]">{row.company.corp_name}</span>
                 <span className="ml-2 text-[var(--text-sm)] text-[var(--color-text-secondary)]">{row.signal.report_nm}</span>
               </div>
@@ -89,7 +102,12 @@ export function MonitorRadar({ companies }: { companies: MonitorCompany[] }) {
           </li>
         ))}
       </ul>
-      {!isPro && <ProLockCard label={t("monitor.brief.locked")} />}
+      {!isPro && (
+        <ProLockCard
+          label={t("monitor.brief.locked")}
+          previewRows={[t("monitor.pro.preview.1"), t("monitor.pro.preview.2")]}
+        />
+      )}
     </div>
   );
 }

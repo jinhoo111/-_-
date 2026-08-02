@@ -4,11 +4,11 @@ import { useState } from "react";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
-import { Skeleton } from "@/components/ui/Skeleton";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { useT } from "@/lib/i18n/LanguageProvider";
 import { useNaverStockNews } from "@/lib/queries/useNews";
 import { RssList } from "@/components/news/RssList";
+import { NewsCardSkeleton } from "@/components/news/NewsCardSkeleton";
 import type { RssItem } from "@/lib/news/constants";
 
 interface NaverNewsResponse {
@@ -19,7 +19,7 @@ export function NaverNewsView() {
   const t = useT();
   const [input, setInput] = useState("");
   const [code, setCode] = useState<string | null>(null);
-  const { data, isLoading, error } = useNaverStockNews(code);
+  const { data, isLoading, error, refetch } = useNaverStockNews(code);
 
   function handleSearch() {
     const v = input.trim();
@@ -51,9 +51,9 @@ export function NaverNewsView() {
       {!code ? (
         <EmptyState title={t("news.company.empty")} />
       ) : isLoading ? (
-        <Skeleton className="h-96 w-full" />
+        <NewsCardSkeleton count={4} />
       ) : error ? (
-        <EmptyState title={t("news.error")} />
+        <EmptyState title={t("news.error")} onRetry={() => refetch()} retryLabel={t("news.retry")} />
       ) : (
         <Card>
           <RssList items={items} />

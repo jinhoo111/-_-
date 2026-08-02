@@ -138,16 +138,16 @@ export function CalendarGrid({
               </span>
               {chips.slice(0, MAX_CHIPS).map((c, i) =>
                 c.kind === "event" ? (
-                  <span key={i} className="w-full truncate rounded px-1 text-[9px] font-medium bg-[var(--color-bg-badge)] text-[var(--color-text-tertiary)]">
+                  <span key={i} className="w-full truncate rounded px-1 text-[var(--text-2xs)] font-medium bg-[var(--color-bg-badge)] text-[var(--color-text-tertiary)]">
                     {t(`journal.event.${c.e.type}`) === `journal.event.${c.e.type}` ? c.e.title : t(`journal.event.${c.e.type}`)}
                   </span>
                 ) : c.kind === "schedule" ? (
-                  <span key={i} className="w-full truncate rounded px-1 text-[9px] font-medium bg-[var(--color-accent-subtle)] text-[var(--color-accent-indigo)]">
+                  <span key={i} className="w-full truncate rounded px-1 text-[var(--text-2xs)] font-medium bg-[var(--color-accent-subtle)] text-[var(--color-accent-indigo)]">
                     📅 {c.s.time ? `${c.s.time} ` : ""}
                     {c.s.title}
                   </span>
                 ) : c.kind === "weight" ? (
-                  <span key={i} className="w-full truncate rounded px-1 text-[9px] font-medium bg-[var(--color-info-bg)] text-[var(--color-info)]">
+                  <span key={i} className="w-full truncate rounded px-1 text-[var(--text-2xs)] font-medium bg-[var(--color-info-bg)] text-[var(--color-info)]">
                     ⚖️ {c.kg}
                   </span>
                 ) : c.kind === "glucose" ? (
@@ -155,7 +155,7 @@ export function CalendarGrid({
                     const st = glucoseStatus(c.g.slot, c.g.mgdl);
                     const col = st.key === "high" || st.key === "low" ? gluStatusColor(st.key) : { bg: "--color-info-bg", fg: "--color-info" };
                     return (
-                      <span key={i} className="w-full truncate rounded px-1 text-[9px] font-medium" style={{ background: `var(${col.bg})`, color: `var(${col.fg})` }}>
+                      <span key={i} className="w-full truncate rounded px-1 text-[var(--text-2xs)] font-medium" style={{ background: `var(${col.bg})`, color: `var(${col.fg})` }}>
                         🩸 {c.g.mgdl}
                       </span>
                     );
@@ -163,7 +163,7 @@ export function CalendarGrid({
                 ) : c.kind === "workout" ? (
                   <span
                     key={i}
-                    className="w-full truncate rounded px-1 text-[9px] font-medium"
+                    className="w-full truncate rounded px-1 text-[var(--text-2xs)] font-medium"
                     style={{
                       background: c.w === "done" ? "var(--color-success-bg)" : "var(--color-bg-overlay)",
                       color: c.w === "done" ? "var(--color-success-text)" : "var(--color-text-muted)",
@@ -174,7 +174,7 @@ export function CalendarGrid({
                 ) : c.kind === "impulse" ? (
                   <span
                     key={i}
-                    className="w-full truncate rounded px-1 text-[9px] font-bold"
+                    className="w-full truncate rounded px-1 text-[var(--text-2xs)] font-bold"
                     style={{ background: "var(--color-error-bg)", color: "var(--color-error-text)" }}
                   >
                     🧨 {t("journal.impulse.chip")}
@@ -182,7 +182,7 @@ export function CalendarGrid({
                 ) : (
                   <span
                     key={i}
-                    className="w-full truncate rounded px-1 text-[9px] font-medium"
+                    className="w-full truncate rounded px-1 text-[var(--text-2xs)] font-medium"
                     style={{ background: `var(${tagMeta(c.e.tag).bg})`, color: `var(${tagMeta(c.e.tag).fg})` }}
                   >
                     {c.e.text}
@@ -190,7 +190,7 @@ export function CalendarGrid({
                 ),
               )}
               {chips.length > MAX_CHIPS && (
-                <span className="text-[9px] text-[var(--color-text-tertiary)]">{t("journal.calendar.more", { count: chips.length - MAX_CHIPS })}</span>
+                <span className="text-[var(--text-2xs)] text-[var(--color-text-tertiary)]">{t("journal.calendar.more", { count: chips.length - MAX_CHIPS })}</span>
               )}
             </button>
           );

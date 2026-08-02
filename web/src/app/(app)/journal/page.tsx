@@ -52,6 +52,7 @@ export default function JournalPage() {
   const impulseTrades = userData?.impulse_trades ?? [];
   const budget = userData?.budget ?? {};
   const investPhilosophy = userData?.invest_philosophy ?? [];
+  const notifyEnabled = userData?.notify_enabled ?? true;
   const [impulseSortDir, setImpulseSortDir] = useState<"asc" | "desc">("desc");
   const ym = ymKey(calYear, calMonth);
   const weightGoal = health?.monthlyGoals[ym] ?? null;
@@ -129,6 +130,10 @@ export default function JournalPage() {
 
   function handleDeleteMemo(id: string) {
     updateUserData({ memo_archive: memoArchive.filter((e) => e.id !== id) });
+  }
+
+  function handleToggleMemoNotify(id: string) {
+    updateUserData({ memo_archive: memoArchive.map((e) => (e.id === id ? { ...e, notify: !e.notify } : e)) }, true);
   }
 
   function handleSaveSchedule(data: { time: string; title: string; memo: string }, editId?: string) {
@@ -237,6 +242,10 @@ export default function JournalPage() {
     updateUserData({ invest_philosophy: next });
   }
 
+  function handleToggleNotifyMaster() {
+    updateUserData({ notify_enabled: !notifyEnabled }, true);
+  }
+
   function handleDeletePhilosophy(id: string) {
     updateUserData({ invest_philosophy: investPhilosophy.filter((p) => p.id !== id) });
   }
@@ -325,7 +334,20 @@ export default function JournalPage() {
     <div className="flex flex-col gap-6">
       <div className="flex items-center justify-between">
         <h1 className="text-[var(--text-2xl)] font-semibold text-[var(--color-text-primary)]">{t("nav.journal")}</h1>
-        <JournalTabs view={view} onChange={setView} />
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={handleToggleNotifyMaster}
+            className={`rounded-[var(--radius-control)] border px-3 py-1 text-[var(--text-sm)] ${
+              notifyEnabled
+                ? "border-[var(--color-success)] bg-[var(--color-success-bg-light)] text-[var(--color-success)]"
+                : "border-[var(--color-border-input)] bg-[var(--color-bg-surface)] text-[var(--color-text-tertiary)]"
+            }`}
+          >
+            {notifyEnabled ? t("journal.notify.on") : t("journal.notify.off")}
+          </button>
+          <JournalTabs view={view} onChange={setView} />
+        </div>
       </div>
 
       {view === "calendar" ? (
@@ -456,7 +478,12 @@ export default function JournalPage() {
           />
         )
       ) : view === "archive" ? (
-        <ArchiveView entries={memoArchive} philosophy={investPhilosophy} onTogglePhilosophy={handleTogglePhilosophy} />
+        <ArchiveView
+          entries={memoArchive}
+          philosophy={investPhilosophy}
+          onTogglePhilosophy={handleTogglePhilosophy}
+          onToggleNotify={handleToggleMemoNotify}
+        />
       ) : (
         <PhilosophyView
           philosophy={investPhilosophy}

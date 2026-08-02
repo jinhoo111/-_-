@@ -4,11 +4,14 @@ import { useState } from "react";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
-import { Skeleton } from "@/components/ui/Skeleton";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { useT } from "@/lib/i18n/LanguageProvider";
 import { useCompanyNews, useAnalystRating } from "@/lib/queries/useNews";
 import { NewsList } from "@/components/news/NewsList";
+import { NewsCardSkeleton } from "@/components/news/NewsCardSkeleton";
+import { RatingCard } from "@/components/news/RatingCard";
+
+const COMPANY_NEWS_LIMIT = 15;
 
 export function CompanyNewsView() {
   const t = useT();
@@ -41,31 +44,23 @@ export function CompanyNewsView() {
         <EmptyState title={t("news.company.empty")} />
       ) : (
         <>
-          {rating.data && (
-            <Card>
-              <p className="mb-2 text-[var(--text-md)] font-semibold text-[var(--color-text-primary)]">{t("news.rating.title")}</p>
-              {rating.data.priceTarget && (
-                <p className="text-[var(--text-sm)] text-[var(--color-text-secondary)]">
-                  {t("news.rating.priceTarget")}: ${rating.data.priceTarget.targetMean.toFixed(2)} ({t("news.rating.range")}: $
-                  {rating.data.priceTarget.targetLow.toFixed(2)}–${rating.data.priceTarget.targetHigh.toFixed(2)})
-                </p>
-              )}
-              {rating.data.recommendation?.[0] && (
-                <p className="mt-1 text-[var(--text-sm)] text-[var(--color-text-secondary)]">
-                  {t("news.rating.trend")}: {t("news.rating.strongBuy")} {rating.data.recommendation[0].strongBuy} /{" "}
-                  {t("news.rating.buy")} {rating.data.recommendation[0].buy} / {t("news.rating.hold")} {rating.data.recommendation[0].hold} /{" "}
-                  {t("news.rating.sell")} {rating.data.recommendation[0].sell} / {t("news.rating.strongSell")} {rating.data.recommendation[0].strongSell}
-                </p>
-              )}
-            </Card>
-          )}
+          <div>
+            <p className="mb-2 text-[var(--text-md)] font-semibold text-[var(--color-text-primary)]">{t("news.rating.title")}</p>
+            {rating.isLoading ? (
+              <NewsCardSkeleton count={2} />
+            ) : rating.error ? (
+              <EmptyState title={t("news.error")} onRetry={() => rating.refetch()} retryLabel={t("news.retry")} />
+            ) : rating.data ? (
+              <RatingCard symbol={rating.data.symbol} recommendation={rating.data.recommendation} priceTarget={rating.data.priceTarget} />
+            ) : null}
+          </div>
           {news.isLoading ? (
-            <Skeleton className="h-96 w-full" />
+            <NewsCardSkeleton count={4} />
           ) : news.error || !news.data ? (
-            <EmptyState title={t("news.error")} />
+            <EmptyState title={t("news.error")} onRetry={() => news.refetch()} retryLabel={t("news.retry")} />
           ) : (
             <Card>
-              <NewsList items={news.data.items} />
+              <NewsList items={news.data.items} limit={COMPANY_NEWS_LIMIT} />
             </Card>
           )}
         </>

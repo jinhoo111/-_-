@@ -2,9 +2,9 @@
 
 import { useT } from "@/lib/i18n/LanguageProvider";
 
-export type SecurityView = "events" | "voc" | "notice" | "accounts";
+export type SecurityView = "events" | "voc" | "notice" | "accounts" | "marketEvents" | "keys";
 
-const VIEWS: SecurityView[] = ["events", "voc", "notice", "accounts"];
+const VIEWS: SecurityView[] = ["events", "voc", "notice", "accounts", "marketEvents", "keys"];
 
 export function SecurityTabs({ view, onChange }: { view: SecurityView; onChange: (v: SecurityView) => void }) {
   const t = useT();

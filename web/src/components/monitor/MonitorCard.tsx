@@ -15,17 +15,217 @@ import {
   SEC_FORM_KEY,
   SEC_ITEM_KEY,
   SIGNAL_CATS,
+  classifyEle,
+  classifyMajor,
   computeHoldingChanges,
+  dartFloat,
   discType,
   ownCounts,
+  ownYmd,
   secFilingTitleParts,
+  signOf,
   signalCategory,
   type DiscType,
   type Disclosure,
+  type OwnershipRow,
 } from "@/lib/monitor/constants";
 import type { MonitorCompany } from "@/lib/types/userData";
 
 const DISC_TYPES: DiscType[] = ["A", "B", "C", "D"];
+
+const OWN_CAP = 12; // per-group display cap (officer filings can be numerous)
+
+function fmtOwnDate(dt: string): string {
+  const s = ownYmd(dt);
+  return s.length === 8 ? `${s.slice(4, 6)}/${s.slice(6, 8)}` : "";
+}
+
+// Collapsible "🧬 지분변동 (5%룰·임원)" section — two sub-lists (5%-rule major holders vs
+// officers), each row tagged new/increase/decrease/exit/flat, mirroring legacy's
+// _ownershipSectionHTML / _renderOwnershipBody.
+function OwnershipSection({
+  major,
+  ele,
+  counts,
+}: {
+  major: OwnershipRow[];
+  ele: OwnershipRow[];
+  counts: { cNew: number; cInc: number; cDec: number };
+}) {
+  const t = useT();
+  const [open, setOpen] = useState(false);
+
+  const hasAny = major.length > 0 || ele.length > 0;
+
+  return (
+    <div className="rounded-[var(--radius-control)] border border-[var(--color-border-faint)]">
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="flex w-full items-center gap-2 px-2.5 py-2 text-left text-[var(--text-sm)] font-medium text-[var(--color-text-secondary)]"
+      >
+        <span>
+          {t("monitor.own.section.title")}{" "}
+          <span className="text-[var(--text-xs)] font-normal text-[var(--color-text-tertiary)]">{t("monitor.own.section.sub")}</span>
+        </span>
+        <span className="ml-auto flex items-center gap-1.5">
+          {counts.cNew > 0 || counts.cInc > 0 || counts.cDec > 0 ? (
+            <>
+              {counts.cNew > 0 && (
+                <span className="rounded-[var(--radius-pill)] bg-[var(--color-info-bg)] px-2 py-0.5 text-[var(--text-xs)] font-semibold text-[var(--color-info)]">
+                  🆕 {t("monitor.own.new")} {counts.cNew}
+                </span>
+              )}
+              {counts.cInc > 0 && (
+                <span className="rounded-[var(--radius-pill)] bg-[var(--color-success-bg)] px-2 py-0.5 text-[var(--text-xs)] font-semibold text-[var(--color-success-text)]">
+                  ▲ {t("monitor.own.inc")} {counts.cInc}
+                </span>
+              )}
+              {counts.cDec > 0 && (
+                <span className="rounded-[var(--radius-pill)] bg-[var(--color-error-bg)] px-2 py-0.5 text-[var(--text-xs)] font-semibold text-[var(--color-error-text)]">
+                  ▼ {t("monitor.own.dec")} {counts.cDec}
+                </span>
+              )}
+            </>
+          ) : (
+            <span className="text-[var(--text-xs)] text-[var(--color-text-tertiary)]">{t("monitor.own.none")}</span>
+          )}
+          <span>{open ? "▾" : "▸"}</span>
+        </span>
+      </button>
+
+      {open && (
+        <div className="border-t border-[var(--color-border-faint)] px-2.5 py-2">
+          {!hasAny ? (
+            <p className="text-[var(--text-sm)] text-[var(--color-text-tertiary)]">{t("monitor.own.empty")}</p>
+          ) : (
+            <div className="flex flex-col gap-3">
+              <OwnershipGroup title={t("monitor.own.majorTitle")} count={major.length} emptyLabel={t("monitor.own.majorEmpty")}>
+                {major.slice(0, OWN_CAP).map((r) => {
+                  const k = classifyMajor(r);
+                  const rate = Math.abs(dartFloat(r.stkrt));
+                  const irds = signOf(r.stkrt_irds) * Math.abs(dartFloat(r.stkrt_irds));
+                  let detail: string;
+                  if (k === "new") detail = `${t("monitor.own.tag.new")} ${rate.toFixed(2)}%`;
+                  else if (k === "exit") detail = `${(rate - irds).toFixed(2)} → ${rate.toFixed(2)}% (5%↓)`;
+                  else if (k === "flat") detail = `${rate.toFixed(2)}%`;
+                  else detail = `${(rate - irds).toFixed(2)} → ${rate.toFixed(2)}% (${irds >= 0 ? "▲" : "▼"}${Math.abs(irds).toFixed(2)}%p)`;
+                  return (
+                    <OwnershipRowView
+                      key={r.rcept_no}
+                      date={fmtOwnDate(r.rcept_dt)}
+                      tagKey={`monitor.own.tag.${k}`}
+                      kind={k}
+                      who={r.repror || "-"}
+                      detail={detail}
+                      rceptNo={r.rcept_no}
+                    />
+                  );
+                })}
+              </OwnershipGroup>
+
+              <OwnershipGroup title={t("monitor.own.eleTitle")} count={ele.length} emptyLabel={t("monitor.own.eleEmpty")}>
+                {ele.slice(0, OWN_CAP).map((r) => {
+                  const k = classifyEle(r);
+                  const d = signOf(r.sp_stock_lmp_irds_cnt) * Math.abs(dartFloat(r.sp_stock_lmp_irds_cnt));
+                  const tagKey = k === "inc" ? "monitor.own.tag.buy" : k === "dec" ? "monitor.own.tag.sell" : "monitor.own.tag.change";
+                  const detail = d ? `${d > 0 ? "▲" : "▼"}${Math.abs(d).toLocaleString()}주` : "-";
+                  return (
+                    <OwnershipRowView
+                      key={r.rcept_no}
+                      date={fmtOwnDate(r.rcept_dt)}
+                      tagKey={tagKey}
+                      kind={k}
+                      who={r.repror || "-"}
+                      detail={detail}
+                      rceptNo={r.rcept_no}
+                    />
+                  );
+                })}
+              </OwnershipGroup>
+
+              <p className="text-[var(--text-2xs)] text-[var(--color-text-tertiary)]">(연간 보고서 비교 추정)</p>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function OwnershipGroup({
+  title,
+  count,
+  emptyLabel,
+  children,
+}: {
+  title: string;
+  count: number;
+  emptyLabel: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div>
+      <div className="mb-1 text-[var(--text-sm)] font-semibold text-[var(--color-text-secondary)]">
+        {title} <span className="text-[var(--text-xs)] font-normal text-[var(--color-text-tertiary)]">{count}</span>
+      </div>
+      {count > 0 ? (
+        <ul className="flex flex-col gap-1">{children}</ul>
+      ) : (
+        <p className="text-[var(--text-sm)] text-[var(--color-text-tertiary)]">{emptyLabel}</p>
+      )}
+    </div>
+  );
+}
+
+const OWN_TAG_COLOR: Record<string, string> = {
+  new: "var(--color-info)",
+  inc: "var(--color-success-text)",
+  buy: "var(--color-success-text)",
+  dec: "var(--color-error-text)",
+  sell: "var(--color-error-text)",
+  exit: "var(--color-error-text)",
+  flat: "var(--color-text-tertiary)",
+  change: "var(--color-text-tertiary)",
+};
+
+function OwnershipRowView({
+  date,
+  tagKey,
+  kind,
+  who,
+  detail,
+  rceptNo,
+}: {
+  date: string;
+  tagKey: string;
+  kind: string;
+  who: string;
+  detail: string;
+  rceptNo: string;
+}) {
+  const t = useT();
+  return (
+    <li className="flex items-center gap-2 text-[var(--text-sm)]">
+      <span className="w-10 flex-shrink-0 text-[var(--text-xs)] text-[var(--color-text-tertiary)]">{date}</span>
+      <span
+        className="flex-shrink-0 rounded px-1.5 py-0.5 text-[var(--text-2xs)] font-bold"
+        style={{ color: OWN_TAG_COLOR[kind] ?? "var(--color-text-tertiary)", background: "var(--color-bg-overlay)" }}
+      >
+        {t(tagKey)}
+      </span>
+      <span className="min-w-0 flex-1 truncate text-[var(--color-text-primary)]">{who}</span>
+      <span className="flex-shrink-0 font-mono text-[var(--text-xs)] text-[var(--color-text-secondary)]">{detail}</span>
+      <a
+        href={`https://dart.fss.or.kr/dsaf001/main.do?rcpNo=${rceptNo}`}
+        target="_blank"
+        rel="noreferrer"
+        className="flex-shrink-0 text-[var(--text-xs)] text-[var(--color-text-tertiary)]"
+      >
+        ↗
+      </a>
+    </li>
+  );
+}
 
 function KrCardBody({ company }: { company: MonitorCompany }) {
   const t = useT();
@@ -112,17 +312,7 @@ function KrCardBody({ company }: { company: MonitorCompany }) {
       )}
       {!isPro && <ProLockCard label={t("monitor.brief.locked")} />}
 
-      <div className="flex gap-1.5 text-[var(--text-sm)]">
-        <span className="rounded-[var(--radius-pill)] bg-[var(--color-info-bg)] px-2 py-0.5 font-semibold text-[var(--color-info)]">
-          🆕 {t("monitor.own.new")} {counts.cNew}
-        </span>
-        <span className="rounded-[var(--radius-pill)] bg-[var(--color-success-bg)] px-2 py-0.5 font-semibold text-[var(--color-success-text)]">
-          ▲ {t("monitor.own.inc")} {counts.cInc}
-        </span>
-        <span className="rounded-[var(--radius-pill)] bg-[var(--color-error-bg)] px-2 py-0.5 font-semibold text-[var(--color-error-text)]">
-          ▼ {t("monitor.own.dec")} {counts.cDec}
-        </span>
-      </div>
+      <OwnershipSection major={data.major} ele={data.ele} counts={counts} />
 
       <button onClick={() => setShowHoldings((v) => !v)} className="text-left text-[var(--text-sm)] font-medium text-[var(--color-text-secondary)]">
         {showHoldings ? "▾" : "▸"} {t("monitor.holdings.title")} ({data.holdingsYear})

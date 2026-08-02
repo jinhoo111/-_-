@@ -12,6 +12,8 @@ export interface HLine {
 }
 
 // Ports legacy _lineChartSVG as a React component (same layout/scale math, JSX instead of a template string).
+const EXAMPLE_GRAY = "var(--color-text-tertiary)";
+
 export function LineChart({
   w = 520,
   h = 220,
@@ -21,6 +23,7 @@ export function LineChart({
   zeroBased,
   fmtY,
   noDataLabel,
+  exampleBadgeLabel,
 }: {
   w?: number;
   h?: number;
@@ -30,6 +33,7 @@ export function LineChart({
   zeroBased?: boolean;
   fmtY?: (v: number) => string;
   noDataLabel: string;
+  exampleBadgeLabel?: string;
 }) {
   const padL = 48;
   const padR = 14;
@@ -39,8 +43,23 @@ export function LineChart({
   const iw = w - padL - padR;
   const ih = h - padT - padB;
 
+  const hasRealData = series.some((s) => s.points.some((p) => p != null && isFinite(p)));
+
+  let effectiveSeries = series;
+  let isExample = false;
+  if (!hasRealData && exampleBadgeLabel) {
+    isExample = true;
+    effectiveSeries = series.length
+      ? series.map((s) => ({
+          ...s,
+          color: EXAMPLE_GRAY,
+          points: Array.from({ length: n }, (_, i) => 100 - i * (6 / Math.max(1, n - 1))),
+        }))
+      : [{ label: "", color: EXAMPLE_GRAY, points: Array.from({ length: n }, (_, i) => 100 - i * (6 / Math.max(1, n - 1))) }];
+  }
+
   const ys: number[] = [];
-  series.forEach((s) => s.points.forEach((p) => { if (p != null && isFinite(p)) ys.push(p); }));
+  effectiveSeries.forEach((s) => s.points.forEach((p) => { if (p != null && isFinite(p)) ys.push(p); }));
   hlines.forEach((l) => ys.push(l.y));
 
   if (!ys.length) {
@@ -66,7 +85,7 @@ export function LineChart({
     return { v, yy: Y(v) };
   });
 
-  const legend = series.map((s) => (
+  const legend = effectiveSeries.filter((s) => s.label).map((s) => (
     <span key={s.label} className="mr-2.5 inline-flex items-center gap-1 text-[var(--text-xs)]">
       <span className="inline-block w-3.5 border-t-2" style={{ borderColor: s.color, borderStyle: s.dashed ? "dashed" : "solid" }} />
       {s.label}
@@ -74,7 +93,12 @@ export function LineChart({
   ));
 
   return (
-    <div>
+    <div className="relative">
+      {isExample && (
+        <span className="absolute right-2.5 top-2 z-[2] rounded-[20px] border border-[var(--color-border-muted)] bg-[var(--color-bg-subtle)] px-2.5 py-0.5 text-[var(--text-xs)] font-semibold text-[var(--color-text-muted)]">
+          {exampleBadgeLabel}
+        </span>
+      )}
       <div className="overflow-x-auto">
         <svg viewBox={`0 0 ${w} ${h}`} width="100%" style={{ maxWidth: w, height: "auto" }}>
           {gridLines.map(({ v, yy }, i) => (
@@ -96,7 +120,7 @@ export function LineChart({
               </g>
             );
           })}
-          {series.map((s) => {
+          {effectiveSeries.map((s) => {
             const pts = s.points.map((p, i) => (p != null && isFinite(p) ? `${X(i)},${Y(p)}` : null)).filter(Boolean).join(" ");
             return (
               <g key={s.label}>

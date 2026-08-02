@@ -15,6 +15,7 @@ import {
 } from "@/lib/portfolio/constants";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
+import { Select } from "@/components/ui/Select";
 import { TickerSearchInput } from "@/components/portfolio/TickerSearchInput";
 import { Card } from "@/components/ui/Card";
 import { Skeleton } from "@/components/ui/Skeleton";
@@ -56,9 +57,21 @@ export default function PortfolioPage() {
   const [marketFilter, setMarketFilter] = useState<MarketFilter>("all");
   const [styleFilter, setStyleFilter] = useState<StyleFilter>("all");
   const [editingIdx, setEditingIdx] = useState<number | null>(null);
-  const [addForm, setAddForm] = useState({ name: "", ticker: "", buy: "", qty: "1", status: "hold" as StockStatus });
+  const [addForm, setAddForm] = useState({
+    name: "",
+    ticker: "",
+    buy: "",
+    qty: "1",
+    cur: "",
+    marketOverride: "auto" as "auto" | "kr" | "us",
+    status: "hold" as StockStatus,
+  });
   const [addError, setAddError] = useState("");
   const [addPending, setAddPending] = useState(false);
+  const [cashEditing, setCashEditing] = useState<"krw" | "usd" | null>(null);
+  const [cashDraft, setCashDraft] = useState("");
+  const [sortKey, setSortKey] = useState<"qty" | "value" | "return" | "weight" | null>(null);
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
 
   const stocks = useMemo(() => userData?.stocks ?? [], [userData]);
   const tickers = useMemo(() => stocks.filter((s) => !s.hidden).map((s) => s.ticker), [stocks]);
@@ -100,21 +113,27 @@ export default function PortfolioPage() {
     const qty = parseInt(addForm.qty) || 1;
     let ticker = addForm.ticker.trim().toUpperCase() || resolveTickerFromName(name) || name.toUpperCase();
     if (/^\d{6}$/.test(ticker)) ticker += ".KS";
-    const market = isKrTicker(ticker) ? "kr" : "us";
+    const inferredKr = isKrTicker(ticker);
+    const market = addForm.marketOverride === "auto" ? (inferredKr ? "kr" : "us") : addForm.marketOverride;
 
     setAddPending(true);
     const newStock: Stock = { name, ticker, buy, cur: 0, qty, status: addForm.status, market, account: "기타", style: "" };
 
-    try {
-      const res = await fetch(`/api/market/quote?symbols=${encodeURIComponent(ticker)}`);
-      const data = await res.json();
-      const q = data?.[ticker];
-      if (q) {
-        newStock.cur = q.price;
-        newStock.marketState = q.state;
+    const manualCur = parseFloat(addForm.cur);
+    if (!isNaN(manualCur) && manualCur > 0) {
+      newStock.cur = manualCur;
+    } else {
+      try {
+        const res = await fetch(`/api/market/quote?symbols=${encodeURIComponent(ticker)}`);
+        const data = await res.json();
+        const q = data?.[ticker];
+        if (q) {
+          newStock.cur = q.price;
+          newStock.marketState = q.state;
+        }
+      } catch {
+        // fall through — cur stays 0, user can edit manually
       }
-    } catch {
-      // fall through — cur stays 0, user can edit manually
     }
     setAddPending(false);
 
@@ -122,8 +141,28 @@ export default function PortfolioPage() {
       setAddError(t("portfolio.addStock.quoteFailed", { ticker }));
     }
     patchStocks([...stocks, newStock]);
-    setAddForm({ name: "", ticker: "", buy: "", qty: "1", status: "hold" });
+    setAddForm({ name: "", ticker: "", buy: "", qty: "1", cur: "", marketOverride: "auto", status: "hold" });
     toast.show(t("portfolio.addStock.added", { name }), "success");
+  }
+
+  function handleStartCashEdit(which: "krw" | "usd") {
+    setCashDraft(String(which === "krw" ? userData?.cash_krw || 0 : userData?.cash_usd || 0));
+    setCashEditing(which);
+  }
+  function handleSaveCash() {
+    if (!cashEditing) return;
+    const v = parseFloat(cashDraft);
+    const value = isNaN(v) ? 0 : v;
+    updateUserData(cashEditing === "krw" ? { cash_krw: value } : { cash_usd: value });
+    setCashEditing(null);
+  }
+  function handleSort(key: "qty" | "value" | "return" | "weight") {
+    if (sortKey === key) {
+      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    } else {
+      setSortKey(key);
+      setSortDir("desc");
+    }
   }
 
   function handlePickTicker(r: TickerSearchResult) {
@@ -172,13 +211,42 @@ export default function PortfolioPage() {
       );
     });
 
+  function sortMetric(s: Stock, key: "qty" | "value" | "return" | "weight") {
+    const isKR = isKrTicker(s.ticker);
+    const v = s.cur * s.qty;
+    const vUSD = isKR ? v / fxRate : v;
+    switch (key) {
+      case "qty":
+        return s.qty;
+      case "value":
+        return vUSD;
+      case "return":
+        return s.buy ? ((s.cur - s.buy) / s.buy) * 100 : 0;
+      case "weight":
+        return totalValueUSD ? (vUSD / totalValueUSD) * 100 : 0;
+    }
+  }
+
+  if (sortKey) {
+    filtered.sort((a, b) => {
+      const av = sortMetric(a.s, sortKey);
+      const bv = sortMetric(b.s, sortKey);
+      return sortDir === "asc" ? av - bv : bv - av;
+    });
+  }
+
+  function sortIndicator(key: "qty" | "value" | "return" | "weight") {
+    if (sortKey !== key) return "↕";
+    return sortDir === "asc" ? "↑" : "↓";
+  }
+
   return (
     <div className="flex flex-col gap-6">
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
         <Card className="flex flex-col gap-1">
-          <div className="flex items-center justify-between text-[var(--text-sm)] text-[var(--color-text-tertiary)]">
-            <span>{t("portfolio.totalValue")}</span>
-            <span className="flex overflow-hidden rounded-[var(--radius-control)] border border-[var(--color-border-input)]">
+          <div className="flex items-center justify-between gap-2 text-[var(--text-sm)] text-[var(--color-text-tertiary)]">
+            <span className="truncate">{t("portfolio.totalValue")}</span>
+            <span className="flex shrink-0 overflow-hidden rounded-[var(--radius-control)] border border-[var(--color-border-input)]">
               <button
                 onClick={() => setCurMode("USD")}
                 className={`px-1.5 text-[var(--text-2xs)] ${curMode === "USD" ? "bg-[var(--color-accent-primary)] text-white" : ""}`}
@@ -193,47 +261,73 @@ export default function PortfolioPage() {
               </button>
             </span>
           </div>
-          <div className="text-[var(--text-2xl)] font-semibold text-[var(--color-text-primary)]">
+          <div className="truncate text-[var(--text-2xl)] font-semibold text-[var(--color-text-primary)]">
             {grandTotalUSD ? fmtTop(grandTotalUSD) : "—"}
           </div>
         </Card>
         <Card className="flex flex-col gap-1">
-          <div className="text-[var(--text-sm)] text-[var(--color-text-tertiary)]">{t("portfolio.totalProfit")}</div>
-          <div className={`text-[var(--text-2xl)] font-semibold ${profitUSD >= 0 ? "text-[var(--color-up)]" : "text-[var(--color-down)]"}`}>
+          <div className="truncate text-[var(--text-sm)] text-[var(--color-text-tertiary)]">{t("portfolio.totalProfit")}</div>
+          <div
+            className={`truncate text-[var(--text-2xl)] font-semibold ${profitUSD >= 0 ? "text-[var(--color-up)]" : "text-[var(--color-down)]"}`}
+          >
             {totalValueUSD ? (profitUSD >= 0 ? "+" : "-") + fmtTop(Math.abs(profitUSD)) : "—"}
           </div>
         </Card>
         <Card className="flex flex-col gap-1">
-          <div className="text-[var(--text-sm)] text-[var(--color-text-tertiary)]">{t("portfolio.profitRate")}</div>
-          <div className={`text-[var(--text-2xl)] font-semibold ${profitRate >= 0 ? "text-[var(--color-up)]" : "text-[var(--color-down)]"}`}>
+          <div className="truncate text-[var(--text-sm)] text-[var(--color-text-tertiary)]">{t("portfolio.profitRate")}</div>
+          <div
+            className={`truncate text-[var(--text-2xl)] font-semibold ${profitRate >= 0 ? "text-[var(--color-up)]" : "text-[var(--color-down)]"}`}
+          >
             {totalValueUSD ? (profitRate >= 0 ? "+" : "") + profitRate.toFixed(2) + "%" : "—"}
           </div>
         </Card>
         <Card className="flex flex-col gap-1">
-          <div className="text-[var(--text-sm)] text-[var(--color-text-tertiary)]">{t("portfolio.heldCount")}</div>
-          <div className="text-[var(--text-2xl)] font-semibold text-[var(--color-text-primary)]">
+          <div className="truncate text-[var(--text-sm)] text-[var(--color-text-tertiary)]">{t("portfolio.heldCount")}</div>
+          <div className="truncate text-[var(--text-2xl)] font-semibold text-[var(--color-text-primary)]">
             {held.length ? t("portfolio.count", { count: held.length }) : "—"}
           </div>
         </Card>
+        <CashTile
+          label={t("portfolio.cashKrw")}
+          value={userData.cash_krw || 0}
+          fmt={fmtKRW}
+          editing={cashEditing === "krw"}
+          draft={cashDraft}
+          onDraftChange={setCashDraft}
+          onEditStart={() => handleStartCashEdit("krw")}
+          onSave={handleSaveCash}
+          onCancel={() => setCashEditing(null)}
+        />
+        <CashTile
+          label={t("portfolio.cashUsd")}
+          value={userData.cash_usd || 0}
+          fmt={fmtUSD}
+          editing={cashEditing === "usd"}
+          draft={cashDraft}
+          onDraftChange={setCashDraft}
+          onEditStart={() => handleStartCashEdit("usd")}
+          onSave={handleSaveCash}
+          onCancel={() => setCashEditing(null)}
+        />
       </div>
 
       <Card className="flex flex-col gap-3">
         <div className="text-[var(--text-md)] font-semibold text-[var(--color-text-primary)]">{t("portfolio.addStock.title")}</div>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap items-center gap-1.5">
           <TickerSearchInput
             placeholder={t("portfolio.addStock.namePlaceholder")}
             value={addForm.name}
             onChange={(name) => setAddForm({ ...addForm, name })}
             onPick={handlePickTicker}
-            className="w-85"
+            className="min-w-[140px] flex-1 basis-[180px]"
           />
           <Input
             placeholder={t("portfolio.addStock.tickerPlaceholder")}
             value={addForm.ticker}
             onChange={(e) => setAddForm({ ...addForm, ticker: e.target.value })}
-            className="w-32"
+            className="w-28 shrink-0"
           />
-          <div className="relative w-85">
+          <div className="relative w-24 shrink-0">
             <span className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-[var(--text-lg)] text-[var(--color-text-placeholder)]">
               {addBuyCurrency}
             </span>
@@ -250,20 +344,36 @@ export default function PortfolioPage() {
             placeholder={t("portfolio.addStock.qtyPlaceholder")}
             value={addForm.qty}
             onChange={(e) => setAddForm({ ...addForm, qty: e.target.value })}
-            className="w-20"
+            className="w-20 shrink-0"
           />
-          <select
+          <Input
+            type="number"
+            placeholder={t("portfolio.addStock.curPlaceholder")}
+            value={addForm.cur}
+            onChange={(e) => setAddForm({ ...addForm, cur: e.target.value })}
+            className="w-24 shrink-0"
+          />
+          <Select
+            value={addForm.marketOverride}
+            onChange={(e) => setAddForm({ ...addForm, marketOverride: e.target.value as "auto" | "kr" | "us" })}
+            className="shrink-0"
+          >
+            <option value="auto">{t("portfolio.addStock.marketAuto")}</option>
+            <option value="kr">{t("portfolio.filter.kr")}</option>
+            <option value="us">{t("portfolio.filter.us")}</option>
+          </Select>
+          <Select
             value={addForm.status}
             onChange={(e) => setAddForm({ ...addForm, status: e.target.value as StockStatus })}
-            className="h-[var(--btn-h-md)] rounded-[var(--radius-control)] border border-[var(--color-border-input)] bg-[var(--color-bg-surface)] px-2 text-[var(--text-lg)] text-[var(--color-text-primary)]"
+            className="shrink-0"
           >
             {Object.entries(STATUS_LABEL_KEY).map(([v, key]) => (
               <option key={v} value={v}>
                 {t(key)}
               </option>
             ))}
-          </select>
-          <Button variant="primary" onClick={handleAddStock} disabled={addPending}>
+          </Select>
+          <Button variant="primary" onClick={handleAddStock} disabled={addPending} className="shrink-0">
             {addPending ? t("portfolio.addStock.submitting") : t("portfolio.addStock.submit")}
           </Button>
         </div>
@@ -323,21 +433,41 @@ export default function PortfolioPage() {
         {filtered.length === 0 ? (
           <EmptyState title={t("portfolio.empty.title")} description={t("portfolio.empty.description")} />
         ) : (
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             <table className="w-full border-collapse text-left text-[var(--text-table)]">
               <thead>
                 <tr className="border-b border-[var(--color-border-default)] text-[var(--text-sm)] text-[var(--color-text-tertiary)]">
-                  <th className="py-2 pr-2">{t("portfolio.table.name")}</th>
-                  <th className="py-2 pr-2">{t("portfolio.table.ticker")}</th>
-                  <th className="py-2 pr-2">{t("portfolio.table.buy")}</th>
-                  <th className="py-2 pr-2">{t("portfolio.table.current")}</th>
-                  <th className="py-2 pr-2">{t("portfolio.table.qty")}</th>
-                  <th className="py-2 pr-2">{t("portfolio.table.value")}</th>
-                  <th className="py-2 pr-2">{t("portfolio.table.return")}</th>
-                  <th className="py-2 pr-2">{t("portfolio.table.weight")}</th>
-                  <th className="py-2 pr-2">{t("portfolio.table.status")}</th>
-                  <th className="py-2 pr-2">{t("portfolio.table.style")}</th>
-                  <th className="py-2 pr-2">{t("portfolio.table.account")}</th>
+                  <th className="py-2 pr-2 whitespace-nowrap">{t("portfolio.table.name")}</th>
+                  <th className="py-2 pr-2 whitespace-nowrap">{t("portfolio.table.ticker")}</th>
+                  <th className="py-2 pr-2 whitespace-nowrap text-right tabular-nums">{t("portfolio.table.buy")}</th>
+                  <th className="py-2 pr-2 whitespace-nowrap text-right tabular-nums">{t("portfolio.table.current")}</th>
+                  <th
+                    className="py-2 pr-2 cursor-pointer select-none whitespace-nowrap text-right tabular-nums"
+                    onClick={() => handleSort("qty")}
+                  >
+                    {t("portfolio.table.qty")} {sortIndicator("qty")}
+                  </th>
+                  <th
+                    className="py-2 pr-2 cursor-pointer select-none whitespace-nowrap text-right tabular-nums"
+                    onClick={() => handleSort("value")}
+                  >
+                    {t("portfolio.table.value")} {sortIndicator("value")}
+                  </th>
+                  <th
+                    className="py-2 pr-2 cursor-pointer select-none whitespace-nowrap text-right tabular-nums"
+                    onClick={() => handleSort("return")}
+                  >
+                    {t("portfolio.table.return")} {sortIndicator("return")}
+                  </th>
+                  <th
+                    className="py-2 pr-2 cursor-pointer select-none whitespace-nowrap text-right tabular-nums"
+                    onClick={() => handleSort("weight")}
+                  >
+                    {t("portfolio.table.weight")} {sortIndicator("weight")}
+                  </th>
+                  <th className="py-2 pr-2 whitespace-nowrap">{t("portfolio.table.status")}</th>
+                  <th className="py-2 pr-2 whitespace-nowrap">{t("portfolio.table.style")}</th>
+                  <th className="py-2 pr-2 whitespace-nowrap">{t("portfolio.table.account")}</th>
                   <th className="py-2 pr-2"></th>
                 </tr>
               </thead>
@@ -363,6 +493,70 @@ export default function PortfolioPage() {
         )}
       </Card>
     </div>
+  );
+}
+
+function CashTile({
+  label,
+  value,
+  fmt,
+  editing,
+  draft,
+  onDraftChange,
+  onEditStart,
+  onSave,
+  onCancel,
+}: {
+  label: string;
+  value: number;
+  fmt: (n: number) => string;
+  editing: boolean;
+  draft: string;
+  onDraftChange: (v: string) => void;
+  onEditStart: () => void;
+  onSave: () => void;
+  onCancel: () => void;
+}) {
+  const t = useT();
+  return (
+    <Card className="flex flex-col gap-1">
+      <div className="flex items-center justify-between gap-2 text-[var(--text-sm)] text-[var(--color-text-tertiary)]">
+        <span className="truncate">{label}</span>
+        {!editing && (
+          <button
+            onClick={onEditStart}
+            className="shrink-0 text-[var(--text-2xs)] text-[var(--color-text-secondary)] underline"
+          >
+            {t("portfolio.cash.edit")}
+          </button>
+        )}
+      </div>
+      {editing ? (
+        <div className="flex flex-wrap items-center gap-1">
+          <input
+            type="number"
+            autoFocus
+            value={draft}
+            onChange={(e) => onDraftChange(e.target.value)}
+            className="min-w-0 flex-1 rounded-[var(--radius-control)] border border-[var(--color-warning)] px-1.5 py-1 text-right text-[var(--text-lg)] tabular-nums"
+          />
+          <button
+            onClick={onSave}
+            className="shrink-0 rounded-[var(--radius-control)] bg-[var(--color-success)] px-2 py-1 text-[var(--text-sm)] text-white"
+          >
+            {t("portfolio.cash.save")}
+          </button>
+          <button
+            onClick={onCancel}
+            className="shrink-0 rounded-[var(--radius-control)] border border-[var(--color-border-input)] px-2 py-1 text-[var(--text-sm)] text-[var(--color-text-subtle)]"
+          >
+            {t("portfolio.cash.cancel")}
+          </button>
+        </div>
+      ) : (
+        <div className="truncate text-[var(--text-2xl)] font-semibold text-[var(--color-text-primary)]">{fmt(value)}</div>
+      )}
+    </Card>
   );
 }
 
@@ -403,7 +597,7 @@ function StockRow({
 
   return (
     <tr className="border-b border-[var(--color-border-faint)]">
-      <td className="py-2 pr-2 font-semibold text-[var(--color-text-primary)]">
+      <td className="py-2 pr-2 whitespace-nowrap font-semibold text-[var(--color-text-primary)]">
         <span
           className={`mr-1 rounded px-1.5 py-0.5 text-[var(--text-2xs)] font-bold ${
             isKR ? "bg-[var(--color-warning-bg)] text-[var(--color-warning-text)]" : "bg-[var(--color-info-bg)] text-[var(--color-info)]"
@@ -413,9 +607,9 @@ function StockRow({
         </span>
         {s.name}
       </td>
-      <td className="py-2 pr-2 font-mono text-[var(--text-sm)] text-[var(--color-text-tertiary)]">{s.ticker}</td>
-      <td className="py-2 pr-2">{fmtPrice(s.buy, isKR)}</td>
-      <td className="py-2 pr-2 font-semibold">
+      <td className="py-2 pr-2 whitespace-nowrap font-mono text-[var(--text-sm)] text-[var(--color-text-tertiary)]">{s.ticker}</td>
+      <td className="py-2 pr-2 text-right tabular-nums">{fmtPrice(s.buy, isKR)}</td>
+      <td className="py-2 pr-2 text-right tabular-nums font-semibold">
         {fmtPrice(s.cur, isKR)}
         {s.marketState && (
           <span className="ml-1 text-[var(--text-2xs)] text-[var(--color-text-disabled)]">
@@ -423,12 +617,12 @@ function StockRow({
           </span>
         )}
       </td>
-      <td className="py-2 pr-2">{s.qty}</td>
-      <td className="py-2 pr-2">{isKR ? fmtKRW(v) : fmtUSD(v)}</td>
-      <td className={`py-2 pr-2 font-semibold ${r >= 0 ? "text-[var(--color-up)]" : "text-[var(--color-down)]"}`}>
+      <td className="py-2 pr-2 text-right tabular-nums">{s.qty}</td>
+      <td className="py-2 pr-2 text-right tabular-nums">{isKR ? fmtKRW(v) : fmtUSD(v)}</td>
+      <td className={`py-2 pr-2 text-right tabular-nums font-semibold ${r >= 0 ? "text-[var(--color-up)]" : "text-[var(--color-down)]"}`}>
         {(r >= 0 ? "+" : "") + r.toFixed(2)}%
       </td>
-      <td className="py-2 pr-2">{s.status === "hold" ? w.toFixed(1) + "%" : "—"}</td>
+      <td className="py-2 pr-2 text-right tabular-nums">{s.status === "hold" ? w.toFixed(1) + "%" : "—"}</td>
       <td className="py-2 pr-2">
         <span className={`rounded-[var(--radius-pill)] px-2 py-0.5 text-[var(--text-sm)] font-bold ${statusClass}`}>
           {t(STATUS_LABEL_KEY[s.status])}
@@ -503,62 +697,50 @@ function EditRow({
     <tr className="border-b border-[var(--color-border-faint)] bg-[var(--color-edit-highlight)]">
       <td className="py-2 pr-2 font-semibold">{s.name}</td>
       <td className="py-2 pr-2 font-mono text-[var(--text-sm)] text-[var(--color-text-tertiary)]">{s.ticker}</td>
-      <td className="py-2 pr-2">
+      <td className="py-2 pr-2 text-right tabular-nums">
         <input
           type="number"
           value={buy}
           onChange={(e) => setBuy(e.target.value)}
-          className="w-20 rounded-[var(--radius-control)] border border-[var(--color-warning)] px-1.5 py-1 text-[var(--text-base)]"
+          className="w-24 rounded-[var(--radius-control)] border border-[var(--color-warning)] px-1.5 py-1 text-right text-[var(--text-base)] tabular-nums"
         />
       </td>
-      <td className="py-2 pr-2 font-semibold">{Number(s.cur).toLocaleString()}</td>
-      <td className="py-2 pr-2">
+      <td className="py-2 pr-2 text-right tabular-nums font-semibold">{Number(s.cur).toLocaleString()}</td>
+      <td className="py-2 pr-2 text-right tabular-nums">
         <input
           type="number"
           value={qty}
           onChange={(e) => setQty(e.target.value)}
-          className="w-16 rounded-[var(--radius-control)] border border-[var(--color-warning)] px-1.5 py-1 text-[var(--text-base)]"
+          className="w-20 rounded-[var(--radius-control)] border border-[var(--color-warning)] px-1.5 py-1 text-right text-[var(--text-base)] tabular-nums"
         />
       </td>
       <td colSpan={3} />
       <td className="py-2 pr-2">
-        <select
-          value={status}
-          onChange={(e) => setStatus(e.target.value as StockStatus)}
-          className="rounded-[var(--radius-control)] border border-[var(--color-border-input)] px-1.5 py-1 text-[var(--text-sm)]"
-        >
+        <Select value={status} onChange={(e) => setStatus(e.target.value as StockStatus)}>
           {Object.entries(STATUS_LABEL_KEY).map(([v, key]) => (
             <option key={v} value={v}>
               {t(key)}
             </option>
           ))}
-        </select>
+        </Select>
       </td>
       <td className="py-2 pr-2">
-        <select
-          value={style}
-          onChange={(e) => setStyle(e.target.value as StockStyle)}
-          className="rounded-[var(--radius-control)] border border-[var(--color-border-input)] px-1.5 py-1 text-[var(--text-sm)]"
-        >
+        <Select value={style} onChange={(e) => setStyle(e.target.value as StockStyle)}>
           {Object.entries(STYLE_LABEL_KEY).map(([v, key]) => (
             <option key={v} value={v}>
               {t(key)}
             </option>
           ))}
-        </select>
+        </Select>
       </td>
       <td className="py-2 pr-2">
-        <select
-          value={account}
-          onChange={(e) => setAccount(e.target.value)}
-          className="rounded-[var(--radius-control)] border border-[var(--color-border-input)] px-1.5 py-1 text-[var(--text-sm)]"
-        >
+        <Select value={account} onChange={(e) => setAccount(e.target.value)}>
           {ACCOUNT_LIST.map((a) => (
             <option key={a} value={a}>
               {a}
             </option>
           ))}
-        </select>
+        </Select>
       </td>
       <td className="whitespace-nowrap py-2 pr-2">
         <button

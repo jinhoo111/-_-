@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -56,18 +56,26 @@ export function RegFeedsView() {
   const t = useT();
   const { data, isLoading, isFetching, error, refetch } = useRegFeeds();
   const [input, setInput] = useState("");
+  const [debouncedInput, setDebouncedInput] = useState("");
   const [keyword, setKeyword] = useState<string | null>(null);
   const search = useRegSearch(keyword);
 
   const trimmed = input.trim();
 
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedInput(input), 180);
+    return () => clearTimeout(timer);
+  }, [input]);
+
+  const debouncedTrimmed = debouncedInput.trim();
+
   const filtered = useMemo(() => {
-    if (!data || !trimmed) return null;
+    if (!data || !debouncedTrimmed) return null;
     return {
-      us: data.us.filter((it) => matchesQuery(it, trimmed)),
-      kr: data.kr.filter((it) => matchesQuery(it, trimmed)),
+      us: data.us.filter((it) => matchesQuery(it, debouncedTrimmed)),
+      kr: data.kr.filter((it) => matchesQuery(it, debouncedTrimmed)),
     };
-  }, [data, trimmed]);
+  }, [data, debouncedTrimmed]);
 
   function handleLiveSearch() {
     const v = input.trim();
@@ -89,7 +97,7 @@ export function RegFeedsView() {
         <div className="flex flex-shrink-0 items-center gap-2">
           <span
             className={`inline-block h-1.5 w-1.5 rounded-full ${
-              isFetching ? "bg-[var(--color-warning)]" : data ? "bg-[var(--color-success-text)]" : "bg-[var(--color-text-muted)]"
+              isFetching ? "bg-[var(--color-warning)]" : data ? "bg-[var(--color-success-text)] animate-pulse-dot" : "bg-[var(--color-text-muted)]"
             }`}
           />
           <span className="text-[var(--text-sm)] text-[var(--color-text-tertiary)]">
@@ -139,6 +147,8 @@ export function RegFeedsView() {
           <Skeleton className="h-96 w-full" />
         ) : search.error || !liveItems ? (
           <EmptyState title={t("news.error")} />
+        ) : liveItems.length === 0 ? (
+          <EmptyState title={t("research.search.emptyResultsHint", { action: t("research.search.button") })} />
         ) : (
           <Card>
             <p className="mb-2 text-[var(--text-md)] font-semibold text-[var(--color-text-primary)]">
@@ -148,20 +158,24 @@ export function RegFeedsView() {
           </Card>
         )
       ) : filtered ? (
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-          <Card>
-            <p className="mb-2 text-[var(--text-md)] font-semibold text-[var(--color-text-primary)]">
-              🔎 {t("research.reg.us.title")} — {t("research.search.resultsCount", { count: filtered.us.length })}
-            </p>
-            <RssList items={filtered.us} />
-          </Card>
-          <Card>
-            <p className="mb-2 text-[var(--text-md)] font-semibold text-[var(--color-text-primary)]">
-              🔎 {t("research.reg.kr.title")} — {t("research.search.resultsCount", { count: filtered.kr.length })}
-            </p>
-            <RssList items={filtered.kr} />
-          </Card>
-        </div>
+        filtered.us.length === 0 && filtered.kr.length === 0 ? (
+          <EmptyState title={t("research.search.emptyResultsHint", { action: t("research.search.button") })} />
+        ) : (
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <Card>
+              <p className="mb-2 text-[var(--text-md)] font-semibold text-[var(--color-text-primary)]">
+                🔎 {t("research.reg.us.title")} — {t("research.search.resultsCount", { count: filtered.us.length })}
+              </p>
+              <RssList items={filtered.us} />
+            </Card>
+            <Card>
+              <p className="mb-2 text-[var(--text-md)] font-semibold text-[var(--color-text-primary)]">
+                🔎 {t("research.reg.kr.title")} — {t("research.search.resultsCount", { count: filtered.kr.length })}
+              </p>
+              <RssList items={filtered.kr} />
+            </Card>
+          </div>
+        )
       ) : null}
     </div>
   );

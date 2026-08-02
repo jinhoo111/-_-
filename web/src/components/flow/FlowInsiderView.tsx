@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -8,7 +8,11 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { useT } from "@/lib/i18n/LanguageProvider";
 import { useInsiderLatest, useInsiderStock } from "@/lib/queries/useFlow";
+import { useUserData } from "@/lib/queries/useUserData";
 import type { InsiderTx } from "@/lib/flow/constants";
+
+type InsiderDirection = "all" | "S" | "P";
+type InsiderSort = "amount" | "date_desc" | "date_asc";
 
 function InsiderTable({ rows }: { rows: InsiderTx[] }) {
   const t = useT();
@@ -22,9 +26,11 @@ function InsiderTable({ rows }: { rows: InsiderTx[] }) {
             <th className="py-2 pr-2">{t("flow.insider.table.owner")}</th>
             <th className="py-2 pr-2">{t("flow.insider.table.role")}</th>
             <th className="py-2 pr-2">{t("flow.insider.table.type")}</th>
-            <th className="py-2 pr-2">{t("flow.insider.table.shares")}</th>
-            <th className="py-2 pr-2">{t("flow.insider.table.price")}</th>
-            <th className="py-2 pr-2">{t("flow.insider.table.amount")}</th>
+            <th className="py-2 pr-2 text-right tabular-nums">{t("flow.insider.table.shares")}</th>
+            <th className="py-2 pr-2 text-right tabular-nums">{t("flow.insider.table.price")}</th>
+            <th className="py-2 pr-2 text-right tabular-nums">{t("flow.insider.table.amount")}</th>
+            <th className="py-2 pr-2 text-right tabular-nums">{t("flow.insider.table.sharesAfter")}</th>
+            <th className="py-2 pr-2">{t("flow.insider.table.issuer")}</th>
             <th className="py-2 pr-2">{t("flow.insider.table.filedAt")}</th>
           </tr>
         </thead>
@@ -51,9 +57,11 @@ function InsiderTable({ rows }: { rows: InsiderTx[] }) {
                   {r.code === "P" ? t("flow.insider.code.P") : t("flow.insider.code.S")}
                 </span>
               </td>
-              <td className="py-2 pr-2">{r.shares.toLocaleString()}</td>
-              <td className="py-2 pr-2">${r.price.toFixed(2)}</td>
-              <td className="py-2 pr-2 font-mono">${r.amount.toLocaleString()}</td>
+              <td className="py-2 pr-2 text-right tabular-nums">{r.shares.toLocaleString()}</td>
+              <td className="py-2 pr-2 text-right tabular-nums">${r.price.toFixed(2)}</td>
+              <td className="py-2 pr-2 text-right tabular-nums font-mono">${r.amount.toLocaleString()}</td>
+              <td className="py-2 pr-2 text-right tabular-nums">{r.sharesAfter.toLocaleString()}</td>
+              <td className="py-2 pr-2 text-[var(--color-text-tertiary)]">{r.issuer || "—"}</td>
               <td className="py-2 pr-2 text-[var(--text-sm)] text-[var(--color-text-tertiary)]">{r.filedAt.slice(0, 10)}</td>
             </tr>
           ))}
@@ -67,11 +75,48 @@ export function FlowInsiderView() {
   const t = useT();
   const [tickerInput, setTickerInput] = useState("");
   const [searchTicker, setSearchTicker] = useState<string | null>(null);
+  const [direction, setDirection] = useState<InsiderDirection>("all");
+  const [execOnly, setExecOnly] = useState(false);
+  const [mineOnly, setMineOnly] = useState(false);
+  const [sort, setSort] = useState<InsiderSort>("amount");
 
+  const { data: userData } = useUserData();
   const latest = useInsiderLatest(!searchTicker);
   const stock = useInsiderStock(searchTicker);
 
   const active = searchTicker ? stock : latest;
+
+  const myTickers = useMemo(() => {
+    if (!userData) return new Set<string>();
+    return new Set(
+      userData.stocks
+        .filter((s) => s.market === "us")
+        .map((s) => s.ticker.trim().toUpperCase())
+    );
+  }, [userData]);
+
+  const rows = useMemo(() => {
+    const source = active.data?.rows ?? [];
+    let filtered = source.filter((r) => {
+      if (direction !== "all" && r.code !== direction) return false;
+      if (execOnly && !r.isTopExec) return false;
+      if (mineOnly && !myTickers.has(r.symbol.toUpperCase())) return false;
+      return true;
+    });
+    filtered = [...filtered];
+    if (sort === "date_desc" || sort === "date_asc") {
+      filtered.sort((a, b) => {
+        const ad = a.date || a.filedAt || "";
+        const bd = b.date || b.filedAt || "";
+        if (!ad && !bd) return b.amount - a.amount;
+        if (!ad) return 1;
+        if (!bd) return -1;
+        if (ad === bd) return b.amount - a.amount;
+        return sort === "date_desc" ? (ad < bd ? 1 : -1) : ad < bd ? -1 : 1;
+      });
+    }
+    return filtered;
+  }, [active.data, direction, execOnly, mineOnly, myTickers, sort]);
 
   function handleSearch() {
     const v = tickerInput.trim().toUpperCase();
@@ -80,6 +125,11 @@ export function FlowInsiderView() {
 
   return (
     <div className="flex flex-col gap-4">
+      <div className="flex items-start gap-2 rounded-[var(--radius-control)] border border-[var(--color-info-border)] bg-[var(--color-info-bg)] px-3 py-2.5 text-[var(--text-sm)] text-[var(--color-info)]">
+        <span>ℹ️</span>
+        <span>{t("flow.insider.disclaimer")}</span>
+      </div>
+
       <Card className="flex flex-wrap items-center gap-2">
         <Input
           placeholder={t("flow.insider.searchPlaceholder")}
@@ -97,13 +147,47 @@ export function FlowInsiderView() {
         )}
       </Card>
 
+      <Card className="flex flex-wrap items-center gap-2">
+        <Button size="sm" variant={direction === "all" ? "primary" : "default"} onClick={() => setDirection("all")}>
+          {t("flow.insider.filter.all")}
+        </Button>
+        <Button size="sm" variant={direction === "S" ? "primary" : "default"} onClick={() => setDirection("S")}>
+          📉 {t("flow.insider.filter.sell")}
+        </Button>
+        <Button size="sm" variant={direction === "P" ? "primary" : "default"} onClick={() => setDirection("P")}>
+          📈 {t("flow.insider.filter.buy")}
+        </Button>
+        <span className="w-2" />
+        <Button size="sm" variant={execOnly ? "primary" : "default"} onClick={() => setExecOnly((v) => !v)}>
+          👔 {t("flow.insider.filter.execOnly")}
+        </Button>
+        {userData && (
+          <Button size="sm" variant={mineOnly ? "primary" : "default"} onClick={() => setMineOnly((v) => !v)}>
+            ⭐ {t("flow.insider.filter.mineOnly")}
+          </Button>
+        )}
+      </Card>
+
+      <Card className="flex flex-wrap items-center gap-2">
+        <span className="text-[var(--text-xs)] text-[var(--color-text-tertiary)]">{t("flow.insider.sort.label")}</span>
+        <Button size="sm" variant={sort === "amount" ? "primary" : "default"} onClick={() => setSort("amount")}>
+          💰 {t("flow.insider.sort.amount")}
+        </Button>
+        <Button size="sm" variant={sort === "date_desc" ? "primary" : "default"} onClick={() => setSort("date_desc")}>
+          📅 {t("flow.insider.sort.dateDesc")}
+        </Button>
+        <Button size="sm" variant={sort === "date_asc" ? "primary" : "default"} onClick={() => setSort("date_asc")}>
+          📅 {t("flow.insider.sort.dateAsc")}
+        </Button>
+      </Card>
+
       {active.isLoading ? (
         <Skeleton className="h-96 w-full" />
       ) : active.error || !active.data ? (
         <EmptyState title={t("flow.error")} />
       ) : (
         <Card>
-          <InsiderTable rows={active.data.rows} />
+          <InsiderTable rows={rows} />
         </Card>
       )}
     </div>

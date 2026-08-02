@@ -263,3 +263,17 @@ body {
   background: var(--color-bg-base);
   color: var(--color-text-primary);
 }
+
+@keyframes pulse-dot {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.4;
+  }
+}
+
+.animate-pulse-dot {
+  animation: pulse-dot 2s infinite;
+}

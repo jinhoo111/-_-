@@ -7,7 +7,10 @@ export function YieldCurveCard({ tenYear, twoYear, noDataLabel }: { tenYear: num
   if (tenYear == null || twoYear == null) {
     return (
       <div className="flex flex-col gap-1 rounded-[10px] border border-[var(--color-border-default)] bg-[var(--color-bg-surface)] px-3 py-2.5">
-        <div className="text-[var(--text-sm)] text-[var(--color-text-tertiary)]">10Y-2Y</div>
+        <div className="flex items-center justify-between gap-1">
+          <span className="text-[var(--text-sm)] text-[var(--color-text-tertiary)]">{t("indices.yieldCurve.marketLabel")} 10Y-2Y</span>
+          <span className="text-[var(--text-2xs)] text-[var(--color-text-disabled)]">{t("indices.yieldCurve.source")}</span>
+        </div>
         <div className="font-mono text-[var(--text-lg)] font-semibold text-[var(--color-text-primary)]">{noDataLabel}</div>
       </div>
     );
@@ -22,7 +25,10 @@ export function YieldCurveCard({ tenYear, twoYear, noDataLabel }: { tenYear: num
       className="flex flex-col gap-1 rounded-[10px] border-l-4 bg-[var(--color-bg-surface)] px-3 py-2.5"
       style={{ borderLeftColor: `var(${band.bar})`, borderTop: "1px solid var(--color-border-default)", borderRight: "1px solid var(--color-border-default)", borderBottom: "1px solid var(--color-border-default)" }}
     >
-      <div className="text-[var(--text-sm)] text-[var(--color-text-tertiary)]">10Y-2Y</div>
+      <div className="flex items-center justify-between gap-1">
+        <span className="text-[var(--text-sm)] text-[var(--color-text-tertiary)]">{t("indices.yieldCurve.marketLabel")} 10Y-2Y</span>
+        <span className="text-[var(--text-2xs)] text-[var(--color-text-disabled)]">{t("indices.yieldCurve.source")}</span>
+      </div>
       <div className="font-mono text-[var(--text-lg)] font-semibold text-[var(--color-text-primary)]">
         {bp >= 0 ? "+" : ""}
         {bp}bp
