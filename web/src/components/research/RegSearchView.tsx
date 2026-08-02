@@ -28,11 +28,23 @@ export function RegSearchView() {
           placeholder={t("research.search.placeholder")}
           value={input}
           onChange={(e) => setInput(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && handleSearch()}
           className="w-56"
         />
         <Button size="sm" onClick={handleSearch}>
           {t("news.company.search")}
         </Button>
+        {keyword && (
+          <Button
+            size="sm"
+            onClick={() => {
+              setInput("");
+              setKeyword(null);
+            }}
+          >
+            ✕ {t("research.search.clear")}
+          </Button>
+        )}
       </Card>
 
       {!keyword ? (
