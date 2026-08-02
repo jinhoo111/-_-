@@ -79,6 +79,8 @@ export default function IndicesPage() {
           changePercent={q?.changePercent ?? null}
           href={INDEX_LINK_MAP[item.symbol]}
           noDataLabel={t("indices.noData")}
+          state={q?.state}
+          stateLabel={t}
         />
       );
     });

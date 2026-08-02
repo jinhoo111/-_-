@@ -72,6 +72,7 @@ export function FlowKrRankView() {
   }
 
   const rank = data;
+  const sellStreaks = [...rank.organSell].filter((r) => Math.abs(r.organStreak) >= FLOW_WARN_DAYS);
 
   function handleWarnToJournal() {
     if (!userData) return;
@@ -106,6 +107,17 @@ export function FlowKrRankView() {
 
   return (
     <div className="flex flex-col gap-4">
+      {sellStreaks.length > 0 && (
+        <div className="flex items-start gap-2 rounded-[var(--radius-control)] border border-[var(--color-error-border)] bg-[var(--color-error-bg)] px-3 py-2.5 text-[var(--text-sm)] text-[var(--color-error-text)]">
+          <span>⚠️</span>
+          <span>
+            {sellStreaks
+              .slice(0, 5)
+              .map((r) => `${r.name} (${t("flow.krRank.streakSell", { n: Math.abs(r.organStreak) })})`)
+              .join(", ")}
+          </span>
+        </div>
+      )}
       <div className="flex items-center justify-between">
         <span className="text-[var(--text-sm)] text-[var(--color-text-tertiary)]">
           {t("flow.krRank.universe", { count: data.universe, date: data.date })}

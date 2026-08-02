@@ -41,8 +41,15 @@ function InsiderTable({ rows }: { rows: InsiderTx[] }) {
                 )}
               </td>
               <td className="py-2 pr-2 text-[var(--color-text-tertiary)]">{r.role || "—"}</td>
-              <td className={`py-2 pr-2 font-semibold ${r.code === "P" ? "text-[var(--color-up)]" : "text-[var(--color-down)]"}`}>
-                {r.code === "P" ? t("flow.insider.code.P") : t("flow.insider.code.S")}
+              <td className="py-2 pr-2">
+                <span
+                  className={`rounded-[var(--radius-pill)] px-2 py-0.5 text-[var(--text-xs)] font-bold ${
+                    r.code === "P" ? "bg-[var(--color-success-bg)] text-[var(--color-success-text)]" : "bg-[var(--color-error-bg)] text-[var(--color-error-text)]"
+                  }`}
+                >
+                  {r.code === "P" ? "📈 " : "📉 "}
+                  {r.code === "P" ? t("flow.insider.code.P") : t("flow.insider.code.S")}
+                </span>
               </td>
               <td className="py-2 pr-2">{r.shares.toLocaleString()}</td>
               <td className="py-2 pr-2">${r.price.toFixed(2)}</td>

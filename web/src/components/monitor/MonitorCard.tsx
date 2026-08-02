@@ -82,10 +82,18 @@ function KrCardBody({ company }: { company: MonitorCompany }) {
               >
                 {d.report_nm}
               </a>
-              {sig && <span className="text-[var(--text-xs)] font-semibold" style={{ color: SIGNAL_CATS[sig.category].color }}>{t(SIGNAL_CATS[sig.category].labelKey)}</span>}
+              {sig && (
+                <span className="flex items-center gap-1 text-[var(--text-xs)] font-semibold" style={{ color: SIGNAL_CATS[sig.category].color }}>
+                  <span>{sig.weight === "high" ? "🔴" : sig.weight === "mid" ? "🟠" : "🟡"}</span>
+                  {t(SIGNAL_CATS[sig.category].labelKey)}
+                </span>
+              )}
               <span className="text-[var(--text-xs)] text-[var(--color-text-tertiary)]">{d.rcept_dt}</span>
               {isPro ? (
                 <Button size="sm" variant="default" onClick={() => handleBrief(d)}>
+                  <span className="mr-1 rounded-[var(--radius-pill)] bg-gradient-to-r from-[var(--color-accent)] to-[var(--color-accent-indigo)] px-1.5 py-0.5 text-[var(--text-2xs)] font-bold text-white">
+                    Pro✨
+                  </span>
                   {t("monitor.brief.button")}
                 </Button>
               ) : null}
@@ -104,10 +112,16 @@ function KrCardBody({ company }: { company: MonitorCompany }) {
       )}
       {!isPro && <ProLockCard label={t("monitor.brief.locked")} />}
 
-      <div className="flex gap-4 text-[var(--text-sm)] text-[var(--color-text-secondary)]">
-        <span>{t("monitor.own.new")}: {counts.cNew}</span>
-        <span>{t("monitor.own.inc")}: {counts.cInc}</span>
-        <span>{t("monitor.own.dec")}: {counts.cDec}</span>
+      <div className="flex gap-1.5 text-[var(--text-sm)]">
+        <span className="rounded-[var(--radius-pill)] bg-[var(--color-info-bg)] px-2 py-0.5 font-semibold text-[var(--color-info)]">
+          🆕 {t("monitor.own.new")} {counts.cNew}
+        </span>
+        <span className="rounded-[var(--radius-pill)] bg-[var(--color-success-bg)] px-2 py-0.5 font-semibold text-[var(--color-success-text)]">
+          ▲ {t("monitor.own.inc")} {counts.cInc}
+        </span>
+        <span className="rounded-[var(--radius-pill)] bg-[var(--color-error-bg)] px-2 py-0.5 font-semibold text-[var(--color-error-text)]">
+          ▼ {t("monitor.own.dec")} {counts.cDec}
+        </span>
       </div>
 
       <button onClick={() => setShowHoldings((v) => !v)} className="text-left text-[var(--text-sm)] font-medium text-[var(--color-text-secondary)]">
