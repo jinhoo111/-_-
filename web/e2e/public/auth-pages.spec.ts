@@ -25,10 +25,10 @@ test.describe("public auth pages", () => {
 
   test("navigates between login, signup, forgot-password", async ({ page }) => {
     await page.goto("/login");
-    await page.getByRole("link", { name: "회원가입" }).click();
+    await page.getByRole("link", { name: "계정 만들기" }).click();
     await expect(page).toHaveURL(/\/signup/);
     await page.goto("/login");
-    await page.getByRole("link", { name: "비밀번호 찾기" }).click();
+    await page.getByRole("button", { name: "비밀번호를 잊으셨나요?" }).click();
     await expect(page).toHaveURL(/\/forgot-password/);
   });
 

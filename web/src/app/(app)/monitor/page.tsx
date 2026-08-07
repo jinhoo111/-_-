@@ -5,6 +5,7 @@ import { useUserData, useUpdateUserData } from "@/lib/queries/useUserData";
 import { useT } from "@/lib/i18n/LanguageProvider";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { PageHeader } from "@/components/ui/PageHeader";
 import { MonitorSearch } from "@/components/monitor/MonitorSearch";
 import { MonitorViewTabs, type MonitorView } from "@/components/monitor/MonitorViewTabs";
 import { MonitorCard } from "@/components/monitor/MonitorCard";
@@ -98,9 +99,15 @@ export default function MonitorPage() {
   }
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-6">
+      <PageHeader
+        title={t("monitor.title")}
+        subtitle={t("monitor.subtitle")}
+        action={<MonitorSearch disabled={companies.length >= MAX_COMPANIES} onAdd={handleAdd} />}
+      />
+
       {errorMsg && (
-        <div className="flex items-center justify-between gap-2 rounded-[var(--radius-control)] border border-[var(--color-error)] bg-[var(--color-error-bg)] px-3 py-2 text-[var(--text-sm)] text-[var(--color-error-text)]">
+        <div className="flex items-center justify-between gap-2 rounded-[var(--radius-lg)] border border-[var(--negative-soft)] bg-[var(--negative-soft)] px-4 py-2.5 text-[var(--text-sm)] text-[var(--negative)]">
           <span>{errorMsg}</span>
           <button onClick={() => setErrorMsg(null)} className="font-semibold">
             {t("monitor.err.dismiss")}
@@ -109,8 +116,6 @@ export default function MonitorPage() {
       )}
 
       <MonitorTips />
-
-      <MonitorSearch disabled={companies.length >= MAX_COMPANIES} onAdd={handleAdd} />
 
       {!companies.length ? (
         <EmptyState title={t("monitor.empty")} />

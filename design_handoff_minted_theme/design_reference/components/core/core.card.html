@@ -1,0 +1,44 @@
+<!-- @dsCard group="Components" viewport="700x400" subtitle="Button, IconButton, Input, Select, Switch, Tabs" name="Core controls" -->
+<!DOCTYPE html><html><head><meta charset="utf-8">
+<link rel="stylesheet" href="../../styles.css">
+<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<script src="../../ds_fallback_loader.js"></script>
+</head>
+<body style="margin:0;background:var(--surface-0);">
+<div id="root"></div>
+<script type="text/babel">
+let NS = null;
+function Demo() {
+  const { Button, IconButton, Input, Select, Switch, Tabs } = NS;
+  const [tab, setTab] = React.useState("Overview");
+  const [on, setOn] = React.useState(true);
+  return (
+    <div style={{ padding: 24, display: "flex", flexDirection: "column", gap: 20, fontFamily: "var(--font-body)" }}>
+      <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
+        <Button>Add an investment</Button>
+        <Button variant="secondary">View all</Button>
+        <Button variant="ghost">Skip</Button>
+        <Button variant="danger">Delete entry</Button>
+        <Button disabled>Disabled</Button>
+        <Button size="sm" variant="secondary">Small</Button>
+        <IconButton label="Watchlist" active>★</IconButton>
+        <IconButton label="More">⋯</IconButton>
+      </div>
+      <div style={{ display: "flex", gap: 16, alignItems: "flex-start" }}>
+        <Input label="Amount" mono prefix="₩" suffix="KRW" placeholder="0" style={{ flex: 1 }} />
+        <Input label="Ticker" error="We couldn't find that ticker" defaultValue="SSMN" style={{ flex: 1 }} />
+        <Select label="Currency" options={["KRW", "USD"]} style={{ width: 140 }} />
+      </div>
+      <div style={{ display: "flex", gap: 24, alignItems: "center" }}>
+        <Tabs items={["Overview", "Holdings", "History"]} value={tab} onChange={setTab} />
+        <Switch checked={on} onChange={setOn} label="KR price colors" />
+      </div>
+    </div>
+  );
+}
+const root = ReactDOM.createRoot(document.getElementById("root"));
+window.loadMintedNS("../../").then((ns) => { NS = ns; root.render(<Demo />); });
+</script>
+</body></html>

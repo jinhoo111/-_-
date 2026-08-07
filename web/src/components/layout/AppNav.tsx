@@ -33,8 +33,10 @@ export function AppNav() {
 
   return (
     <>
-      <nav className="mx-auto flex max-w-4xl items-center gap-2 px-2 py-2 sm:px-4">
-        <span className="shrink-0 text-[var(--text-lg)] font-semibold text-[var(--color-text-primary)]">RichHub</span>
+      <nav className="mx-auto flex h-[68px] max-w-[1080px] items-center gap-6 px-6">
+        <Link href="/portfolio" className="shrink-0 font-display text-[22px] font-bold tracking-[var(--tracking-display)] text-[var(--text-primary)]">
+          RichHub<span className="text-[var(--accent)]">.</span>
+        </Link>
         <div className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {navItems.map((item) => {
             const active = pathname === item.href || pathname?.startsWith(`${item.href}/`);
@@ -43,10 +45,10 @@ export function AppNav() {
                 key={item.href}
                 href={item.href}
                 aria-current={active ? "page" : undefined}
-                className={`shrink-0 rounded-[var(--radius-control)] border-b-2 px-3 py-1.5 text-[var(--text-md)] transition-colors ${
+                className={`h-10 shrink-0 rounded-[var(--radius-pill)] px-4 text-[var(--text-base)] transition-colors duration-[var(--duration-fast)] ease-[var(--ease-out)] ${
                   active
-                    ? "border-[var(--color-accent-primary)] font-semibold text-[var(--color-text-primary)]"
-                    : "border-transparent text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-overlay)]"
+                    ? "bg-[var(--accent-soft)] font-semibold text-[var(--accent)]"
+                    : "font-medium text-[var(--text-secondary)] hover:bg-[var(--surface-2)]"
                 }`}
               >
                 {t(item.key)}
@@ -57,10 +59,21 @@ export function AppNav() {
         <div className="flex shrink-0 items-center gap-2">
           <LanguageToggle />
           <ThemeToggle />
+          <Link
+            href="/settings"
+            aria-label={t("nav.settings")}
+            title={t("nav.settings")}
+            className="inline-flex h-10 w-10 items-center justify-center rounded-[var(--radius-md)] text-[var(--text-base)] text-[var(--text-secondary)] hover:bg-[var(--surface-2)]"
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="3"></circle>
+              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+            </svg>
+          </Link>
           <form action="/auth/signout" method="post">
             <button
               type="submit"
-              className="rounded-[var(--radius-control)] px-3 py-1.5 text-[var(--text-md)] text-[var(--color-text-tertiary)] hover:bg-[var(--color-bg-overlay)]"
+              className="h-10 rounded-[var(--radius-pill)] px-3 text-[var(--text-sm)] font-medium text-[var(--text-secondary)] transition-colors duration-[var(--duration-fast)] ease-[var(--ease-out)] hover:bg-[var(--surface-2)]"
             >
               {t("nav.logout")}
             </button>
@@ -68,7 +81,7 @@ export function AppNav() {
         </div>
       </nav>
       <nav
-        className="fixed inset-x-0 bottom-0 z-20 flex border-t border-[var(--color-border-default)] bg-[var(--color-bg-surface)] pb-[env(safe-area-inset-bottom)] md:hidden"
+        className="fixed inset-x-0 bottom-0 z-20 flex border-t border-[var(--border-default)] bg-[var(--surface-1)] pb-[env(safe-area-inset-bottom)] md:hidden"
       >
         {BOTTOM_NAV_ITEMS.map((item) => {
           const active = pathname === item.href || pathname?.startsWith(`${item.href}/`);
@@ -78,7 +91,7 @@ export function AppNav() {
               href={item.href}
               aria-current={active ? "page" : undefined}
               className={`flex flex-1 flex-col items-center justify-center gap-0.5 truncate px-1 py-2 text-center text-[var(--text-2xs)] whitespace-nowrap ${
-                active ? "font-semibold text-[var(--color-accent-primary)]" : "text-[var(--color-text-tertiary)]"
+                active ? "font-semibold text-[var(--accent)]" : "text-[var(--text-tertiary)]"
               }`}
             >
               {t(item.key)}

@@ -20,7 +20,7 @@ export function ThemeToggle({ className = "" }: { className?: string }) {
       onClick={() => setTheme(isDark ? "light" : "dark")}
       aria-label="Toggle dark mode"
       title="Toggle dark mode"
-      className={`inline-flex h-8 w-8 items-center justify-center rounded-[var(--radius-control)] border border-[var(--color-border-input)] text-[var(--text-md)] text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-overlay)] ${className}`}
+      className={`inline-flex h-10 w-10 items-center justify-center rounded-[var(--radius-md)] border border-[var(--border-default)] bg-[var(--surface-2)] text-[var(--text-base)] text-[var(--text-secondary)] transition-colors duration-[var(--duration-fast)] ease-[var(--ease-out)] hover:bg-[var(--surface-3)] ${className}`}
     >
       {mounted ? (isDark ? "☀️" : "🌙") : null}
     </button>

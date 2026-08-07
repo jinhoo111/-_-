@@ -39,6 +39,22 @@ export async function updateSession(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser();
   const { pathname } = request.nextUrl;
 
+  // "Free without login": when the Supabase project has Anonymous Sign-ins enabled,
+  // silently create an anonymous session instead of forcing /login. Guarded by the
+  // ALLOW_ANON env flag (server-only) so the old hard gate stays until the project is
+  // configured — and if signInAnonymously still fails, we fall back to the login gate.
+  const anonAllowed = process.env.ALLOW_ANON === "true";
+  const isAdminPath = ADMIN_PATHS.some((p) => pathname.startsWith(p));
+
+  if (!user && anonAllowed && !isPublicPath(pathname) && !isAdminPath) {
+    const { error } = await supabase.auth.signInAnonymously();
+    if (!error) {
+      // Anonymous session cookie was set via setAll above — continue to the page.
+      return supabaseResponse;
+    }
+    // Anonymous sign-in not enabled on the project yet → fall through to the login gate.
+  }
+
   if (!user && !isPublicPath(pathname)) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
@@ -46,7 +62,7 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  if (user && ADMIN_PATHS.some((p) => pathname.startsWith(p))) {
+  if (user && isAdminPath) {
     const { data: profile } = await supabase
       .from("user_profiles")
       .select("is_admin")

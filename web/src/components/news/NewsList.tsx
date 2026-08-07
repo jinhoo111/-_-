@@ -50,22 +50,23 @@ export function NewsList({ items, limit }: { items: NewsItem[]; limit?: number }
         return (
           <div
             key={`${item.url}-${i}`}
-            className="flex items-start justify-between gap-2 rounded-[var(--radius-control)] border border-[var(--color-border-faint)] p-3 hover:bg-[var(--color-bg-overlay)]"
+            className="flex items-start justify-between gap-2 rounded-[var(--radius-lg)] border border-[var(--border-default)] bg-[var(--surface-1)] p-4 transition-colors duration-[var(--duration-fast)] ease-[var(--ease-out)] hover:bg-[var(--surface-2)] sm:p-5"
           >
             <a href={item.url} target="_blank" rel="noopener noreferrer" className="min-w-0 flex-1">
-              <div className="mb-1 flex items-center gap-2">
-                <span className="rounded-[var(--radius-pill)] bg-[var(--color-bg-badge)] px-1.5 py-0.5 text-[var(--text-2xs)] text-[var(--color-text-tertiary)]">
-                  {item.source || "—"}
-                </span>
-                <span className="text-[var(--text-2xs)] text-[var(--color-text-tertiary)]">{formatNewsTime(item.datetime)}</span>
+              <div className="flex items-center gap-2 text-[var(--text-xs)] text-[var(--text-muted)]">
+                <span className="font-semibold text-[var(--text-secondary)]">{item.source || "—"}</span>
+                <span>·</span>
+                <span>{formatNewsTime(item.datetime)}</span>
               </div>
-              <p className="text-[var(--text-md)] font-medium text-[var(--color-text-primary)]">{item.headline}</p>
+              <p className="mt-1.5 text-[var(--text-md)] font-semibold leading-[var(--leading-snug)] text-[var(--text-primary)]">
+                {item.headline}
+              </p>
               {related.length > 0 && (
-                <div className="mt-1 flex flex-wrap gap-1">
+                <div className="mt-2 flex flex-wrap gap-2">
                   {related.map((sym) => (
                     <span
                       key={sym}
-                      className="rounded-[var(--radius-sm)] bg-[var(--color-bg-overlay)] px-1.5 py-0.5 font-mono text-[var(--text-2xs)] text-[var(--color-text-secondary)]"
+                      className="rounded-[var(--radius-pill)] bg-[var(--surface-2)] px-2 py-0.5 font-mono text-[var(--text-xs)] font-medium text-[var(--text-secondary)]"
                     >
                       {sym}
                     </span>
@@ -73,13 +74,15 @@ export function NewsList({ items, limit }: { items: NewsItem[]; limit?: number }
                 </div>
               )}
               {item.summary && (
-                <p className="mt-1 line-clamp-2 text-[var(--text-sm)] text-[var(--color-text-tertiary)]">{item.summary}</p>
+                <p className="mt-1.5 line-clamp-2 text-[var(--text-sm)] leading-[var(--leading-normal)] text-[var(--text-secondary)]">
+                  {item.summary}
+                </p>
               )}
             </a>
             <button
               onClick={() => handleSaveToJournal(item)}
               title={t("news.saveToJournal")}
-              className="shrink-0 rounded-[var(--radius-control)] px-2 py-1 text-[var(--text-xs)] text-[var(--color-text-tertiary)] hover:bg-[var(--color-bg-badge)] hover:text-[var(--color-text-secondary)]"
+              className="shrink-0 rounded-[var(--radius-md)] px-2.5 py-1.5 text-[var(--text-xs)] font-medium text-[var(--text-muted)] transition-colors duration-[var(--duration-fast)] ease-[var(--ease-out)] hover:bg-[var(--surface-2)] hover:text-[var(--text-secondary)]"
             >
               📝 {t("news.saveToJournal")}
             </button>

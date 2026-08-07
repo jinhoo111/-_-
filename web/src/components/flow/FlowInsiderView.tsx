@@ -21,24 +21,24 @@ function InsiderTable({ rows }: { rows: InsiderTx[] }) {
     <div className="overflow-x-auto">
       <table className="w-full border-collapse text-left text-[var(--text-table)]">
         <thead>
-          <tr className="border-b border-[var(--color-border-default)] text-[var(--text-sm)] text-[var(--color-text-tertiary)]">
-            <th className="py-2 pr-2">{t("flow.insider.table.company")}</th>
-            <th className="py-2 pr-2">{t("flow.insider.table.owner")}</th>
-            <th className="py-2 pr-2">{t("flow.insider.table.role")}</th>
-            <th className="py-2 pr-2">{t("flow.insider.table.type")}</th>
-            <th className="py-2 pr-2 text-right tabular-nums">{t("flow.insider.table.shares")}</th>
-            <th className="py-2 pr-2 text-right tabular-nums">{t("flow.insider.table.price")}</th>
-            <th className="py-2 pr-2 text-right tabular-nums">{t("flow.insider.table.amount")}</th>
-            <th className="py-2 pr-2 text-right tabular-nums">{t("flow.insider.table.sharesAfter")}</th>
-            <th className="py-2 pr-2">{t("flow.insider.table.issuer")}</th>
-            <th className="py-2 pr-2">{t("flow.insider.table.filedAt")}</th>
+          <tr className="border-b border-[var(--border-default)] text-[var(--text-xs)] text-[var(--text-muted)]">
+            <th className="py-3 pr-2 font-medium tracking-[var(--tracking-caps)] uppercase">{t("flow.insider.table.company")}</th>
+            <th className="py-3 pr-2 font-medium tracking-[var(--tracking-caps)] uppercase">{t("flow.insider.table.owner")}</th>
+            <th className="py-3 pr-2 font-medium tracking-[var(--tracking-caps)] uppercase">{t("flow.insider.table.role")}</th>
+            <th className="py-3 pr-2 font-medium tracking-[var(--tracking-caps)] uppercase">{t("flow.insider.table.type")}</th>
+            <th className="py-3 pr-2 text-right font-medium tracking-[var(--tracking-caps)] uppercase tabular-nums">{t("flow.insider.table.shares")}</th>
+            <th className="py-3 pr-2 text-right font-medium tracking-[var(--tracking-caps)] uppercase tabular-nums">{t("flow.insider.table.price")}</th>
+            <th className="py-3 pr-2 text-right font-medium tracking-[var(--tracking-caps)] uppercase tabular-nums">{t("flow.insider.table.amount")}</th>
+            <th className="py-3 pr-2 text-right font-medium tracking-[var(--tracking-caps)] uppercase tabular-nums">{t("flow.insider.table.sharesAfter")}</th>
+            <th className="py-3 pr-2 font-medium tracking-[var(--tracking-caps)] uppercase">{t("flow.insider.table.issuer")}</th>
+            <th className="py-3 pr-2 font-medium tracking-[var(--tracking-caps)] uppercase">{t("flow.insider.table.filedAt")}</th>
           </tr>
         </thead>
         <tbody>
           {rows.map((r, i) => (
-            <tr key={`${r.symbol}-${r.date}-${i}`} className="border-b border-[var(--color-border-faint)]">
-              <td className="py-2 pr-2 font-semibold text-[var(--color-text-primary)]">{r.symbol}</td>
-              <td className="py-2 pr-2">
+            <tr key={`${r.symbol}-${r.date}-${i}`} className="border-b border-[var(--border-default)] transition-colors duration-[var(--duration-fast)] ease-[var(--ease-out)] hover:bg-[var(--surface-2)]">
+              <td className="py-3 pr-2 font-semibold text-[var(--text-primary)]">{r.symbol}</td>
+              <td className="py-3 pr-2">
                 {r.owner}
                 {r.isTopExec && (
                   <span className="ml-1 rounded px-1 py-0.5 text-[var(--text-2xs)] font-bold bg-[var(--color-info-bg)] text-[var(--color-info)]">
@@ -46,8 +46,8 @@ function InsiderTable({ rows }: { rows: InsiderTx[] }) {
                   </span>
                 )}
               </td>
-              <td className="py-2 pr-2 text-[var(--color-text-tertiary)]">{r.role || "—"}</td>
-              <td className="py-2 pr-2">
+              <td className="py-3 pr-2 text-[var(--color-text-tertiary)]">{r.role || "—"}</td>
+              <td className="py-3 pr-2">
                 <span
                   className={`rounded-[var(--radius-pill)] px-2 py-0.5 text-[var(--text-xs)] font-bold ${
                     r.code === "P" ? "bg-[var(--color-success-bg)] text-[var(--color-success-text)]" : "bg-[var(--color-error-bg)] text-[var(--color-error-text)]"
@@ -57,12 +57,12 @@ function InsiderTable({ rows }: { rows: InsiderTx[] }) {
                   {r.code === "P" ? t("flow.insider.code.P") : t("flow.insider.code.S")}
                 </span>
               </td>
-              <td className="py-2 pr-2 text-right tabular-nums">{r.shares.toLocaleString()}</td>
-              <td className="py-2 pr-2 text-right tabular-nums">${r.price.toFixed(2)}</td>
-              <td className="py-2 pr-2 text-right tabular-nums font-mono">${r.amount.toLocaleString()}</td>
-              <td className="py-2 pr-2 text-right tabular-nums">{r.sharesAfter.toLocaleString()}</td>
-              <td className="py-2 pr-2 text-[var(--color-text-tertiary)]">{r.issuer || "—"}</td>
-              <td className="py-2 pr-2 text-[var(--text-sm)] text-[var(--color-text-tertiary)]">{r.filedAt.slice(0, 10)}</td>
+              <td className="py-3 pr-2 text-right font-mono tabular-nums">{r.shares.toLocaleString()}</td>
+              <td className="py-3 pr-2 text-right font-mono tabular-nums">${r.price.toFixed(2)}</td>
+              <td className="py-3 pr-2 text-right font-mono tabular-nums font-semibold">${r.amount.toLocaleString()}</td>
+              <td className="py-3 pr-2 text-right font-mono tabular-nums">{r.sharesAfter.toLocaleString()}</td>
+              <td className="py-3 pr-2 text-[var(--color-text-tertiary)]">{r.issuer || "—"}</td>
+              <td className="py-3 pr-2 text-[var(--text-sm)] text-[var(--color-text-tertiary)]">{r.filedAt.slice(0, 10)}</td>
             </tr>
           ))}
         </tbody>

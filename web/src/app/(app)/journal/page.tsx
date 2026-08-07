@@ -3,10 +3,12 @@
 import { useEffect, useMemo, useState } from "react";
 import { useUserData, useUpdateUserData } from "@/lib/queries/useUserData";
 import { useMarketEvents } from "@/lib/queries/useMarketEvents";
+import { useEarningsMarkers } from "@/lib/queries/useEarnings";
 import { dateKey, fmtWon, glucoseStats, gluSlotLabelKey, healthStats, ledgerMonthTotals, noonLocalIso, roundKg, ymKey } from "@/lib/journal/constants";
 import type {
   GlucoseEntry,
   GlucoseSlot,
+  MarketEvent,
   ImpulseTradeEntry,
   LedgerEntry,
   LedgerType,
@@ -17,15 +19,21 @@ import type {
   ScheduleEntry,
   WeightEntry,
 } from "@/lib/types/userData";
+import { isKrTicker } from "@/lib/types/userData";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
+import { Card } from "@/components/ui/Card";
+import { StatCard } from "@/components/ui/StatCard";
+import { PriceChange } from "@/components/ui/PriceChange";
+import { Badge } from "@/components/ui/Badge";
 import { JournalTabs, type JournalView } from "@/components/journal/JournalTabs";
 import { CalendarGrid } from "@/components/journal/CalendarGrid";
 import { CalendarDayPanel } from "@/components/journal/CalendarDayPanel";
 import { ArchiveView } from "@/components/journal/ArchiveView";
 import { PhilosophyView } from "@/components/journal/PhilosophyView";
 import { ReportView } from "@/components/journal/ReportView";
+import { PageHeader } from "@/components/ui/PageHeader";
 import { useT } from "@/lib/i18n/LanguageProvider";
 
 export default function JournalPage() {
@@ -33,6 +41,24 @@ export default function JournalPage() {
   const { data: userData, isLoading } = useUserData();
   const updateUserData = useUpdateUserData();
   const events = useMarketEvents();
+
+  // Live US earnings markers for the user's holdings (legacy fh-call calendar/earnings).
+  const earningsSymbols = useMemo(
+    () => (userData?.stocks ?? []).filter((s) => !s.hidden && s.ticker && !isKrTicker(s.ticker)).map((s) => s.ticker),
+    [userData],
+  );
+  const { data: earningsBySymbol } = useEarningsMarkers(earningsSymbols);
+  const earningsEvents = useMemo<MarketEvent[]>(() => {
+    const out: MarketEvent[] = [];
+    for (const [sym, rows] of Object.entries(earningsBySymbol ?? {})) {
+      for (const row of rows) {
+        if (!row.date) continue;
+        out.push({ id: `earn:${sym}:${row.date}`, date: row.date.slice(0, 10), type: "earnings", title: `실적 · ${sym}` });
+      }
+    }
+    return out;
+  }, [earningsBySymbol]);
+  const allEvents = useMemo(() => [...earningsEvents, ...events], [earningsEvents, events]);
 
   const now = new Date();
   const [view, setView] = useState<JournalView>("calendar");
@@ -83,12 +109,12 @@ export default function JournalPage() {
   }, [userData?.memos]);
 
   const eventsInMonth = useMemo(
-    () => events.filter((e) => e.date.startsWith(`${calYear}-${String(calMonth + 1).padStart(2, "0")}`)),
-    [events, calYear, calMonth],
+    () => allEvents.filter((e) => e.date.startsWith(`${calYear}-${String(calMonth + 1).padStart(2, "0")}`)),
+    [allEvents, calYear, calMonth],
   );
 
   const dayEntries = selectedDay ? memoArchive.filter((e) => dateKey(new Date(e.completedAt || e.time)) === selectedDay) : [];
-  const dayEvents = selectedDay ? events.filter((e) => e.date === selectedDay) : [];
+  const dayEvents = selectedDay ? allEvents.filter((e) => e.date === selectedDay) : [];
   const daySchedules = selectedDay ? schedules.filter((s) => s.date === selectedDay) : [];
   const dayLedger = selectedDay ? ledger.filter((l) => l.date === selectedDay) : [];
   const dayImpulse = selectedDay ? impulseTrades.find((e) => e.date === selectedDay) : undefined;
@@ -332,26 +358,51 @@ export default function JournalPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-[var(--text-2xl)] font-semibold text-[var(--color-text-primary)]">{t("nav.journal")}</h1>
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={handleToggleNotifyMaster}
-            className={`rounded-[var(--radius-control)] border px-3 py-1 text-[var(--text-sm)] ${
-              notifyEnabled
-                ? "border-[var(--color-success)] bg-[var(--color-success-bg-light)] text-[var(--color-success)]"
-                : "border-[var(--color-border-input)] bg-[var(--color-bg-surface)] text-[var(--color-text-tertiary)]"
-            }`}
-          >
-            {notifyEnabled ? t("journal.notify.on") : t("journal.notify.off")}
-          </button>
-          <JournalTabs view={view} onChange={setView} />
-        </div>
-      </div>
+      <PageHeader
+        title={t("nav.journal")}
+        subtitle={t("journal.subtitle")}
+        action={
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={handleToggleNotifyMaster}
+              className={`h-9 rounded-[var(--radius-pill)] border px-4 text-[var(--text-sm)] transition-colors duration-[var(--duration-fast)] ease-[var(--ease-out)] ${
+                notifyEnabled
+                  ? "border-[var(--accent-soft-border)] bg-[var(--accent-soft)] font-semibold text-[var(--accent)]"
+                  : "border-[var(--border-default)] bg-[var(--surface-1)] font-medium text-[var(--text-muted)]"
+              }`}
+            >
+              {notifyEnabled ? t("journal.notify.on") : t("journal.notify.off")}
+            </button>
+            <JournalTabs view={view} onChange={setView} />
+          </div>
+        }
+      />
 
       {view === "calendar" ? (
         <div className="flex flex-col gap-4">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <StatCard
+              label={t("journal.stats.entriesThisMonth")}
+              value={String(memoArchive.filter((e) => dateKey(new Date(e.completedAt || e.time)).startsWith(ym)).length)}
+              compact
+              note={t("journal.stats.notesAndTrades")}
+              change={<Badge tone="accent" size="sm">{t("journal.stats.keepGoing")}</Badge>}
+            />
+            <StatCard
+              label={t("journal.stats.monthNet")}
+              value={fmtWon(monthTotals.net)}
+              compact
+              change={<PriceChange value={monthTotals.net >= 0 ? 1 : -1} suffix="" size="sm" />}
+              note={t("journal.stats.incomeExpense", { inc: fmtWon(monthTotals.inc), exp: fmtWon(monthTotals.exp) })}
+            />
+            <StatCard
+              label={t("journal.stats.ledgerDays")}
+              value={String(new Set(ledger.map((l) => l.date)).size)}
+              compact
+              note={t("journal.stats.ledgerDaysNote")}
+            />
+          </div>
           <div className="flex flex-col gap-1 text-[var(--text-sm)] text-[var(--color-text-secondary)]">
             <p>{t("journal.ledger.monthSummary", { inc: fmtWon(monthTotals.inc), exp: fmtWon(monthTotals.exp), net: fmtWon(monthTotals.net) })}</p>
             <div className="flex flex-wrap items-center gap-2">
@@ -413,7 +464,7 @@ export default function JournalPage() {
               </span>
             </div>
           </div>
-          <div className="rounded-[var(--radius-3xl)] border border-[var(--color-border-default)] bg-[var(--color-bg-surface)] p-[18px_20px] shadow-[var(--shadow-card)]">
+          <Card className="flex flex-col gap-3">
             <CalendarGrid
               year={calYear}
               month={calMonth}
@@ -429,7 +480,7 @@ export default function JournalPage() {
               onSelectDay={handleSelectDay}
               onNavigate={handleNavigateMonth}
             />
-          </div>
+          </Card>
           {selectedDay && (
             <CalendarDayPanel
               dayLabel={selectedDayLabel}

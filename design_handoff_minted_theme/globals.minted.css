@@ -1,0 +1,322 @@
+/* ============================================================
+   MINTED THEME — drop-in globals.css for web/src/app/globals.css
+   Structure matches the app's existing model:
+     :root  = light theme      .dark = dark theme (PRIMARY — set defaultTheme="dark")
+   Price direction is a user setting: add data-price-convention="kr" on <html>.
+   Section 1: Minted tokens. Section 2: legacy aliases so every existing
+   `var(--color-*)` / `text-[var(--text-*)]` class keeps working.
+   ============================================================ */
+@import "tailwindcss";
+
+/* ---------- 1. MINTED TOKENS ---------- */
+:root {
+  /* Surfaces (light) */
+  --surface-0: #F2F7F3;
+  --surface-1: #FFFFFF;
+  --surface-2: #EAF3EC;
+  --surface-3: #DFEDE3;
+  --surface-overlay: rgba(18, 41, 30, 0.40);
+
+  --text-primary: #12291E;
+  --text-secondary: #4E6B5B;
+  --text-muted: #7E988A;
+  --text-disabled: #AEC4B6;
+  --text-on-accent: #FFFFFF;
+
+  --border-default: #DCE9DF;
+  --border-strong: #C2D6C8;
+  --border-focus: #0E9F63;
+
+  --accent: #0E9F63;
+  --accent-hover: #0B8A55;
+  --accent-pressed: #097348;
+  --accent-soft: rgba(14, 159, 99, 0.10);
+  --accent-soft-border: rgba(14, 159, 99, 0.28);
+
+  --positive: #0E9F63;
+  --positive-soft: rgba(14, 159, 99, 0.10);
+  --negative: #D25B41;
+  --negative-soft: rgba(210, 91, 65, 0.10);
+  --warning: #B07C0A;
+  --warning-soft: rgba(176, 124, 10, 0.10);
+  --info: #2E6FD8;
+  --info-soft: rgba(46, 111, 216, 0.10);
+
+  /* Price direction (western default) */
+  --price-up: #0E9F63;
+  --price-up-soft: rgba(14, 159, 99, 0.10);
+  --price-down: #D25B41;
+  --price-down-soft: rgba(210, 91, 65, 0.10);
+  --price-flat: #7E988A;
+
+  --chart-line: #0E9F63;
+  --chart-fill-top: rgba(14, 159, 99, 0.18);
+  --chart-fill-bottom: rgba(14, 159, 99, 0);
+  --chart-grid: rgba(78, 107, 91, 0.12);
+  --chart-alt-1: #2E6FD8;
+  --chart-alt-2: #B07C0A;
+  --chart-alt-3: #8B5CF6;
+
+  /* Typography — Minted scale (roomier than the old 9–17px scale) */
+  --font-display: var(--font-body);
+  --leading-tight: 1.15;
+  --leading-snug: 1.3;
+  --leading-normal: 1.5;
+  --tracking-display: -0.03em;
+  --tracking-heading: -0.02em;
+  --tracking-mono-big: -0.02em;
+  --tracking-caps: 0.08em;
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+  --weight-bold: 700;
+
+  /* Spacing / radii / motion */
+  --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px;
+  --space-5: 20px; --space-6: 24px; --space-7: 28px; --space-8: 32px;
+  --space-10: 40px; --space-12: 48px; --space-16: 64px;
+
+  --radius-minted-sm: 8px;
+  --radius-minted-md: 12px;
+  --radius-minted-lg: 16px;
+  --radius-minted-xl: 20px;
+
+  --control-height: 48px;
+  --control-height-sm: 36px;
+  --hit-target-min: 44px;
+
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --duration-fast: 120ms;
+  --duration-base: 200ms;
+  --duration-slow: 350ms;
+
+  --shadow-glow-accent: 0 0 0 4px var(--accent-soft);
+}
+
+.dark {
+  --surface-0: #081410;
+  --surface-1: #0C1F17;
+  --surface-2: #12291E;
+  --surface-3: #173326;
+  --surface-overlay: rgba(8, 20, 16, 0.72);
+
+  --text-primary: #EFF7F0;
+  --text-secondary: #8FAE9C;
+  --text-muted: #5F8272;
+  --text-disabled: #3E5A4B;
+  --text-on-accent: #0C1F17;
+
+  --border-default: #1B3A2C;
+  --border-strong: #2A4F3B;
+  --border-focus: #7BE8B0;
+
+  --accent: #7BE8B0;
+  --accent-hover: #93F0C1;
+  --accent-pressed: #5ED99C;
+  --accent-soft: rgba(123, 232, 176, 0.14);
+  --accent-soft-border: rgba(123, 232, 176, 0.32);
+
+  --positive: #5ED99C;
+  --positive-soft: rgba(94, 217, 156, 0.14);
+  --negative: #FF9E8A;
+  --negative-soft: rgba(255, 158, 138, 0.14);
+  --warning: #FFD66B;
+  --warning-soft: rgba(255, 214, 107, 0.14);
+  --info: #8AC6FF;
+  --info-soft: rgba(138, 198, 255, 0.14);
+
+  --price-up: #5ED99C;
+  --price-up-soft: rgba(94, 217, 156, 0.14);
+  --price-down: #FF9E8A;
+  --price-down-soft: rgba(255, 158, 138, 0.14);
+  --price-flat: #5F8272;
+
+  --chart-line: #7BE8B0;
+  --chart-fill-top: rgba(123, 232, 176, 0.30);
+  --chart-fill-bottom: rgba(123, 232, 176, 0);
+  --chart-grid: rgba(143, 174, 156, 0.12);
+  --chart-alt-1: #8AC6FF;
+  --chart-alt-2: #FFD66B;
+  --chart-alt-3: #D0A6FF;
+}
+
+/* KR price-color convention (user setting on <html>) */
+[data-price-convention="kr"] {
+  --price-up: #E04E3C;
+  --price-up-soft: rgba(224, 78, 60, 0.10);
+  --price-down: #2E6FD8;
+  --price-down-soft: rgba(46, 111, 216, 0.10);
+}
+.dark[data-price-convention="kr"],
+.dark [data-price-convention="kr"] {
+  --price-up: #FF7A6B;
+  --price-up-soft: rgba(255, 122, 107, 0.14);
+  --price-down: #6BA8FF;
+  --price-down-soft: rgba(107, 168, 255, 0.14);
+}
+
+/* ---------- 2. LEGACY ALIASES (transitional — delete as call sites migrate) ---------- */
+:root, .dark {
+  /* Price direction */
+  --color-up: var(--price-up);
+  --color-down: var(--price-down);
+  --color-flat: var(--price-flat);
+
+  /* Text */
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-subtle: var(--text-secondary);
+  --color-text-tertiary: var(--text-muted);
+  --color-text-muted: var(--text-muted);
+  --color-text-disabled: var(--text-disabled);
+  --color-text-strong: var(--text-primary);
+  --color-text-warm: var(--text-secondary);
+  --color-text-placeholder: var(--text-muted);
+  --color-text-secondary-alt: var(--text-secondary);
+
+  /* Surfaces */
+  --color-bg-base: var(--surface-0);
+  --color-bg-surface: var(--surface-1);
+  --color-bg-subtle: var(--surface-2);
+  --color-bg-muted: var(--surface-2);
+  --color-bg-overlay: var(--surface-3);
+  --color-bg-archive: var(--surface-2);
+  --color-bg-badge: var(--surface-2);
+  --color-edit-highlight: var(--warning-soft);
+
+  /* Borders */
+  --color-border-default: var(--border-default);
+  --color-border-input: var(--border-default);
+  --color-border-strong: var(--border-strong);
+  --color-border-subtle: var(--border-default);
+  --color-border-muted: var(--border-default);
+  --color-border-faint: var(--border-default);
+
+  /* Semantic — success / error / warning / info */
+  --color-success: var(--positive);
+  --color-success-dark: var(--positive);
+  --color-success-deep: var(--positive);
+  --color-success-deeper: var(--positive);
+  --color-success-text: var(--positive);
+  --color-success-bg: var(--positive-soft);
+  --color-success-bg-soft: var(--positive-soft);
+  --color-success-bg-light: var(--positive-soft);
+  --color-success-border: var(--positive-soft);
+  --color-error: var(--negative);
+  --color-error-text: var(--negative);
+  --color-error-bg: var(--negative-soft);
+  --color-error-subtle: var(--negative-soft);
+  --color-error-border: var(--negative-soft);
+  --color-warning: var(--warning);
+  --color-warning-bright: var(--warning);
+  --color-warning-dark: var(--warning);
+  --color-warning-deeper: var(--warning);
+  --color-warning-text: var(--warning);
+  --color-warning-bg: var(--warning-soft);
+  --color-warning-subtle: var(--warning-soft);
+  --color-warning-border: var(--warning-soft);
+  --color-info: var(--info);
+  --color-info-text: var(--info);
+  --color-info-deep: var(--info);
+  --color-info-bg: var(--info-soft);
+  --color-info-border: var(--info-soft);
+
+  /* Accent (old purple + Toss-blue families → mint) */
+  --color-accent: var(--accent);
+  --color-accent-dark: var(--accent-hover);
+  --color-accent-mid: var(--accent);
+  --color-accent-deeper: var(--accent-pressed);
+  --color-accent-indigo: var(--accent);
+  --color-accent-soft: var(--accent);
+  --color-accent-bg: var(--accent-soft);
+  --color-accent-bg-soft: var(--accent-soft);
+  --color-accent-subtle: var(--accent-soft);
+  --color-accent-border: var(--accent-soft-border);
+  --color-accent-border-soft: var(--accent-soft-border);
+  --color-accent-primary: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-weak: var(--accent-hover);
+  --color-accent-on: var(--text-on-accent);
+
+  /* Trade type */
+  --color-trade-long-bg: var(--info-soft);
+  --color-trade-long-text: var(--info);
+  --color-trade-short-bg: var(--warning-soft);
+  --color-trade-short-text: var(--warning);
+
+  /* Broker badges — kept from the old theme (brand colors, not Minted's) */
+  --color-broker-kakao-bg: #fef9c3;
+  --color-broker-kakao-text: #854d0e;
+  --color-broker-mirae-bg: #e0e7ff;
+  --color-broker-mirae-text: #3730a3;
+  --color-broker-shinhan-bg: #e0f2fe;
+  --color-broker-hanhwa-bg: #ffedd5;
+  --color-broker-hanhwa-text: #9a3412;
+  --color-broker-daesin-bg: #ccfbf1;
+  --color-broker-daesin-text: #134e4a;
+
+  /* Type scale — bumped one step toward Minted's roomier sizing.
+     Old: 9/10/11/12/12.5/13/14/15/16/17. New floor is 12px. */
+  --text-2xs: 12px;
+  --text-xs: 12px;
+  --text-sm: 13px;
+  --text-base: 14px;
+  --text-table: 14px;
+  --text-md: 15px;
+  --text-lg: 16px;
+  --text-xl: 18px;
+  --text-2xl: 22px;
+  --text-3xl: 28px;
+
+  /* Radii — Minted is more generous */
+  --radius-control: var(--radius-minted-md);   /* 12px buttons/inputs/chips */
+  --radius-sm: var(--radius-minted-sm);
+  --radius-md: var(--radius-minted-md);
+  --radius-lg: var(--radius-minted-lg);
+  --radius-xl: var(--radius-minted-xl);
+  --radius-2xl: var(--radius-minted-lg);
+  --radius-3xl: var(--radius-minted-xl);
+  --radius-pill: 999px;
+  --radius-full: 50%;
+
+  /* Button heights */
+  --btn-h-sm: var(--control-height-sm);  /* 36px */
+  --btn-h-md: 44px;
+  --btn-h-lg: var(--control-height);     /* 48px */
+}
+
+/* Shadows: dark leans on borders, light on soft shadows */
+:root {
+  --shadow-card: 0 1px 2px rgba(18, 41, 30, 0.05), 0 4px 12px rgba(18, 41, 30, 0.04);
+  --shadow-hover: 0 8px 20px rgba(18, 41, 30, 0.08);
+  --shadow-pop: 0 12px 32px rgba(18, 41, 30, 0.12);
+  --shadow-nav: 0 -1px 0 rgba(18, 41, 30, 0.06);
+}
+.dark {
+  --shadow-card: 0 1px 0 rgba(255, 255, 255, 0.03) inset;
+  --shadow-hover: 0 8px 24px rgba(0, 0, 0, 0.35);
+  --shadow-pop: 0 8px 24px rgba(0, 0, 0, 0.35);
+  --shadow-nav: 0 -1px 0 rgba(255, 255, 255, 0.05);
+}
+
+@theme inline {
+  --color-bg-base: var(--color-bg-base);
+  --color-bg-surface: var(--color-bg-surface);
+  --color-text-primary: var(--color-text-primary);
+  --color-text-secondary: var(--color-text-secondary);
+  /* Fonts: wire to next/font variables from layout.tsx */
+  --font-sans: var(--font-body);
+  --font-mono: var(--font-mono-plex);
+}
+
+body {
+  background: var(--color-bg-base);
+  color: var(--color-text-primary);
+  font-family: var(--font-body), "Helvetica Neue", sans-serif;
+}
+
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+.animate-pulse-dot { animation: pulse-dot 2s infinite; }

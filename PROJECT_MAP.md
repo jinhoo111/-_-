@@ -301,11 +301,15 @@ bb44e4a fix(indices): correct sign-inverted KR index rate, plus live QA sweep fi
 
 ### 현재 상태
 
-**Phase 0(스캐폴드 + 인증 + Portfolio)은 배포됨**, 그리고 원래 Phase 0 범위는 아니었지만
-나중에 모든 후속 Phase에 소급 적용하는 것이 훨씬 비쌀 것이라 판단해 앞당긴 **EN/KO 언어
-토글**도 함께 배포됨. Indices, Journal, News/Research, Flow, Monitor, Security admin은
-**아직 미구현** — 앱이 404를 노출하지 않도록 해당 페이지들의 네비게이션 항목은 (숨긴 게
-아니라) `AppNav`에서 아예 제외되어 있다.
+**7개 앱 섹션 + 전체 관리자 콘솔 모두 구현됨.** 2026-08-07 검증: 인증(Phase 0), Portfolio,
+Indices, Journal, News, Research, Flow, Monitor, Security admin 모두 `rewrite/next`에
+배포됨(git log: Phases 1–6 + Playwright E2E). 레거시 Home 대시보드 위젯(수급 요약 바,
+경쟁사 브리핑, 기술 신호 스캐너, 보유 종목 최신 소식)은 2026-08-07 `/portfolio`에 복원됨.
+뉴스 실시간 시세 탭, 설정 페이지, 온보딩/프로필, 기업 승인 대기, 도움말 FAB + VoC,
+면책 배너, 자동 장마감 가격 갱신, 미국 실적 마커도 같은 날 추가됨. EN/KO 언어 토글 완료.
+
+남은 패리티 갭: 게스트 샘플 데이터, KR 실적 마커, 알림/중복 방지 폴리시, `data_owner`
+격리, 심층 E2E 인터랙션 테스트, 컷오버(Vercel 배포 + 레거시 폐기) — `MIGRATION_PLAN.md` 참고.
 
 ### 스택
 

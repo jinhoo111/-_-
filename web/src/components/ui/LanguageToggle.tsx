@@ -7,14 +7,14 @@ export function LanguageToggle({ className = "" }: { className?: string }) {
 
   return (
     <span
-      className={`inline-flex overflow-hidden rounded-[var(--radius-control)] border border-[var(--color-border-input)] ${className}`}
+      className={`inline-flex overflow-hidden rounded-[var(--radius-pill)] border border-[var(--border-default)] bg-[var(--surface-2)] p-0.5 ${className}`}
     >
       <button
         type="button"
         onClick={() => setLang("ko")}
         aria-pressed={lang === "ko"}
-        className={`px-2 py-1 text-[var(--text-sm)] ${
-          lang === "ko" ? "bg-[var(--color-accent-primary)] text-white" : "text-[var(--color-text-secondary)]"
+        className={`rounded-[var(--radius-pill)] px-2.5 py-1 text-[var(--text-xs)] font-semibold transition-colors duration-[var(--duration-fast)] ease-[var(--ease-out)] ${
+          lang === "ko" ? "bg-[var(--surface-0)] text-[var(--accent)]" : "text-[var(--text-secondary)]"
         }`}
       >
         KO
@@ -23,8 +23,8 @@ export function LanguageToggle({ className = "" }: { className?: string }) {
         type="button"
         onClick={() => setLang("en")}
         aria-pressed={lang === "en"}
-        className={`px-2 py-1 text-[var(--text-sm)] ${
-          lang === "en" ? "bg-[var(--color-accent-primary)] text-white" : "text-[var(--color-text-secondary)]"
+        className={`rounded-[var(--radius-pill)] px-2.5 py-1 text-[var(--text-xs)] font-semibold transition-colors duration-[var(--duration-fast)] ease-[var(--ease-out)] ${
+          lang === "en" ? "bg-[var(--surface-0)] text-[var(--accent)]" : "text-[var(--text-secondary)]"
         }`}
       >
         EN

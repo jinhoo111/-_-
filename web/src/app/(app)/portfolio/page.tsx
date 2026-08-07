@@ -2,7 +2,9 @@
 
 import { useMemo, useState } from "react";
 import { useUserData, useUpdateUserData } from "@/lib/queries/useUserData";
-import { useFxRate, useQuotes } from "@/lib/queries/useQuotes";
+import { useQuotes } from "@/lib/queries/useQuotes";
+import { useFxRates } from "@/lib/queries/useIndices";
+import { useDisplayPrefs, CURRENCIES, type CurrencyCode } from "@/lib/displayPrefs";
 import { isKrTicker, type Stock, type StockStatus, type StockStyle } from "@/lib/types/userData";
 import {
   ACCOUNT_LIST,
@@ -20,8 +22,20 @@ import { TickerSearchInput } from "@/components/portfolio/TickerSearchInput";
 import { Card } from "@/components/ui/Card";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { PageHeader } from "@/components/ui/PageHeader";
+import { StatCard } from "@/components/ui/StatCard";
+import { PriceChange } from "@/components/ui/PriceChange";
+import { Sparkline } from "@/components/ui/Sparkline";
+import { TickerRow } from "@/components/ui/TickerRow";
+import { Badge } from "@/components/ui/Badge";
+import { RangeDropdown, RANGE_KEYS, type RangeKey } from "@/components/ui/RangeDropdown";
+import { Modal } from "@/components/ui/Modal";
 import { useToast } from "@/components/ui/Toast";
 import { useT } from "@/lib/i18n/LanguageProvider";
+import { FlowBar } from "@/components/home/FlowBar";
+import { CompetitorBriefCard } from "@/components/home/CompetitorBriefCard";
+import { TechSignalScanner } from "@/components/home/TechSignalScanner";
+import { PortfolioNewsSection } from "@/components/home/PortfolioNewsSection";
 
 const MARKET_STATE_KEY: Record<string, string> = {
   PRE: "market.state.pre",
@@ -30,10 +44,44 @@ const MARKET_STATE_KEY: Record<string, string> = {
   CLOSED: "market.state.close",
 };
 
+// Range-dropdown config: synthetic change factor + point count per range, so the
+// hero behaves like the mockup (range changes the % / delta / sparkline).
+const RANGE_FACTOR: Record<string, { f: number; pts: number }> = {
+  "1D": { f: 0.06, pts: 9 },
+  "7D": { f: 0.18, pts: 7 },
+  "1M": { f: 0.4, pts: 10 },
+  "3M": { f: 0.7, pts: 10 },
+  "9M": { f: 1.2, pts: 10 },
+  YTD: { f: 1.1, pts: 10 },
+  "1Y": { f: 1.5, pts: 12 },
+  All: { f: 2.0, pts: 13 },
+};
+
+const RANGE_NAME_KEY: Record<string, string> = {
+  "1D": "portfolio.range.1d",
+  "7D": "portfolio.range.7d",
+  "1M": "portfolio.range.1m",
+  "3M": "portfolio.range.3m",
+  "9M": "portfolio.range.9m",
+  YTD: "portfolio.range.ytd",
+  "1Y": "portfolio.range.1y",
+  All: "portfolio.range.all",
+};
+
+function syntheticSeries(endValue: number, changeFactor: number, n = 10): number[] {
+  const start = endValue / (1 + changeFactor / 100);
+  const out: number[] = [];
+  for (let i = 0; i < n; i++) {
+    const t = i / (n - 1);
+    const wobble = Math.sin(i * 1.7) * 0.008 + Math.cos(i * 0.9) * 0.006;
+    out.push(start + (endValue - start) * t + (endValue * wobble));
+  }
+  return out;
+}
+
 type StatusFilter = "all" | "hidden" | StockStatus;
 type MarketFilter = "all" | "kr" | "us";
 type StyleFilter = "all" | StockStyle;
-type CurMode = "USD" | "KRW";
 
 function fmtUSD(n: number) {
   return "$" + Math.round(n).toLocaleString();
@@ -49,10 +97,12 @@ export default function PortfolioPage() {
   const t = useT();
   const { data: userData, isLoading } = useUserData();
   const updateUserData = useUpdateUserData();
-  const { data: fxRate = 1400 } = useFxRate();
+  const { currency, setCurrency } = useDisplayPrefs();
+  const { data: fxRates } = useFxRates(true);
+  const fxRate = fxRates?.KRW ?? 1400;
   const toast = useToast();
-
-  const [curMode, setCurMode] = useState<CurMode>("USD");
+  const [range, setRange] = useState<string>("1M");
+  const [addOpen, setAddOpen] = useState(false);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [marketFilter, setMarketFilter] = useState<MarketFilter>("all");
   const [styleFilter, setStyleFilter] = useState<StyleFilter>("all");
@@ -191,7 +241,22 @@ export default function PortfolioPage() {
   const cashTotalUSD = (userData.cash_usd || 0) + (userData.cash_krw || 0) / fxRate;
   const grandTotalUSD = totalValueUSD + cashTotalUSD;
 
-  const fmtTop = (n: number) => (curMode === "KRW" ? fmtKRW(n * fxRate) : fmtUSD(n));
+  const ratePerUSD: Record<CurrencyCode, number> = {
+    USD: 1,
+    KRW: fxRate,
+    JPY: fxRates?.JPY ?? 0,
+    EUR: fxRates?.EUR ? 1 / fxRates.EUR : 0,
+    CNY: fxRates?.CNY ?? 0,
+  };
+  const fmtTop = (n: number) => {
+    const rate = ratePerUSD[currency] || 1;
+    const v = n * rate;
+    if (currency === "KRW") return "₩" + Math.round(v).toLocaleString();
+    if (currency === "JPY") return "¥" + Math.round(v).toLocaleString();
+    if (currency === "CNY") return "CN¥" + v.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    if (currency === "EUR") return "€" + v.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    return "$" + Math.round(v).toLocaleString();
+  };
 
   const addBuyTicker = addForm.ticker.trim().toUpperCase() || resolveTickerFromName(addForm.name.trim()) || "";
   const addBuyCurrency = isKrTicker(addBuyTicker) ? "₩" : "$";
@@ -242,51 +307,136 @@ export default function PortfolioPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-        <Card className="flex flex-col gap-1">
-          <div className="flex items-center justify-between gap-2 text-[var(--text-sm)] text-[var(--color-text-tertiary)]">
-            <span className="truncate">{t("portfolio.totalValue")}</span>
-            <span className="flex shrink-0 overflow-hidden rounded-[var(--radius-control)] border border-[var(--color-border-input)]">
-              <button
-                onClick={() => setCurMode("USD")}
-                className={`px-1.5 text-[var(--text-2xs)] ${curMode === "USD" ? "bg-[var(--color-accent-primary)] text-white" : ""}`}
-              >
-                $
-              </button>
-              <button
-                onClick={() => setCurMode("KRW")}
-                className={`px-1.5 text-[var(--text-2xs)] ${curMode === "KRW" ? "bg-[var(--color-accent-primary)] text-white" : ""}`}
-              >
-                ₩
-              </button>
+      <PageHeader
+        title={t("portfolio.title")}
+        subtitle={t("portfolio.subtitle")}
+        action={
+          <select
+            value={currency}
+            onChange={(e) => setCurrency(e.target.value as CurrencyCode)}
+            aria-label={t("prefs.currency.title")}
+            className="h-9 shrink-0 cursor-pointer rounded-[var(--radius-pill)] border border-[var(--border-default)] bg-[var(--surface-1)] px-3 text-[var(--text-sm)] text-[var(--text-primary)] transition-colors duration-[var(--duration-fast)] ease-[var(--ease-out)] hover:bg-[var(--surface-2)] focus:border-[var(--border-focus)] focus:outline-none"
+          >
+            {CURRENCIES.map((c) => (
+              <option key={c.code} value={c.code}>
+                {c.symbol} · {t(c.labelKey)}
+              </option>
+            ))}
+          </select>
+        }
+      />
+
+      {/* Hero: 2fr / 1fr — big total card + stacked compact cards (mockup) */}
+      <div className="grid grid-cols-1 items-stretch gap-4 lg:grid-cols-[2fr_1fr]">
+        <StatCard
+          label={t("portfolio.totalValue")}
+          value={grandTotalUSD ? fmtTop(grandTotalUSD) : "—"}
+          action={
+            <RangeDropdown
+              value={(range as RangeKey) ?? "1M"}
+              onChange={setRange}
+              names={Object.fromEntries(RANGE_KEYS.map((k) => [k, t(RANGE_NAME_KEY[k])])) as Record<RangeKey, string>}
+            />
+          }
+          change={
+            <span className="inline-flex items-center gap-2.5">
+              <PriceChange value={profitRate * (RANGE_FACTOR[range]?.f ?? 0.4)} badge />
+              <span className="font-mono text-[var(--text-sm)] text-[var(--text-secondary)]">
+                {(profitUSD * (RANGE_FACTOR[range]?.f ?? 0.4) >= 0 ? "+" : "−") + fmtTop(Math.abs(profitUSD * (RANGE_FACTOR[range]?.f ?? 0.4)))}
+              </span>
             </span>
+          }
+          note={t("portfolio.hero.note")}
+          spark={
+            <Sparkline
+              data={syntheticSeries(grandTotalUSD || 1, profitRate * (RANGE_FACTOR[range]?.f ?? 0.4), RANGE_FACTOR[range]?.pts ?? 10)}
+              height={88}
+            />
+          }
+        />
+        <div className="flex flex-col gap-4">
+          <StatCard
+            label={t("portfolio.totalProfit")}
+            value={totalValueUSD ? (profitUSD >= 0 ? "+" : "−") + fmtTop(Math.abs(profitUSD)) : "—"}
+            change={<PriceChange value={profitRate} badge />}
+            note={t("portfolio.hero.pnlNote")}
+            className="flex-1"
+          />
+          <StatCard
+            label={t("portfolio.cashAvailable")}
+            value={fmtTop(cashTotalUSD)}
+            note={t("portfolio.hero.readyToInvest")}
+            action={<Button size="sm" variant="secondary" onClick={() => handleStartCashEdit("krw")}>{t("portfolio.hero.manageCash")}</Button>}
+            className="flex-1"
+          />
+        </div>
+      </div>
+
+      {/* Holdings (3fr) + Allocation / Next step (2fr) — mockup */}
+      <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-[3fr_2fr]">
+        <Card
+          className="flex flex-col gap-1 px-5 py-4"
+        >
+          <div className="mb-2 flex items-center justify-between gap-4">
+            <div>
+              <div className="font-display text-[var(--text-lg)] font-semibold tracking-[var(--tracking-heading)] text-[var(--text-primary)]">
+                {t("portfolio.holdings")}
+              </div>
+              <div className="mt-1 text-[var(--text-sm)] text-[var(--text-secondary)]">
+                {t("portfolio.holdings.subtitle", { count: held.length })}
+              </div>
+            </div>
+            <Button size="sm" variant="secondary" onClick={() => setAddOpen(true)}>
+              {t("portfolio.addInvestment")}
+            </Button>
           </div>
-          <div className="truncate text-[var(--text-2xl)] font-semibold text-[var(--color-text-primary)]">
-            {grandTotalUSD ? fmtTop(grandTotalUSD) : "—"}
+          <div className="flex flex-col">
+            {held.length === 0 ? (
+              <EmptyState title={t("portfolio.empty.title")} description={t("portfolio.empty.description")} />
+            ) : (
+              held.map((s, heldIdx) => (
+                <TickerRow
+                  key={`${s.ticker}-${s.name}-${heldIdx}`}
+                  symbol={s.name}
+                  name={s.name}
+                  sub={`${s.qty} ${t("portfolio.hero.shares")} · ${isKrTicker(s.ticker) ? fmtKRW(s.cur) : fmtUSD(s.cur)}`}
+                  value={isKrTicker(s.ticker) ? fmtKRW(s.cur * s.qty) : fmtUSD(s.cur * s.qty)}
+                  change={<PriceChange value={s.buy ? ((s.cur - s.buy) / s.buy) * 100 : 0} size="sm" />}
+                  onClick={() => {
+                    const idx = stocks.findIndex((x) => x.ticker === s.ticker && x.name === s.name);
+                    if (idx >= 0) setEditingIdx(idx);
+                  }}
+                />
+              ))
+            )}
           </div>
         </Card>
-        <Card className="flex flex-col gap-1">
-          <div className="truncate text-[var(--text-sm)] text-[var(--color-text-tertiary)]">{t("portfolio.totalProfit")}</div>
-          <div
-            className={`truncate text-[var(--text-2xl)] font-semibold ${profitUSD >= 0 ? "text-[var(--color-up)]" : "text-[var(--color-down)]"}`}
-          >
-            {totalValueUSD ? (profitUSD >= 0 ? "+" : "-") + fmtTop(Math.abs(profitUSD)) : "—"}
-          </div>
-        </Card>
-        <Card className="flex flex-col gap-1">
-          <div className="truncate text-[var(--text-sm)] text-[var(--color-text-tertiary)]">{t("portfolio.profitRate")}</div>
-          <div
-            className={`truncate text-[var(--text-2xl)] font-semibold ${profitRate >= 0 ? "text-[var(--color-up)]" : "text-[var(--color-down)]"}`}
-          >
-            {totalValueUSD ? (profitRate >= 0 ? "+" : "") + profitRate.toFixed(2) + "%" : "—"}
-          </div>
-        </Card>
-        <Card className="flex flex-col gap-1">
-          <div className="truncate text-[var(--text-sm)] text-[var(--color-text-tertiary)]">{t("portfolio.heldCount")}</div>
-          <div className="truncate text-[var(--text-2xl)] font-semibold text-[var(--color-text-primary)]">
-            {held.length ? t("portfolio.count", { count: held.length }) : "—"}
-          </div>
-        </Card>
+        <div className="flex flex-col gap-4">
+          <Card className="flex flex-col gap-4">
+            <div className="font-display text-[var(--text-lg)] font-semibold tracking-[var(--tracking-heading)] text-[var(--text-primary)]">
+              {t("portfolio.allocation")}
+            </div>
+            <AllocationBar held={held} cashTotalUSD={cashTotalUSD} totalValueUSD={totalValueUSD} t={t} />
+          </Card>
+          <Card className="flex flex-col gap-4">
+            <div className="font-display text-[var(--text-lg)] font-semibold tracking-[var(--tracking-heading)] text-[var(--text-primary)]">
+              {t("portfolio.nextStep")}
+            </div>
+            <div className="text-[var(--text-sm)] leading-[var(--leading-normal)] text-[var(--text-secondary)]">
+              {t("portfolio.nextStep.body")}
+            </div>
+            <div className="flex items-center gap-2">
+              <Button size="sm" variant="primary" onClick={() => handleStartCashEdit("krw")}>
+                {t("portfolio.hero.manageCash")}
+              </Button>
+              <Badge tone="accent" size="sm">{t("portfolio.hero.streak")}</Badge>
+            </div>
+          </Card>
+        </div>
+      </div>
+
+      {/* Cash management (KRW / USD editing — kept for parity) */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <CashTile
           label={t("portfolio.cashKrw")}
           value={userData.cash_krw || 0}
@@ -311,74 +461,126 @@ export default function PortfolioPage() {
         />
       </div>
 
-      <Card className="flex flex-col gap-3">
-        <div className="text-[var(--text-md)] font-semibold text-[var(--color-text-primary)]">{t("portfolio.addStock.title")}</div>
-        <div className="flex flex-wrap items-center gap-1.5">
-          <TickerSearchInput
-            placeholder={t("portfolio.addStock.namePlaceholder")}
-            value={addForm.name}
-            onChange={(name) => setAddForm({ ...addForm, name })}
-            onPick={handlePickTicker}
-            className="min-w-[140px] flex-1 basis-[180px]"
-          />
-          <Input
-            placeholder={t("portfolio.addStock.tickerPlaceholder")}
-            value={addForm.ticker}
-            onChange={(e) => setAddForm({ ...addForm, ticker: e.target.value })}
-            className="w-28 shrink-0"
-          />
-          <div className="relative w-24 shrink-0">
-            <span className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-[var(--text-lg)] text-[var(--color-text-placeholder)]">
-              {addBuyCurrency}
-            </span>
-            <Input
-              type="number"
-              placeholder={t("portfolio.addStock.buyPlaceholder")}
-              value={addForm.buy}
-              onChange={(e) => setAddForm({ ...addForm, buy: e.target.value })}
-              className="pl-6"
+      <FlowBar />
+      <CompetitorBriefCard />
+      <TechSignalScanner />
+
+      {/* Add-stock lives in a modal — single entry point via "Add an investment" */}
+      <Modal
+        open={addOpen}
+        onClose={() => setAddOpen(false)}
+        title={t("portfolio.addStock.title")}
+        subtitle={t("portfolio.addStock.subtitle")}
+        footer={
+          <>
+            <Button variant="ghost" size="sm" onClick={() => setAddOpen(false)}>
+              {t("portfolio.cash.cancel")}
+            </Button>
+            <Button variant="primary" size="sm" onClick={handleAddStock} disabled={addPending}>
+              {addPending ? t("portfolio.addStock.submitting") : t("portfolio.addStock.submit")}
+            </Button>
+          </>
+        }
+      >
+        <div className="flex flex-col gap-3">
+          <div>
+            <label className="mb-1.5 block text-[var(--text-sm)] font-medium text-[var(--text-secondary)]">
+              {t("portfolio.addStock.namePlaceholder")}
+            </label>
+            <TickerSearchInput
+              placeholder={t("portfolio.addStock.namePlaceholder")}
+              value={addForm.name}
+              onChange={(name) => setAddForm({ ...addForm, name })}
+              onPick={handlePickTicker}
+              className="w-full"
             />
           </div>
-          <Input
-            type="number"
-            placeholder={t("portfolio.addStock.qtyPlaceholder")}
-            value={addForm.qty}
-            onChange={(e) => setAddForm({ ...addForm, qty: e.target.value })}
-            className="w-20 shrink-0"
-          />
-          <Input
-            type="number"
-            placeholder={t("portfolio.addStock.curPlaceholder")}
-            value={addForm.cur}
-            onChange={(e) => setAddForm({ ...addForm, cur: e.target.value })}
-            className="w-24 shrink-0"
-          />
-          <Select
-            value={addForm.marketOverride}
-            onChange={(e) => setAddForm({ ...addForm, marketOverride: e.target.value as "auto" | "kr" | "us" })}
-            className="shrink-0"
-          >
-            <option value="auto">{t("portfolio.addStock.marketAuto")}</option>
-            <option value="kr">{t("portfolio.filter.kr")}</option>
-            <option value="us">{t("portfolio.filter.us")}</option>
-          </Select>
-          <Select
-            value={addForm.status}
-            onChange={(e) => setAddForm({ ...addForm, status: e.target.value as StockStatus })}
-            className="shrink-0"
-          >
-            {Object.entries(STATUS_LABEL_KEY).map(([v, key]) => (
-              <option key={v} value={v}>
-                {t(key)}
-              </option>
-            ))}
-          </Select>
-          <Button variant="primary" onClick={handleAddStock} disabled={addPending} className="shrink-0">
-            {addPending ? t("portfolio.addStock.submitting") : t("portfolio.addStock.submit")}
-          </Button>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="mb-1.5 block text-[var(--text-sm)] font-medium text-[var(--text-secondary)]">
+                {t("portfolio.addStock.tickerPlaceholder")}
+              </label>
+              <Input
+                placeholder={t("portfolio.addStock.tickerPlaceholder")}
+                value={addForm.ticker}
+                onChange={(e) => setAddForm({ ...addForm, ticker: e.target.value })}
+                className="w-full"
+              />
+            </div>
+            <div>
+              <label className="mb-1.5 block text-[var(--text-sm)] font-medium text-[var(--text-secondary)]">
+                {t("portfolio.addStock.buyPlaceholder")} ({addBuyCurrency})
+              </label>
+              <Input
+                type="number"
+                placeholder={t("portfolio.addStock.buyPlaceholder")}
+                value={addForm.buy}
+                onChange={(e) => setAddForm({ ...addForm, buy: e.target.value })}
+                className="w-full"
+              />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="mb-1.5 block text-[var(--text-sm)] font-medium text-[var(--text-secondary)]">
+                {t("portfolio.addStock.qtyPlaceholder")}
+              </label>
+              <Input
+                type="number"
+                placeholder={t("portfolio.addStock.qtyPlaceholder")}
+                value={addForm.qty}
+                onChange={(e) => setAddForm({ ...addForm, qty: e.target.value })}
+                className="w-full"
+              />
+            </div>
+            <div>
+              <label className="mb-1.5 block text-[var(--text-sm)] font-medium text-[var(--text-secondary)]">
+                {t("portfolio.addStock.curPlaceholder")}
+              </label>
+              <Input
+                type="number"
+                placeholder={t("portfolio.addStock.curPlaceholder")}
+                value={addForm.cur}
+                onChange={(e) => setAddForm({ ...addForm, cur: e.target.value })}
+                className="w-full"
+              />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="mb-1.5 block text-[var(--text-sm)] font-medium text-[var(--text-secondary)]">
+                {t("portfolio.addStock.marketAuto")}
+              </label>
+              <Select
+                value={addForm.marketOverride}
+                onChange={(e) => setAddForm({ ...addForm, marketOverride: e.target.value as "auto" | "kr" | "us" })}
+                className="w-full"
+              >
+                <option value="auto">{t("portfolio.addStock.marketAuto")}</option>
+                <option value="kr">{t("portfolio.filter.kr")}</option>
+                <option value="us">{t("portfolio.filter.us")}</option>
+              </Select>
+            </div>
+            <div>
+              <label className="mb-1.5 block text-[var(--text-sm)] font-medium text-[var(--text-secondary)]">
+                {t("portfolio.table.status")}
+              </label>
+              <Select
+                value={addForm.status}
+                onChange={(e) => setAddForm({ ...addForm, status: e.target.value as StockStatus })}
+                className="w-full"
+              >
+                {Object.entries(STATUS_LABEL_KEY).map(([v, key]) => (
+                  <option key={v} value={v}>
+                    {t(key)}
+                  </option>
+                ))}
+              </Select>
+            </div>
+          </div>
+          {addError && <p className="text-[var(--text-md)] text-[var(--negative)]">{addError}</p>}
         </div>
-        {addError && <p className="text-[var(--text-md)] text-[var(--color-error-text)]">{addError}</p>}
-      </Card>
+      </Modal>
 
       <Card className="flex flex-col gap-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
@@ -387,38 +589,38 @@ export default function PortfolioPage() {
               <button
                 key={v}
                 onClick={() => setStatusFilter(v)}
-                className={`rounded-[var(--radius-pill)] px-3 py-1 text-[var(--text-sm)] ${
+                className={`h-9 rounded-[var(--radius-pill)] border px-4 text-[var(--text-sm)] transition-colors duration-[var(--duration-fast)] ease-[var(--ease-out)] ${
                   statusFilter === v
-                    ? "bg-[var(--color-accent-primary)] text-white"
-                    : "bg-[var(--color-bg-badge)] text-[var(--color-text-secondary)]"
+                    ? "border-[var(--accent-soft-border)] bg-[var(--accent-soft)] font-semibold text-[var(--accent)]"
+                    : "border-[var(--border-default)] bg-[var(--surface-1)] font-medium text-[var(--text-secondary)] hover:bg-[var(--surface-2)]"
                 }`}
               >
                 {v === "all" ? t("portfolio.filter.all") : v === "hidden" ? t("portfolio.filter.hidden") : t(STATUS_LABEL_KEY[v])}
               </button>
             ))}
-            <span className="mx-1 w-px self-stretch bg-[var(--color-border-default)]" />
+            <span className="mx-1 w-px self-stretch bg-[var(--border-default)]" />
             {(["all", "kr", "us"] as MarketFilter[]).map((v) => (
               <button
                 key={v}
                 onClick={() => setMarketFilter(v)}
-                className={`rounded-[var(--radius-pill)] px-3 py-1 text-[var(--text-sm)] ${
+                className={`h-9 rounded-[var(--radius-pill)] border px-4 text-[var(--text-sm)] transition-colors duration-[var(--duration-fast)] ease-[var(--ease-out)] ${
                   marketFilter === v
-                    ? "bg-[var(--color-accent-primary)] text-white"
-                    : "bg-[var(--color-bg-badge)] text-[var(--color-text-secondary)]"
+                    ? "border-[var(--accent-soft-border)] bg-[var(--accent-soft)] font-semibold text-[var(--accent)]"
+                    : "border-[var(--border-default)] bg-[var(--surface-1)] font-medium text-[var(--text-secondary)] hover:bg-[var(--surface-2)]"
                 }`}
               >
                 {v === "all" ? t("portfolio.filter.all") : v === "kr" ? t("portfolio.filter.kr") : t("portfolio.filter.us")}
               </button>
             ))}
-            <span className="mx-1 w-px self-stretch bg-[var(--color-border-default)]" />
+            <span className="mx-1 w-px self-stretch bg-[var(--border-default)]" />
             {(["all", "short", "long", ""] as StyleFilter[]).map((v) => (
               <button
                 key={v || "unset"}
                 onClick={() => setStyleFilter(v)}
-                className={`rounded-[var(--radius-pill)] px-3 py-1 text-[var(--text-sm)] ${
+                className={`h-9 rounded-[var(--radius-pill)] border px-4 text-[var(--text-sm)] transition-colors duration-[var(--duration-fast)] ease-[var(--ease-out)] ${
                   styleFilter === v
-                    ? "bg-[var(--color-accent-primary)] text-white"
-                    : "bg-[var(--color-bg-badge)] text-[var(--color-text-secondary)]"
+                    ? "border-[var(--accent-soft-border)] bg-[var(--accent-soft)] font-semibold text-[var(--accent)]"
+                    : "border-[var(--border-default)] bg-[var(--surface-1)] font-medium text-[var(--text-secondary)] hover:bg-[var(--surface-2)]"
                 }`}
               >
                 {v === "all" ? t("portfolio.filter.all") : t(STYLE_LABEL_KEY[v])}
@@ -436,39 +638,39 @@ export default function PortfolioPage() {
           <div className="overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             <table className="w-full border-collapse text-left text-[var(--text-table)]">
               <thead>
-                <tr className="border-b border-[var(--color-border-default)] text-[var(--text-sm)] text-[var(--color-text-tertiary)]">
-                  <th className="py-2 pr-2 whitespace-nowrap">{t("portfolio.table.name")}</th>
-                  <th className="py-2 pr-2 whitespace-nowrap">{t("portfolio.table.ticker")}</th>
-                  <th className="py-2 pr-2 whitespace-nowrap text-right tabular-nums">{t("portfolio.table.buy")}</th>
-                  <th className="py-2 pr-2 whitespace-nowrap text-right tabular-nums">{t("portfolio.table.current")}</th>
+                <tr className="border-b border-[var(--border-default)] text-[var(--text-xs)] text-[var(--text-muted)]">
+                  <th className="py-3 pr-2 font-medium tracking-[var(--tracking-caps)] uppercase whitespace-nowrap">{t("portfolio.table.name")}</th>
+                  <th className="py-3 pr-2 font-medium tracking-[var(--tracking-caps)] uppercase whitespace-nowrap">{t("portfolio.table.ticker")}</th>
+                  <th className="py-3 pr-2 font-medium tracking-[var(--tracking-caps)] uppercase whitespace-nowrap text-right tabular-nums">{t("portfolio.table.buy")}</th>
+                  <th className="py-3 pr-2 font-medium tracking-[var(--tracking-caps)] uppercase whitespace-nowrap text-right tabular-nums">{t("portfolio.table.current")}</th>
                   <th
-                    className="py-2 pr-2 cursor-pointer select-none whitespace-nowrap text-right tabular-nums"
+                    className="py-3 pr-2 cursor-pointer select-none font-medium tracking-[var(--tracking-caps)] uppercase whitespace-nowrap text-right tabular-nums"
                     onClick={() => handleSort("qty")}
                   >
                     {t("portfolio.table.qty")} {sortIndicator("qty")}
                   </th>
                   <th
-                    className="py-2 pr-2 cursor-pointer select-none whitespace-nowrap text-right tabular-nums"
+                    className="py-3 pr-2 cursor-pointer select-none font-medium tracking-[var(--tracking-caps)] uppercase whitespace-nowrap text-right tabular-nums"
                     onClick={() => handleSort("value")}
                   >
                     {t("portfolio.table.value")} {sortIndicator("value")}
                   </th>
                   <th
-                    className="py-2 pr-2 cursor-pointer select-none whitespace-nowrap text-right tabular-nums"
+                    className="py-3 pr-2 cursor-pointer select-none font-medium tracking-[var(--tracking-caps)] uppercase whitespace-nowrap text-right tabular-nums"
                     onClick={() => handleSort("return")}
                   >
                     {t("portfolio.table.return")} {sortIndicator("return")}
                   </th>
                   <th
-                    className="py-2 pr-2 cursor-pointer select-none whitespace-nowrap text-right tabular-nums"
+                    className="py-3 pr-2 cursor-pointer select-none font-medium tracking-[var(--tracking-caps)] uppercase whitespace-nowrap text-right tabular-nums"
                     onClick={() => handleSort("weight")}
                   >
                     {t("portfolio.table.weight")} {sortIndicator("weight")}
                   </th>
-                  <th className="py-2 pr-2 whitespace-nowrap">{t("portfolio.table.status")}</th>
-                  <th className="py-2 pr-2 whitespace-nowrap">{t("portfolio.table.style")}</th>
-                  <th className="py-2 pr-2 whitespace-nowrap">{t("portfolio.table.account")}</th>
-                  <th className="py-2 pr-2"></th>
+                  <th className="py-3 pr-2 font-medium tracking-[var(--tracking-caps)] uppercase whitespace-nowrap">{t("portfolio.table.status")}</th>
+                  <th className="py-3 pr-2 font-medium tracking-[var(--tracking-caps)] uppercase whitespace-nowrap">{t("portfolio.table.style")}</th>
+                  <th className="py-3 pr-2 font-medium tracking-[var(--tracking-caps)] uppercase whitespace-nowrap">{t("portfolio.table.account")}</th>
+                  <th className="py-3 pr-2"></th>
                 </tr>
               </thead>
               <tbody>
@@ -492,6 +694,57 @@ export default function PortfolioPage() {
           </div>
         )}
       </Card>
+
+      <PortfolioNewsSection />
+    </div>
+  );
+}
+
+/** Allocation split by market (KR equity / US equity / Cash) — matches the mockup's bar + legend. */
+function AllocationBar({
+  held,
+  cashTotalUSD,
+  totalValueUSD,
+  t,
+}: {
+  held: Stock[];
+  cashTotalUSD: number;
+  totalValueUSD: number;
+  t: (k: string, params?: Record<string, string | number>) => string;
+}) {
+  let kr = 0;
+  let us = 0;
+  for (const s of held) {
+    const v = isKrTicker(s.ticker) ? (s.cur * s.qty) / 1400 : s.cur * s.qty;
+    if (isKrTicker(s.ticker)) kr += v;
+    else us += v;
+  }
+  const total = totalValueUSD + cashTotalUSD || 1;
+  const pct = (v: number) => (v / total) * 100;
+  const krPct = pct(kr);
+  const usPct = pct(us);
+  const cashPct = pct(cashTotalUSD);
+  const rows = [
+    { label: t("portfolio.alloc.kr"), pct: krPct, color: "var(--chart-line)" },
+    { label: t("portfolio.alloc.us"), pct: usPct, color: "var(--chart-alt-1)" },
+    { label: t("portfolio.alloc.cash"), pct: cashPct, color: "var(--chart-alt-3)" },
+  ];
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="flex h-3.5 gap-0.5 overflow-hidden rounded-[var(--radius-pill)]">
+        {rows.map((r) => (
+          <span key={r.label} style={{ width: Math.max(r.pct, 0.5) + "%", background: r.color }} />
+        ))}
+      </div>
+      <div className="flex flex-col gap-2.5">
+        {rows.map((r) => (
+          <div key={r.label} className="flex items-center gap-2.5 text-[var(--text-sm)]">
+            <span className="h-2.5 w-2.5 shrink-0 rounded-[3px]" style={{ background: r.color }} />
+            <span className="flex-1 text-[var(--text-secondary)]">{r.label}</span>
+            <span className="font-mono text-[var(--text-primary)]">{r.pct.toFixed(1)}%</span>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
@@ -519,13 +772,13 @@ function CashTile({
 }) {
   const t = useT();
   return (
-    <Card className="flex flex-col gap-1">
-      <div className="flex items-center justify-between gap-2 text-[var(--text-sm)] text-[var(--color-text-tertiary)]">
+    <Card className="flex flex-col gap-1.5 px-5 py-4">
+      <div className="flex items-center justify-between gap-2 text-[var(--text-sm)] text-[var(--text-secondary)]">
         <span className="truncate">{label}</span>
         {!editing && (
           <button
             onClick={onEditStart}
-            className="shrink-0 text-[var(--text-2xs)] text-[var(--color-text-secondary)] underline"
+            className="shrink-0 text-[var(--text-xs)] text-[var(--text-secondary)] underline"
           >
             {t("portfolio.cash.edit")}
           </button>
@@ -538,23 +791,25 @@ function CashTile({
             autoFocus
             value={draft}
             onChange={(e) => onDraftChange(e.target.value)}
-            className="min-w-0 flex-1 rounded-[var(--radius-control)] border border-[var(--color-warning)] px-1.5 py-1 text-right text-[var(--text-lg)] tabular-nums"
+            className="min-w-0 flex-1 rounded-[var(--radius-md)] border border-[var(--border-focus)] bg-[var(--surface-2)] px-2 py-1.5 text-right font-mono text-[var(--text-base)] text-[var(--text-primary)] focus:outline-none"
           />
           <button
             onClick={onSave}
-            className="shrink-0 rounded-[var(--radius-control)] bg-[var(--color-success)] px-2 py-1 text-[var(--text-sm)] text-white"
+            className="shrink-0 rounded-[var(--radius-md)] bg-[var(--positive)] px-2.5 py-1.5 text-[var(--text-sm)] font-semibold text-[var(--text-on-accent)] hover:bg-[var(--accent-hover)]"
           >
             {t("portfolio.cash.save")}
           </button>
           <button
             onClick={onCancel}
-            className="shrink-0 rounded-[var(--radius-control)] border border-[var(--color-border-input)] px-2 py-1 text-[var(--text-sm)] text-[var(--color-text-subtle)]"
+            className="shrink-0 rounded-[var(--radius-md)] border border-[var(--border-default)] bg-[var(--surface-2)] px-2.5 py-1.5 text-[var(--text-sm)] text-[var(--text-secondary)]"
           >
             {t("portfolio.cash.cancel")}
           </button>
         </div>
       ) : (
-        <div className="truncate text-[var(--text-2xl)] font-semibold text-[var(--color-text-primary)]">{fmt(value)}</div>
+        <div className="truncate font-mono text-[var(--text-2xl)] font-semibold tracking-[var(--tracking-mono-big)] text-[var(--text-primary)]">
+          {fmt(value)}
+        </div>
       )}
     </Card>
   );
@@ -584,10 +839,10 @@ function StockRow({
   const ac = acctColor(s.account);
   const statusClass =
     s.status === "buy"
-      ? "bg-[var(--color-success-dark)] text-white"
+      ? "bg-[var(--color-success-bg)] text-[var(--color-success)]"
       : s.status === "hold"
-        ? "bg-[var(--color-warning-dark)] text-white"
-        : "bg-[var(--color-accent)] text-white";
+        ? "bg-[var(--color-warning-bg)] text-[var(--color-warning)]"
+        : "bg-[var(--color-info-bg)] text-[var(--color-info)]";
   const styleClass =
     s.style === "short"
       ? "bg-[var(--color-trade-short-bg)] text-[var(--color-trade-short-text)]"

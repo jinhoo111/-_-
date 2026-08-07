@@ -289,11 +289,18 @@ what exists today, kept in sync with actual code rather than the plan's intent.
 
 ### Status
 
-**Phase 0 (scaffold + auth + Portfolio) is shipped**, plus a cross-cutting **EN/KO language
-toggle** (not in the original phase-0 scope, pulled forward because retrofitting it later
-across every future phase would be far more expensive). Indices, Journal, News/Research,
-Flow, Monitor, and Security admin are **not yet built** — their nav entries are deliberately
-omitted (not hidden) from `AppNav` so the app doesn't advertise 404s.
+**Feature-complete for all seven app sections plus the full admin console.** Verified
+2026-08-07: auth (Phase 0), Portfolio, Indices, Journal, News, Research, Flow, Monitor, and
+Security admin are all built on `rewrite/next` (git log: Phases 1–6 + Playwright E2E). The
+legacy Home dashboard widgets (flow bar, competitor brief, tech signal scanner, portfolio
+news) were restored 2026-08-07 on `/portfolio`; the news real-time-quotes watchlist tab,
+settings page, onboarding/profile, biz-pending overlay, help FAB + VoC form, dismissible
+disclaimer banner, auto close-price fetch, and live US earnings markers were added the same
+day. Cross-cutting EN/KO language toggle is done.
+
+Remaining parity gaps: guest sample-data mode, KR live-earnings markers, notification/
+dedup polish, `data_owner` isolation, deeper E2E interaction coverage, and cutover (Vercel
+deploy + decommission legacy) — see `MIGRATION_PLAN.md`.
 
 ### Stack
 
@@ -422,11 +429,13 @@ job, but only when the repo variable `E2E_ENABLED` is `"true"` (off by default �
 needs real `E2E_TEST_*`/`E2E_ADMIN_*` secrets configured first). Uploads the HTML report
 as an artifact on every run, pass or fail.
 
-### Not yet started (see plan for full phase order)
+### Not yet started / remaining (see MIGRATION_PLAN.md for ordered phases)
 
-Indices, Journal, News+Research, Flow, Monitor, Security admin, and cutover (domain repoint,
-SMTP, decommissioning GitHub Pages/Edge Functions) are unbuilt in `web/`. Each is its own
-future phase; do not scope-creep into them from an unrelated task.
+- **Cutover:** Vercel deploy, domain repoint, SMTP, decommissioning GitHub Pages/Edge Functions.
+- **No-login "free" switch:** Supabase dashboard Anonymous Sign-ins toggle + `ALLOW_ANON=true`
+  (code is in place and guarded; see `supabase/ANONYMOUS_SETUP.md`).
+- **Small parity items:** guest sample-data mode, KR live-earnings markers, notification/dedup
+  polish, `data_owner` isolation, per-feature E2E interaction tests.
 
 ---
 

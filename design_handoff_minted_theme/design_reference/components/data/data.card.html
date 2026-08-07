@@ -1,0 +1,41 @@
+<!-- @dsCard group="Components" viewport="700x400" subtitle="StatCard, PriceChange, Sparkline, TickerRow" name="Data & price" -->
+<!DOCTYPE html><html><head><meta charset="utf-8">
+<link rel="stylesheet" href="../../styles.css">
+<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<script src="../../ds_fallback_loader.js"></script>
+</head>
+<body style="margin:0;background:var(--surface-0);">
+<div id="root"></div>
+<script type="text/babel">
+let NS = null;
+const series = [62, 58, 64, 48, 52, 38, 42, 26, 30, 16, 10];
+function Demo() {
+  const { StatCard, PriceChange, Sparkline, TickerRow, Card } = NS;
+  return (
+    <div style={{ padding: 24, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, fontFamily: "var(--font-body)" }}>
+      <StatCard label="Total portfolio" value="₩24,180,500"
+        change={<PriceChange value={4.2} badge />} note="You're ahead of your plan"
+        spark={<Sparkline data={series} height={56} />} />
+      <Card padding="var(--space-3) var(--space-6)">
+        <TickerRow symbol="SE" name="Samsung Elec" sub="12 shares" value="₩8,940,000" change={<PriceChange value={2.1} size="sm" />} onClick={() => {}} />
+        <TickerRow symbol="NV" name="NVIDIA" sub="4 shares" value="₩6,212,300" change={<PriceChange value={-0.8} size="sm" />} onClick={() => {}} />
+        <TickerRow symbol="KO" name="KODEX 200" sub="ETF · 31 units" value="₩4,102,900" change={<PriceChange value={0} size="sm" />} onClick={() => {}} />
+      </Card>
+      <div style={{ gridColumn: "1 / -1", display: "flex", gap: 16, alignItems: "center" }}>
+        <PriceChange value={12.4} size="lg" badge />
+        <PriceChange value={-3.2} size="lg" badge />
+        <span data-price-convention="kr" style={{ display: "inline-flex", gap: 12 }}>
+          <PriceChange value={12.4} size="lg" badge />
+          <PriceChange value={-3.2} size="lg" badge />
+        </span>
+        <span style={{ color: "var(--text-muted)", fontSize: 12 }}>← same components under data-price-convention="kr"</span>
+      </div>
+    </div>
+  );
+}
+const root = ReactDOM.createRoot(document.getElementById("root"));
+window.loadMintedNS("../../").then((ns) => { NS = ns; root.render(<Demo />); });
+</script>
+</body></html>

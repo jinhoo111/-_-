@@ -1,0 +1,58 @@
+<!-- @dsCard group="Minted app" viewport="1280x800" subtitle="Interactive click-through: login → portfolio, indices, news; live theme + KR-color toggles" name="Minted app" -->
+<!-- @startingPoint section="Screens" subtitle="Full app shell with portfolio dashboard" viewport="1280x800" -->
+<!DOCTYPE html><html><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Minted — app</title>
+<link rel="stylesheet" href="../../styles.css">
+<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<script src="../../ds_fallback_loader.js"></script>
+<style>body { margin: 0; background: #081410; }</style>
+</head>
+<body>
+<div id="root"><div style="min-height:100vh;display:flex;align-items:center;justify-content:center;font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:28px;letter-spacing:-0.03em;color:#EFF7F0;">minted<span style="color:#7BE8B0;">.</span></div></div>
+<script type="text/babel">
+let NS = null;
+
+function App() {
+  const { AppShell, PortfolioScreen, IndicesScreen, NewsScreen, JournalScreen, FlowScreen, MonitorScreen, LoginScreen, EmptyState, Button } = NS;
+  const [authed, setAuthed] = React.useState(true);
+  const [screen, setScreen] = React.useState("Portfolio");
+  const [theme, setTheme] = React.useState("dark");
+  const [convention, setConvention] = React.useState("western");
+  const [name, setName] = React.useState("Jiwoo");
+  React.useEffect(() => {
+    const el = document.documentElement;
+    if (theme === "light") el.setAttribute("data-theme", "light"); else el.removeAttribute("data-theme");
+    if (convention === "kr") el.setAttribute("data-price-convention", "kr"); else el.removeAttribute("data-price-convention");
+    document.body.style.background = theme === "light" ? "#F2F7F3" : "#081410";
+  }, [theme, convention]);
+  if (!authed) return <LoginScreen onLogin={() => setAuthed(true)} />;
+  const body =
+    screen === "Portfolio" ? <PortfolioScreen name={name} /> :
+    screen === "Indices" ? <IndicesScreen /> :
+    screen === "News" ? <NewsScreen /> :
+    screen === "Journal" ? <JournalScreen /> :
+    screen === "Flow" ? <FlowScreen /> :
+    screen === "Monitor" ? <MonitorScreen /> :
+    <EmptyState
+      title={screen + " isn't designed yet"}
+      description="This kit covers login, portfolio, indices and news. Ask to extend it."
+      action={<Button size="sm" variant="secondary" onClick={() => setScreen("Portfolio")}>Back to portfolio</Button>}
+      style={{ paddingTop: 120 }}
+    />;
+  return (
+    <AppShell active={screen} onNav={setScreen} onLogout={() => setAuthed(false)}
+      theme={theme} onTheme={setTheme} convention={convention} onConvention={setConvention}
+      name={name} onName={setName}>
+      {body}
+    </AppShell>
+  );
+}
+
+const root = ReactDOM.createRoot(document.getElementById("root"));
+window.loadMintedNS("../../").then((ns) => { NS = ns; root.render(<App />); })
+  .catch((e) => root.render(<div style={{ color: "#5F8272", padding: 24, fontFamily: "sans-serif" }}>Couldn't load components: {String(e)}</div>));
+</script>
+</body></html>

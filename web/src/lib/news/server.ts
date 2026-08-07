@@ -19,25 +19,91 @@ async function fhFetch<T>(path: string, params: Record<string, string>): Promise
 }
 
 // ── Public market news (category, no auth needed by callers) ──
+const MARKET_NEWS_RSS: Record<string, { q: string; source: string }> = {
+  general: { q: "stock market news", source: "Google News" },
+  forex: { q: "forex currency market news", source: "Google News" },
+  crypto: { q: "bitcoin cryptocurrency news", source: "Google News" },
+  merger: { q: "merger acquisition deal news", source: "Google News" },
+};
+
+function cleanHtml(s: string): string {
+  let out = s.replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, "$1");
+  // Unescape entities (may be double-encoded: &amp;nbsp; → &nbsp; → space), then strip tags.
+  for (let i = 0; i < 3; i++) {
+    out = out
+      .replace(/&nbsp;/g, " ")
+      .replace(/&amp;/g, "&")
+      .replace(/&lt;/g, "<")
+      .replace(/&gt;/g, ">")
+      .replace(/&quot;/g, '"')
+      .replace(/&#0?39;/g, "'")
+      .replace(/&#x27;/gi, "'");
+  }
+  return out.replace(/<[^>]+>/g, "").replace(/\s+/g, " ").trim();
+}
+
+// Collapse repeated whitespace, normalize case/punct so we can compare headline vs summary.
+function normText(s: string): string {
+  return s.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").replace(/\s+/g, " ").trim();
+}
+
+function rssToNewsItem(item: RssItem): NewsItem {
+  const headline = cleanHtml(item.title);
+  let summary = cleanHtml(item.summary);
+  // Google News RSS <description> often repeats the <title> (+ source name). If the
+  // summary is a near-duplicate of the headline, drop it so the UI doesn't show the
+  // same text twice.
+  if (summary && normText(summary).startsWith(normText(headline))) {
+    summary = "";
+  }
+  return {
+    headline,
+    summary,
+    url: item.link,
+    source: item.source,
+    datetime: item.date ? Math.floor(new Date(item.date).getTime() / 1000) : Math.floor(Date.now() / 1000),
+  };
+}
+
 export async function getMarketNews(category: string): Promise<NewsItem[]> {
-  const key = `news:public:${category}`;
+  // v5 key: v4 rows held summaries duplicating the headline.
+  const key = `news:public:v5:${category}`;
   const cached = await cacheGet(key, PUBLIC_NEWS_TTL_MS);
   if (cached) return cached as NewsItem[];
   try {
     const data = await fhFetch<NewsItem[]>("news", { category });
     const items = Array.isArray(data) ? data.slice(0, 20) : [];
+    if (items.length) {
+      await cacheSet(key, items);
+      return items;
+    }
+    // Finnhub returned empty — fall through to RSS
+  } catch {
+    // Finnhub failed — fall through to RSS
+  }
+  // Fallback: Google News RSS (same proxy approach as regulator feeds), so the
+  // market-news tab always has content even when Finnhub rate-limits us.
+  const cfg = MARKET_NEWS_RSS[category] ?? MARKET_NEWS_RSS.general;
+  const rssUrl = `https://news.google.com/rss/search?q=${encodeURIComponent(cfg.q)}&hl=en-US&gl=US&ceid=US:en`;
+  const items: NewsItem[] = [];
+  try {
+    const xml = await fetchRssXml(rssUrl);
+    const parsed = parseRssItems(xml, cfg.source, 20);
+    items.push(...parsed.map(rssToNewsItem));
     await cacheSet(key, items);
     return items;
-  } catch (e) {
+  } catch {
+    // Even RSS failed — return stale if any, else empty (caller shows empty state).
     const stale = await cacheGetStale(key);
     if (stale) return stale as NewsItem[];
-    throw e;
+    return [];
   }
 }
 
 // ── Per-ticker company news ──
 export async function getCompanyNews(symbol: string): Promise<NewsItem[]> {
-  const key = `news:company:${symbol}`;
+  // v3 key: v2 rows held summaries duplicating the headline.
+  const key = `news:company:v3:${symbol}`;
   const cached = await cacheGet(key, COMPANY_NEWS_TTL_MS);
   if (cached) return cached as NewsItem[];
   const to = new Date().toISOString().slice(0, 10);
@@ -45,12 +111,25 @@ export async function getCompanyNews(symbol: string): Promise<NewsItem[]> {
   try {
     const data = await fhFetch<NewsItem[]>("company-news", { symbol, from, to });
     const items = Array.isArray(data) ? data.slice(0, 20) : [];
+    if (items.length) {
+      await cacheSet(key, items);
+      return items;
+    }
+  } catch {
+    // Finnhub failed — fall through to RSS
+  }
+  // Fallback: Google News RSS for the ticker, so company news never shows a dead page.
+  const rssUrl = `https://news.google.com/rss/search?q=${encodeURIComponent(symbol + " stock")}&hl=en-US&gl=US&ceid=US:en`;
+  try {
+    const xml = await fetchRssXml(rssUrl);
+    const parsed = parseRssItems(xml, "Google News", 20);
+    const items = parsed.map(rssToNewsItem);
     await cacheSet(key, items);
     return items;
-  } catch (e) {
+  } catch {
     const stale = await cacheGetStale(key);
     if (stale) return stale as NewsItem[];
-    throw e;
+    return [];
   }
 }
 

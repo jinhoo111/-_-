@@ -1,11 +1,31 @@
 "use client";
 
-import { dateKey, dayLedgerIcon, glucoseByDay, glucoseStatus, gluStatusColor, healthByDay, impulseByDay, scheduleSort, tagMeta, workoutByDay } from "@/lib/journal/constants";
+import { dateKey, dayLedgerIcon, glucoseByDay, healthByDay, impulseByDay, scheduleSort, workoutByDay } from "@/lib/journal/constants";
 import type { GlucoseEntry, ImpulseTradeEntry, LedgerEntry, MarketEvent, MemoArchiveEntry, ScheduleEntry, WeightEntry } from "@/lib/types/userData";
 import { useT } from "@/lib/i18n/LanguageProvider";
 import { useLang } from "@/lib/i18n/LanguageProvider";
 
-const MAX_CHIPS = 3;
+const MAX_CHIPS = 5;
+
+// Compact colored-dot legend for day cells (mockup: mint dot = trade, sky dot = note).
+function chipDotColor(kind: string): string {
+  switch (kind) {
+    case "event":
+      return "var(--warning)";
+    case "schedule":
+      return "var(--accent)";
+    case "weight":
+      return "var(--info)";
+    case "glucose":
+      return "var(--negative)";
+    case "workout":
+      return "var(--positive)";
+    case "impulse":
+      return "var(--negative)";
+    default:
+      return "var(--chart-alt-1)";
+  }
+}
 
 export function CalendarGrid({
   year,
@@ -79,15 +99,15 @@ export function CalendarGrid({
         <button
           onClick={() => onNavigate(-1)}
           aria-label={t("journal.calendar.prevMonth")}
-          className="rounded-[var(--radius-control)] px-2.5 py-1 text-[var(--text-lg)] text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-overlay)]"
+          className="flex h-9 w-9 items-center justify-center rounded-[var(--radius-md)] text-[var(--text-lg)] text-[var(--text-secondary)] transition-colors duration-[var(--duration-fast)] ease-[var(--ease-out)] hover:bg-[var(--surface-2)]"
         >
           ‹
         </button>
-        <div className="text-[var(--text-lg)] font-semibold text-[var(--color-text-primary)]">{monthLabel}</div>
+        <div className="font-display text-[var(--text-lg)] font-semibold text-[var(--text-primary)]">{monthLabel}</div>
         <button
           onClick={() => onNavigate(1)}
           aria-label={t("journal.calendar.nextMonth")}
-          className="rounded-[var(--radius-control)] px-2.5 py-1 text-[var(--text-lg)] text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-overlay)]"
+          className="flex h-9 w-9 items-center justify-center rounded-[var(--radius-md)] text-[var(--text-lg)] text-[var(--text-secondary)] transition-colors duration-[var(--duration-fast)] ease-[var(--ease-out)] hover:bg-[var(--surface-2)]"
         >
           ›
         </button>
@@ -95,7 +115,7 @@ export function CalendarGrid({
 
       <div className="grid grid-cols-7 gap-1">
         {weekdayLabels.map((w) => (
-          <div key={w} className="py-1 text-center text-[var(--text-xs)] font-medium text-[var(--color-text-tertiary)]">
+          <div key={w} className="py-1 text-center text-[var(--text-xs)] font-medium text-[var(--text-muted)]">
             {w}
           </div>
         ))}
@@ -126,71 +146,29 @@ export function CalendarGrid({
             <button
               key={key}
               onClick={() => onSelectDay(key)}
-              className={`flex min-h-[64px] flex-col items-start gap-0.5 rounded-[var(--radius-control)] border p-1 text-left ${
+              className={`flex min-h-[64px] flex-col items-start gap-0.5 rounded-[var(--radius-md)] border p-1 text-left transition-colors duration-[var(--duration-fast)] ease-[var(--ease-out)] ${
                 isSelected
-                  ? "border-[var(--color-accent-primary)] bg-[var(--color-accent-subtle)]"
-                  : "border-[var(--color-border-default)] bg-[var(--color-bg-surface)] hover:bg-[var(--color-bg-overlay)]"
+                  ? "border-[var(--accent-soft-border)] bg-[var(--accent-soft)]"
+                  : "border-[var(--border-default)] bg-[var(--surface-1)] hover:bg-[var(--surface-2)]"
               }`}
             >
-              <span className="flex w-full items-center justify-between text-[var(--text-xs)] text-[var(--color-text-secondary)]">
+              <span className="flex w-full items-center justify-between font-mono text-[var(--text-xs)] text-[var(--text-secondary)]">
                 {day}
-                {ledgerIcon && <span>{ledgerIcon === "expense" ? "💸" : "💰"}</span>}
+                {ledgerIcon && <span className="text-[10px]">{ledgerIcon === "expense" ? "💸" : "💰"}</span>}
               </span>
-              {chips.slice(0, MAX_CHIPS).map((c, i) =>
-                c.kind === "event" ? (
-                  <span key={i} className="w-full truncate rounded px-1 text-[var(--text-2xs)] font-medium bg-[var(--color-bg-badge)] text-[var(--color-text-tertiary)]">
-                    {t(`journal.event.${c.e.type}`) === `journal.event.${c.e.type}` ? c.e.title : t(`journal.event.${c.e.type}`)}
-                  </span>
-                ) : c.kind === "schedule" ? (
-                  <span key={i} className="w-full truncate rounded px-1 text-[var(--text-2xs)] font-medium bg-[var(--color-accent-subtle)] text-[var(--color-accent-indigo)]">
-                    📅 {c.s.time ? `${c.s.time} ` : ""}
-                    {c.s.title}
-                  </span>
-                ) : c.kind === "weight" ? (
-                  <span key={i} className="w-full truncate rounded px-1 text-[var(--text-2xs)] font-medium bg-[var(--color-info-bg)] text-[var(--color-info)]">
-                    ⚖️ {c.kg}
-                  </span>
-                ) : c.kind === "glucose" ? (
-                  (() => {
-                    const st = glucoseStatus(c.g.slot, c.g.mgdl);
-                    const col = st.key === "high" || st.key === "low" ? gluStatusColor(st.key) : { bg: "--color-info-bg", fg: "--color-info" };
-                    return (
-                      <span key={i} className="w-full truncate rounded px-1 text-[var(--text-2xs)] font-medium" style={{ background: `var(${col.bg})`, color: `var(${col.fg})` }}>
-                        🩸 {c.g.mgdl}
-                      </span>
-                    );
-                  })()
-                ) : c.kind === "workout" ? (
+              <span className="flex min-h-[6px] w-full flex-wrap items-center gap-[3px]">
+                {chips.slice(0, MAX_CHIPS).map((c, i) => (
                   <span
                     key={i}
-                    className="w-full truncate rounded px-1 text-[var(--text-2xs)] font-medium"
-                    style={{
-                      background: c.w === "done" ? "var(--color-success-bg)" : "var(--color-bg-overlay)",
-                      color: c.w === "done" ? "var(--color-success-text)" : "var(--color-text-muted)",
-                    }}
-                  >
-                    {c.w === "done" ? "💪" : "🛌"} {t(c.w === "done" ? "journal.workout.done" : "journal.workout.off")}
-                  </span>
-                ) : c.kind === "impulse" ? (
-                  <span
-                    key={i}
-                    className="w-full truncate rounded px-1 text-[var(--text-2xs)] font-bold"
-                    style={{ background: "var(--color-error-bg)", color: "var(--color-error-text)" }}
-                  >
-                    🧨 {t("journal.impulse.chip")}
-                  </span>
-                ) : (
-                  <span
-                    key={i}
-                    className="w-full truncate rounded px-1 text-[var(--text-2xs)] font-medium"
-                    style={{ background: `var(${tagMeta(c.e.tag).bg})`, color: `var(${tagMeta(c.e.tag).fg})` }}
-                  >
-                    {c.e.text}
-                  </span>
-                ),
-              )}
+                    className="h-[6px] w-[6px] rounded-full"
+                    style={{ background: chipDotColor(c.kind) }}
+                  />
+                ))}
+              </span>
               {chips.length > MAX_CHIPS && (
-                <span className="text-[var(--text-2xs)] text-[var(--color-text-tertiary)]">{t("journal.calendar.more", { count: chips.length - MAX_CHIPS })}</span>
+                <span className="text-[var(--text-xs)] text-[var(--text-muted)]">
+                  {t("journal.calendar.more", { count: chips.length - MAX_CHIPS })}
+                </span>
               )}
             </button>
           );

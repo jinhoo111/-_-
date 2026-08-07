@@ -1,0 +1,43 @@
+<!-- @dsCard group="Components" viewport="700x400" subtitle="Card, Badge, Toast, EmptyState, Skeleton" name="Display & feedback" -->
+<!DOCTYPE html><html><head><meta charset="utf-8">
+<link rel="stylesheet" href="../../styles.css">
+<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<script src="../../ds_fallback_loader.js"></script>
+</head>
+<body style="margin:0;background:var(--surface-0);">
+<div id="root"></div>
+<script type="text/babel">
+let NS = null;
+function Demo() {
+  const { Card, Badge, Toast, EmptyState, Skeleton, Button } = NS;
+  return (
+    <div style={{ padding: 24, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, fontFamily: "var(--font-body)" }}>
+      <Card title="Holdings" subtitle="Updated 2 min ago" action={<Button variant="ghost" size="sm">View all</Button>}>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <Badge tone="neutral">Watching</Badge>
+          <Badge tone="accent">Pro</Badge>
+          <Badge tone="positive" mono>+4.2%</Badge>
+          <Badge tone="negative" mono>−0.8%</Badge>
+          <Badge tone="warning">Earnings soon</Badge>
+          <Badge tone="info">Dividend</Badge>
+        </div>
+        <div style={{ marginTop: 16, display: "flex", flexDirection: "column", gap: 8 }}>
+          <Skeleton height={14} width="70%" />
+          <Skeleton height={14} width="45%" />
+        </div>
+      </Card>
+      <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+        <Toast tone="success" title="Trade logged" description="Samsung Elec ×12 added to your journal." onDismiss={() => {}} />
+        <Card padding="0">
+          <EmptyState title="No holdings yet" description="Add your first investment and Minted will start tracking it." action={<Button size="sm">Add an investment</Button>} />
+        </Card>
+      </div>
+    </div>
+  );
+}
+const root = ReactDOM.createRoot(document.getElementById("root"));
+window.loadMintedNS("../../").then((ns) => { NS = ns; root.render(<Demo />); });
+</script>
+</body></html>

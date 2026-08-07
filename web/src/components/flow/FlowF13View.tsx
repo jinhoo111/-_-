@@ -119,22 +119,22 @@ function TopTable({ rows }: { rows: F13TopHolding[] }) {
     <div className="overflow-x-auto">
       <table className="w-full border-collapse text-left text-[var(--text-table)]">
         <thead>
-          <tr className="border-b border-[var(--color-border-default)] text-[var(--text-sm)] text-[var(--color-text-tertiary)]">
-            <th className="py-2 pr-2">{t("flow.f13.table.name")}</th>
-            <th className="py-2 pr-2 text-right tabular-nums">{t("flow.f13.table.value")}</th>
-            <th className="py-2 pr-2 text-right tabular-nums">{t("flow.f13.table.weight")}</th>
-            <th className="py-2 pr-2 text-right tabular-nums">{t("flow.f13.table.shares")}</th>
-            <th className="py-2 pr-2 text-right tabular-nums">{t("flow.f13.table.price")}</th>
+          <tr className="border-b border-[var(--border-default)] text-[var(--text-xs)] text-[var(--text-muted)]">
+            <th className="py-3 pr-2 font-medium tracking-[var(--tracking-caps)] uppercase">{t("flow.f13.table.name")}</th>
+            <th className="py-3 pr-2 text-right font-medium tracking-[var(--tracking-caps)] uppercase tabular-nums">{t("flow.f13.table.value")}</th>
+            <th className="py-3 pr-2 text-right font-medium tracking-[var(--tracking-caps)] uppercase tabular-nums">{t("flow.f13.table.weight")}</th>
+            <th className="py-3 pr-2 text-right font-medium tracking-[var(--tracking-caps)] uppercase tabular-nums">{t("flow.f13.table.shares")}</th>
+            <th className="py-3 pr-2 text-right font-medium tracking-[var(--tracking-caps)] uppercase tabular-nums">{t("flow.f13.table.price")}</th>
           </tr>
         </thead>
         <tbody>
           {rows.map((r) => (
-            <tr key={r.cusip} className="border-b border-[var(--color-border-faint)]">
-              <td className="py-2 pr-2 font-semibold text-[var(--color-text-primary)]">{r.name}</td>
-              <td className="py-2 pr-2 text-right tabular-nums font-mono">{f13Money(r.value)}</td>
-              <td className="py-2 pr-2 text-right tabular-nums">{r.weight}%</td>
-              <td className="py-2 pr-2 text-right tabular-nums">{r.shares.toLocaleString()}</td>
-              <td className="py-2 pr-2 text-right tabular-nums text-[var(--color-text-tertiary)]">{f13Px(r.endPrice)}</td>
+            <tr key={r.cusip} className="border-b border-[var(--border-default)] transition-colors duration-[var(--duration-fast)] ease-[var(--ease-out)] hover:bg-[var(--surface-2)]">
+              <td className="py-3 pr-2 font-semibold text-[var(--text-primary)]">{r.name}</td>
+              <td className="py-3 pr-2 text-right font-mono tabular-nums">{f13Money(r.value)}</td>
+              <td className="py-3 pr-2 text-right font-mono tabular-nums">{r.weight}%</td>
+              <td className="py-3 pr-2 text-right font-mono tabular-nums">{r.shares.toLocaleString()}</td>
+              <td className="py-3 pr-2 text-right font-mono tabular-nums text-[var(--color-text-tertiary)]">{f13Px(r.endPrice)}</td>
             </tr>
           ))}
         </tbody>
@@ -150,20 +150,20 @@ function AddedTable({ rows }: { rows: F13Added[] }) {
     <div className="overflow-x-auto">
       <table className="w-full border-collapse text-left text-[var(--text-table)]">
         <thead>
-          <tr className="border-b border-[var(--color-border-default)] text-[var(--text-sm)] text-[var(--color-text-tertiary)]">
-            <th className="py-2 pr-2">{t("flow.f13.table.name")}</th>
-            <th className="py-2 pr-2 text-right tabular-nums">{t("flow.f13.table.value")}</th>
-            <th className="py-2 pr-2 text-right tabular-nums">{t("flow.f13.table.shares")}</th>
-            <th className="py-2 pr-2 text-right tabular-nums">{t("flow.f13.table.price")}</th>
+          <tr className="border-b border-[var(--border-default)] text-[var(--text-xs)] text-[var(--text-muted)]">
+            <th className="py-3 pr-2 font-medium tracking-[var(--tracking-caps)] uppercase">{t("flow.f13.table.name")}</th>
+            <th className="py-3 pr-2 text-right font-medium tracking-[var(--tracking-caps)] uppercase tabular-nums">{t("flow.f13.table.value")}</th>
+            <th className="py-3 pr-2 text-right font-medium tracking-[var(--tracking-caps)] uppercase tabular-nums">{t("flow.f13.table.shares")}</th>
+            <th className="py-3 pr-2 text-right font-medium tracking-[var(--tracking-caps)] uppercase tabular-nums">{t("flow.f13.table.price")}</th>
           </tr>
         </thead>
         <tbody>
           {rows.map((r) => (
-            <tr key={r.cusip} className="border-b border-[var(--color-border-faint)]">
-              <td className="py-2 pr-2 font-semibold text-[var(--color-up)]">{r.name}</td>
-              <td className="py-2 pr-2 text-right tabular-nums font-mono">{f13Money(r.value)}</td>
-              <td className="py-2 pr-2 text-right tabular-nums">{r.shares.toLocaleString()}</td>
-              <td className="py-2 pr-2 text-right tabular-nums text-[var(--color-text-tertiary)]">{f13Px(r.endPrice)}</td>
+            <tr key={r.cusip} className="border-b border-[var(--border-default)] transition-colors duration-[var(--duration-fast)] ease-[var(--ease-out)] hover:bg-[var(--surface-2)]">
+              <td className="py-3 pr-2 font-semibold text-[var(--color-up)]">{r.name}</td>
+              <td className="py-3 pr-2 text-right font-mono tabular-nums">{f13Money(r.value)}</td>
+              <td className="py-3 pr-2 text-right font-mono tabular-nums">{r.shares.toLocaleString()}</td>
+              <td className="py-3 pr-2 text-right font-mono tabular-nums text-[var(--color-text-tertiary)]">{f13Px(r.endPrice)}</td>
             </tr>
           ))}
         </tbody>
@@ -179,20 +179,20 @@ function ExitedTable({ rows }: { rows: F13Exited[] }) {
     <div className="overflow-x-auto">
       <table className="w-full border-collapse text-left text-[var(--text-table)]">
         <thead>
-          <tr className="border-b border-[var(--color-border-default)] text-[var(--text-sm)] text-[var(--color-text-tertiary)]">
-            <th className="py-2 pr-2">{t("flow.f13.table.name")}</th>
-            <th className="py-2 pr-2 text-right tabular-nums">{t("flow.f13.table.value")}</th>
-            <th className="py-2 pr-2 text-right tabular-nums">{t("flow.f13.table.shares")}</th>
-            <th className="py-2 pr-2 text-right tabular-nums">{t("flow.f13.table.price")}</th>
+          <tr className="border-b border-[var(--border-default)] text-[var(--text-xs)] text-[var(--text-muted)]">
+            <th className="py-3 pr-2 font-medium tracking-[var(--tracking-caps)] uppercase">{t("flow.f13.table.name")}</th>
+            <th className="py-3 pr-2 text-right font-medium tracking-[var(--tracking-caps)] uppercase tabular-nums">{t("flow.f13.table.value")}</th>
+            <th className="py-3 pr-2 text-right font-medium tracking-[var(--tracking-caps)] uppercase tabular-nums">{t("flow.f13.table.shares")}</th>
+            <th className="py-3 pr-2 text-right font-medium tracking-[var(--tracking-caps)] uppercase tabular-nums">{t("flow.f13.table.price")}</th>
           </tr>
         </thead>
         <tbody>
           {rows.map((r) => (
-            <tr key={r.cusip} className="border-b border-[var(--color-border-faint)]">
-              <td className="py-2 pr-2 font-semibold text-[var(--color-down)]">{r.name}</td>
-              <td className="py-2 pr-2 text-right tabular-nums font-mono">{f13Money(r.prevValue)}</td>
-              <td className="py-2 pr-2 text-right tabular-nums">{r.prevShares.toLocaleString()}</td>
-              <td className="py-2 pr-2 text-right tabular-nums text-[var(--color-text-tertiary)]">{f13Px(r.prevEndPrice)}</td>
+            <tr key={r.cusip} className="border-b border-[var(--border-default)] transition-colors duration-[var(--duration-fast)] ease-[var(--ease-out)] hover:bg-[var(--surface-2)]">
+              <td className="py-3 pr-2 font-semibold text-[var(--color-down)]">{r.name}</td>
+              <td className="py-3 pr-2 text-right font-mono tabular-nums">{f13Money(r.prevValue)}</td>
+              <td className="py-3 pr-2 text-right font-mono tabular-nums">{r.prevShares.toLocaleString()}</td>
+              <td className="py-3 pr-2 text-right font-mono tabular-nums text-[var(--color-text-tertiary)]">{f13Px(r.prevEndPrice)}</td>
             </tr>
           ))}
         </tbody>
@@ -208,22 +208,22 @@ function ChangedTable({ rows }: { rows: F13Changed[] }) {
     <div className="overflow-x-auto">
       <table className="w-full border-collapse text-left text-[var(--text-table)]">
         <thead>
-          <tr className="border-b border-[var(--color-border-default)] text-[var(--text-sm)] text-[var(--color-text-tertiary)]">
-            <th className="py-2 pr-2">{t("flow.f13.table.name")}</th>
-            <th className="py-2 pr-2 text-right tabular-nums">{t("flow.f13.table.value")}</th>
-            <th className="py-2 pr-2 text-right tabular-nums">{t("flow.f13.table.shares")}</th>
-            <th className="py-2 pr-2 text-right tabular-nums">{t("flow.f13.table.price")}</th>
-            <th className="py-2 pr-2 text-right tabular-nums">{t("flow.f13.table.diff")}</th>
+          <tr className="border-b border-[var(--border-default)] text-[var(--text-xs)] text-[var(--text-muted)]">
+            <th className="py-3 pr-2 font-medium tracking-[var(--tracking-caps)] uppercase">{t("flow.f13.table.name")}</th>
+            <th className="py-3 pr-2 text-right font-medium tracking-[var(--tracking-caps)] uppercase tabular-nums">{t("flow.f13.table.value")}</th>
+            <th className="py-3 pr-2 text-right font-medium tracking-[var(--tracking-caps)] uppercase tabular-nums">{t("flow.f13.table.shares")}</th>
+            <th className="py-3 pr-2 text-right font-medium tracking-[var(--tracking-caps)] uppercase tabular-nums">{t("flow.f13.table.price")}</th>
+            <th className="py-3 pr-2 text-right font-medium tracking-[var(--tracking-caps)] uppercase tabular-nums">{t("flow.f13.table.diff")}</th>
           </tr>
         </thead>
         <tbody>
           {rows.map((r) => (
-            <tr key={r.cusip} className="border-b border-[var(--color-border-faint)]">
-              <td className="py-2 pr-2 font-semibold text-[var(--color-text-primary)]">{r.name}</td>
-              <td className="py-2 pr-2 text-right tabular-nums font-mono">{f13Money(r.value)}</td>
-              <td className="py-2 pr-2 text-right tabular-nums">{r.shares.toLocaleString()}</td>
-              <td className="py-2 pr-2 text-right tabular-nums text-[var(--color-text-tertiary)]">{f13Px(r.endPrice)}</td>
-              <td className={`py-2 pr-2 text-right tabular-nums font-semibold ${r.diff >= 0 ? "text-[var(--color-up)]" : "text-[var(--color-down)]"}`}>
+            <tr key={r.cusip} className="border-b border-[var(--border-default)] transition-colors duration-[var(--duration-fast)] ease-[var(--ease-out)] hover:bg-[var(--surface-2)]">
+              <td className="py-3 pr-2 font-semibold text-[var(--text-primary)]">{r.name}</td>
+              <td className="py-3 pr-2 text-right font-mono tabular-nums">{f13Money(r.value)}</td>
+              <td className="py-3 pr-2 text-right font-mono tabular-nums">{r.shares.toLocaleString()}</td>
+              <td className="py-3 pr-2 text-right font-mono tabular-nums text-[var(--color-text-tertiary)]">{f13Px(r.endPrice)}</td>
+              <td className={`py-3 pr-2 text-right font-mono tabular-nums font-semibold ${r.diff >= 0 ? "text-[var(--color-up)]" : "text-[var(--color-down)]"}`}>
                 {(r.diff >= 0 ? "+" : "") + r.pct}%
               </td>
             </tr>

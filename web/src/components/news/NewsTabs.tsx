@@ -1,29 +1,17 @@
 "use client";
 
 import { useT } from "@/lib/i18n/LanguageProvider";
+import { Tabs } from "@/components/ui/Tabs";
 
-export type NewsView = "market" | "company" | "naver";
+export type NewsView = "market" | "company" | "naver" | "quotes";
 
 export function NewsTabs({ view, onChange }: { view: NewsView; onChange: (v: NewsView) => void }) {
   const t = useT();
-  const tabs: { key: NewsView; labelKey: string }[] = [
-    { key: "market", labelKey: "news.tab.market" },
-    { key: "company", labelKey: "news.tab.company" },
-    { key: "naver", labelKey: "news.tab.naver" },
+  const tabs: { id: NewsView; label: string }[] = [
+    { id: "market", label: t("news.tab.market") },
+    { id: "company", label: t("news.tab.company") },
+    { id: "naver", label: t("news.tab.naver") },
+    { id: "quotes", label: t("news.tab.quotes") },
   ];
-  return (
-    <div className="flex gap-1">
-      {tabs.map((tab) => (
-        <button
-          key={tab.key}
-          onClick={() => onChange(tab.key)}
-          className={`rounded-[var(--radius-pill)] px-3 py-1.5 text-[var(--text-sm)] ${
-            view === tab.key ? "bg-[var(--color-accent-primary)] text-white" : "bg-[var(--color-bg-badge)] text-[var(--color-text-secondary)]"
-          }`}
-        >
-          {t(tab.labelKey)}
-        </button>
-      ))}
-    </div>
-  );
+  return <Tabs items={tabs} value={view} onChange={(id) => onChange(id as NewsView)} />;
 }

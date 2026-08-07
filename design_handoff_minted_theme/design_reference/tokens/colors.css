@@ -1,0 +1,114 @@
+/* Minted color system. Dark is the primary theme (:root). Light via [data-theme="light"].
+   Price direction is a USER SETTING: default western (up=green), [data-price-convention="kr"] flips to up=red / down=blue. */
+:root {
+  /* Surfaces (dark) */
+  --surface-0: #081410;   /* page background */
+  --surface-1: #0C1F17;   /* card */
+  --surface-2: #12291E;   /* nested / raised */
+  --surface-3: #173326;   /* hover / active fill */
+  --surface-overlay: rgba(8, 20, 16, 0.72);
+
+  /* Text */
+  --text-primary: #EFF7F0;
+  --text-secondary: #8FAE9C;
+  --text-muted: #5F8272;
+  --text-disabled: #3E5A4B;
+  --text-on-accent: #0C1F17;
+
+  /* Borders */
+  --border-default: #1B3A2C;
+  --border-strong: #2A4F3B;
+  --border-focus: #7BE8B0;
+
+  /* Brand accent — mint */
+  --accent: #7BE8B0;
+  --accent-hover: #93F0C1;
+  --accent-pressed: #5ED99C;
+  --accent-soft: rgba(123, 232, 176, 0.14);
+  --accent-soft-border: rgba(123, 232, 176, 0.32);
+
+  /* Semantic */
+  --positive: #5ED99C;
+  --positive-soft: rgba(94, 217, 156, 0.14);
+  --negative: #FF9E8A;
+  --negative-soft: rgba(255, 158, 138, 0.14);
+  --warning: #FFD66B;
+  --warning-soft: rgba(255, 214, 107, 0.14);
+  --info: #8AC6FF;
+  --info-soft: rgba(138, 198, 255, 0.14);
+
+  /* Price direction (default: western) */
+  --price-up: #5ED99C;
+  --price-up-soft: rgba(94, 217, 156, 0.14);
+  --price-down: #FF9E8A;
+  --price-down-soft: rgba(255, 158, 138, 0.14);
+  --price-flat: #5F8272;
+
+  /* Charts */
+  --chart-line: #7BE8B0;
+  --chart-fill-top: rgba(123, 232, 176, 0.30);
+  --chart-fill-bottom: rgba(123, 232, 176, 0);
+  --chart-grid: rgba(143, 174, 156, 0.12);
+  --chart-alt-1: #8AC6FF;
+  --chart-alt-2: #FFD66B;
+  --chart-alt-3: #D0A6FF;
+}
+
+[data-price-convention="kr"] {
+  --price-up: #FF7A6B;
+  --price-up-soft: rgba(255, 122, 107, 0.14);
+  --price-down: #6BA8FF;
+  --price-down-soft: rgba(107, 168, 255, 0.14);
+}
+
+[data-theme="light"] {
+  --surface-0: #F2F7F3;
+  --surface-1: #FFFFFF;
+  --surface-2: #EAF3EC;
+  --surface-3: #DFEDE3;
+  --surface-overlay: rgba(18, 41, 30, 0.40);
+
+  --text-primary: #12291E;
+  --text-secondary: #4E6B5B;
+  --text-muted: #7E988A;
+  --text-disabled: #AEC4B6;
+  --text-on-accent: #FFFFFF;
+
+  --border-default: #DCE9DF;
+  --border-strong: #C2D6C8;
+  --border-focus: #0E9F63;
+
+  --accent: #0E9F63;
+  --accent-hover: #0B8A55;
+  --accent-pressed: #097348;
+  --accent-soft: rgba(14, 159, 99, 0.10);
+  --accent-soft-border: rgba(14, 159, 99, 0.28);
+
+  --positive: #0E9F63;
+  --positive-soft: rgba(14, 159, 99, 0.10);
+  --negative: #D25B41;
+  --negative-soft: rgba(210, 91, 65, 0.10);
+  --warning: #B07C0A;
+  --warning-soft: rgba(176, 124, 10, 0.10);
+  --info: #2E6FD8;
+  --info-soft: rgba(46, 111, 216, 0.10);
+
+  --price-up: #0E9F63;
+  --price-up-soft: rgba(14, 159, 99, 0.10);
+  --price-down: #D25B41;
+  --price-down-soft: rgba(210, 91, 65, 0.10);
+  --price-flat: #7E988A;
+
+  --chart-line: #0E9F63;
+  --chart-fill-top: rgba(14, 159, 99, 0.18);
+  --chart-fill-bottom: rgba(14, 159, 99, 0);
+  --chart-grid: rgba(78, 107, 91, 0.12);
+}
+
+[data-theme="light"][data-price-convention="kr"],
+[data-price-convention="kr"][data-theme="light"] {
+  --price-up: #E04E3C;
+  --price-up-soft: rgba(224, 78, 60, 0.10);
+  --price-down: #2E6FD8;
+  --price-down-soft: rgba(46, 111, 216, 0.10);
+}

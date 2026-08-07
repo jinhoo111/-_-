@@ -1,8 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { Card } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { FilterChip } from "@/components/ui/FilterChip";
 import { useT } from "@/lib/i18n/LanguageProvider";
 import { useMarketNews } from "@/lib/queries/useNews";
 import { NewsList } from "@/components/news/NewsList";
@@ -18,27 +18,19 @@ export function MarketNewsView() {
 
   return (
     <div className="flex flex-col gap-4">
-      <Card className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap gap-2">
         {CATEGORIES.map((c) => (
-          <button
-            key={c}
-            onClick={() => setCategory(c)}
-            className={`rounded-[var(--radius-pill)] px-3 py-1.5 text-[var(--text-sm)] ${
-              category === c ? "bg-[var(--color-accent-primary)] text-white" : "bg-[var(--color-bg-badge)] text-[var(--color-text-secondary)]"
-            }`}
-          >
-            {t(`news.category.${c}`)}
-          </button>
+          <FilterChip key={c} label={t(`news.category.${c}`)} active={category === c} onClick={() => setCategory(c)} />
         ))}
-      </Card>
+      </div>
       {isLoading ? (
         <NewsCardSkeleton count={5} />
       ) : error || !data ? (
         <EmptyState title={t("news.error")} onRetry={() => refetch()} retryLabel={t("news.retry")} />
       ) : (
-        <Card>
+        <div className="flex flex-col gap-3">
           <NewsList items={data.items} limit={MARKET_NEWS_LIMIT} />
-        </Card>
+        </div>
       )}
     </div>
   );

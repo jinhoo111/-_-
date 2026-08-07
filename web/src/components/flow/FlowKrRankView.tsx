@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
+import { StatCard } from "@/components/ui/StatCard";
+import { Badge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { useT } from "@/lib/i18n/LanguageProvider";
@@ -71,11 +73,11 @@ function RankTable({ rows, kind }: { rows: FlowKrRow[]; kind: "organ" | "foreign
     <div className="overflow-x-auto">
       <table className="w-full border-collapse text-left text-[var(--text-table)]">
         <thead>
-          <tr className="border-b border-[var(--color-border-default)] text-[var(--text-sm)] text-[var(--color-text-tertiary)]">
-            <th className="py-2 pr-2">{t("flow.krRank.table.name")}</th>
-            <th className="py-2 pr-2 text-right tabular-nums">{t("flow.krRank.table.close")}</th>
-            <th className="py-2 pr-2 text-right tabular-nums">{t("flow.krRank.table.change")}</th>
-            <th className="py-2 pr-2 text-right tabular-nums">{t(kind === "organ" ? "flow.krRank.table.organ" : "flow.krRank.table.foreign")}</th>
+          <tr className="border-b border-[var(--border-default)] text-[var(--text-xs)] text-[var(--text-muted)]">
+            <th className="py-3 pr-2 font-medium tracking-[var(--tracking-caps)] uppercase">{t("flow.krRank.table.name")}</th>
+            <th className="py-3 pr-2 text-right font-medium tracking-[var(--tracking-caps)] uppercase tabular-nums">{t("flow.krRank.table.close")}</th>
+            <th className="py-3 pr-2 text-right font-medium tracking-[var(--tracking-caps)] uppercase tabular-nums">{t("flow.krRank.table.change")}</th>
+            <th className="py-3 pr-2 text-right font-medium tracking-[var(--tracking-caps)] uppercase tabular-nums">{t(kind === "organ" ? "flow.krRank.table.organ" : "flow.krRank.table.foreign")}</th>
           </tr>
         </thead>
         <tbody>
@@ -83,13 +85,13 @@ function RankTable({ rows, kind }: { rows: FlowKrRow[]; kind: "organ" | "foreign
             const streak = kind === "organ" ? r.organStreak : r.foreignStreak;
             const val = kind === "organ" ? r.organ : r.foreign;
             return (
-              <tr key={r.code} className="border-b border-[var(--color-border-faint)]">
-                <td className="py-2 pr-2 font-semibold text-[var(--color-text-primary)]">{r.name}</td>
-                <td className="py-2 pr-2 text-right tabular-nums">{r.close.toLocaleString()}</td>
-                <td className={`py-2 pr-2 text-right tabular-nums font-semibold ${r.changeRate >= 0 ? "text-[var(--color-up)]" : "text-[var(--color-down)]"}`}>
+              <tr key={r.code} className="border-b border-[var(--border-default)] transition-colors duration-[var(--duration-fast)] ease-[var(--ease-out)] hover:bg-[var(--surface-2)]">
+                <td className="py-3 pr-2 font-semibold text-[var(--text-primary)]">{r.name}</td>
+                <td className="py-3 pr-2 text-right font-mono tabular-nums">{r.close.toLocaleString()}</td>
+                <td className={`py-3 pr-2 text-right font-mono tabular-nums font-semibold ${r.changeRate >= 0 ? "text-[var(--color-up)]" : "text-[var(--color-down)]"}`}>
                   {(r.changeRate >= 0 ? "+" : "") + r.changeRate.toFixed(2)}%
                 </td>
-                <td className={`py-2 pr-2 text-right tabular-nums font-mono ${val >= 0 ? "text-[var(--color-up)]" : "text-[var(--color-down)]"}`}>
+                <td className={`py-3 pr-2 text-right font-mono tabular-nums font-semibold ${val >= 0 ? "text-[var(--color-up)]" : "text-[var(--color-down)]"}`}>
                   {fmtQty(val)}
                   {streak <= -FLOW_WARN_DAYS && (
                     <span className="ml-1 inline-block rounded-[var(--radius-pill)] px-1.5 py-0.5 text-[var(--text-2xs)] font-bold bg-[var(--color-down)]/15 text-[var(--color-down)]">
@@ -119,7 +121,16 @@ export function FlowKrRankView() {
   const [warnResult, setWarnResult] = useState<"done" | "none" | null>(null);
 
   if (isLoading) {
-    return <Skeleton className="h-96 w-full" />;
+    return (
+      <div className="flex flex-col gap-4">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <Skeleton className="h-24 w-full" />
+          <Skeleton className="h-24 w-full" />
+          <Skeleton className="h-24 w-full" />
+        </div>
+        <Skeleton className="h-96 w-full" />
+      </div>
+    );
   }
   if (error || !data) {
     return <EmptyState title={t("flow.error")} />;
@@ -170,6 +181,28 @@ export function FlowKrRankView() {
 
   return (
     <div className="flex flex-col gap-4">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <StatCard
+          label={t("flow.stats.topBuy")}
+          value={rank.organBuy[0] ? fmtQty(rank.organBuy[0].organ) : "—"}
+          compact
+          note={rank.organBuy[0]?.name ?? ""}
+          change={<Badge tone="positive" size="sm">{t("flow.krRank.organBuy")}</Badge>}
+        />
+        <StatCard
+          label={t("flow.stats.topSell")}
+          value={rank.organSell[0] ? fmtQty(rank.organSell[0].organ) : "—"}
+          compact
+          note={rank.organSell[0]?.name ?? ""}
+          change={<Badge tone="negative" size="sm">{t("flow.krRank.organSell")}</Badge>}
+        />
+        <StatCard
+          label={t("flow.stats.universe")}
+          value={String(data.universe)}
+          compact
+          note={t("flow.krRank.date", { date: data.date })}
+        />
+      </div>
       {sellStreaks.length > 0 && (
         <div className="flex items-start gap-2 rounded-[var(--radius-control)] border border-[var(--color-error-border)] bg-[var(--color-error-bg)] px-3 py-2.5 text-[var(--text-sm)] text-[var(--color-error-text)]">
           <span>⚠️</span>
