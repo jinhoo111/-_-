@@ -17,11 +17,12 @@ export type Quadrant = "Q1" | "Q2" | "Q3" | "Q4";
 // Two independent axes, never a single blended score (spec §6) — a large loss with a
 // stable trend and a small loss with a broken trend are different situations.
 export interface StopLossResult {
-  lossSeverity: number | null; // 0-100, requires buyPrice; null when ungated data is missing
+  lossSeverity: number | null; // 0-100, requires buyPrice AND login (spec §5/§7 #4)
   downtrendSignal: number; // 0-100, always available (no buy price needed)
   quadrant: Quadrant | null; // null until lossSeverity is available
   sentence: string; // plain-language, never prescriptive (spec §7 non-negotiable #1)
-  breakEvenPct: number | null; // % gain needed to recover to buy price
+  breakEvenPct: number | null; // % gain needed to recover to buy price — gated with lossSeverity
+  buyPriceProvided: boolean; // true if a buy price was entered, even if still gated by login
   signalDeltaVsLastWeek: number | null;
   asOfDate: string;
 }

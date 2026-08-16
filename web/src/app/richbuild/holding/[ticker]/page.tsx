@@ -1,6 +1,7 @@
 "use client";
 
 import { useParams } from "next/navigation";
+import Link from "next/link";
 import { useState } from "react";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { Skeleton } from "@/components/ui/Skeleton";
@@ -103,10 +104,18 @@ export default function HoldingDetailPage() {
         <CardHeader title="Stop-Loss Indicator" />
         <p className="font-semibold text-[var(--text-primary)]">&ldquo;{stopLoss.sentence}&rdquo;</p>
         <div className="mt-2 flex flex-col gap-1 text-[var(--text-sm)] text-[var(--text-secondary)]">
-          <span>Loss Severity {stopLoss.lossSeverity != null ? stopLoss.lossSeverity : "— (add a buy price)"}</span>
+          <span>Loss Severity {stopLoss.lossSeverity != null ? stopLoss.lossSeverity : stopLoss.buyPriceProvided ? "🔒" : "— (add a buy price)"}</span>
           <span>Downtrend Signal {stopLoss.downtrendSignal}</span>
           {stopLoss.breakEvenPct != null && stopLoss.breakEvenPct > 0 && <span>Needs +{stopLoss.breakEvenPct.toFixed(1)}% to break even</span>}
         </div>
+        {stopLoss.buyPriceProvided && stopLoss.lossSeverity == null && (
+          <Link
+            href={`/richbuild/login?redirectTo=${encodeURIComponent(`/richbuild/holding/${encodeURIComponent(ticker)}`)}`}
+            className="mt-2 inline-block text-[var(--text-sm)] font-semibold text-[var(--accent)]"
+          >
+            Sign up to see Loss Severity →
+          </Link>
+        )}
         <p className="mt-3 text-[var(--text-xs)] text-[var(--text-muted)]">Closing price as of {stopLoss.asOfDate}</p>
         <p className="mt-3 text-[var(--text-xs)] text-[var(--text-muted)]">This indicator is a calculated result, not investment advice.</p>
       </Card>

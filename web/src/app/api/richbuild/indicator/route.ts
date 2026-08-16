@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { fetchYahooDailyCandles } from "@/lib/market/yahoo";
+import { createClient } from "@/lib/supabase/server";
 import { buildHeatIndexResult, buildStopLossResult } from "@/lib/richbuild/indicatorEngine";
 import type { IndicatorResponse } from "@/lib/richbuild/types";
 
@@ -21,6 +22,12 @@ export async function GET(request: NextRequest) {
   const candles = await fetchYahooDailyCandles(ticker);
   if (!candles) return NextResponse.json({ error: "data_unavailable" }, { status: 502 });
 
+  // Loss Severity is gated behind registration, not just a buy price (spec §7 #4) —
+  // this is the server-side check; the client can't be trusted to self-report auth state.
+  const supabase = await createClient();
+  const { data: authData } = await supabase.auth.getUser();
+  const unlocked = Boolean(authData.user);
+
   const asOfDate = new Date().toISOString().slice(0, 10);
   const price = candles.closes[candles.closes.length - 1];
 
@@ -28,7 +35,7 @@ export async function GET(request: NextRequest) {
     ticker,
     price,
     history: candles.closes.slice(-63), // ~3 months of trading days, for the trend chart
-    stopLoss: buildStopLossResult(candles, buyPrice, asOfDate),
+    stopLoss: buildStopLossResult(candles, buyPrice, unlocked, asOfDate),
     heat: buildHeatIndexResult(candles, asOfDate),
   };
   return NextResponse.json(body);

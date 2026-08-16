@@ -73,23 +73,35 @@ export function computeLossSeverity(candles: DailyCandles, buyPrice: number): nu
   return Math.round(clamp(recoveryScore * 0.7 + maScore * 0.3, 0, 100));
 }
 
+// `unlocked` = the viewer is logged in. Spec §7 non-negotiable #4: "Guests can do
+// everything except see Loss Severity" — gated behind REGISTRATION, not merely behind
+// having entered a buy price. A guest who supplies a buy price still doesn't see the
+// severity score (or its close derivative, break-even %) until they sign up.
 export function buildStopLossResult(
   candles: DailyCandles,
   buyPrice: number | null,
+  unlocked: boolean,
   asOfDate: string,
 ): StopLossResult {
   const downtrendSignal = computeDowntrendSignal(candles);
   const price = candles.closes[candles.closes.length - 1];
-  const lossSeverity = buyPrice != null ? computeLossSeverity(candles, buyPrice) : null;
-  const breakEvenPct = buyPrice != null ? Math.max(0, ((buyPrice - price) / price) * 100) : null;
+  const severityAvailable = buyPrice != null && unlocked;
+  const lossSeverity = severityAvailable ? computeLossSeverity(candles, buyPrice) : null;
+  const breakEvenPct = severityAvailable ? Math.max(0, ((buyPrice - price) / price) * 100) : null;
   const quadrant = lossSeverity != null ? classifyQuadrant(lossSeverity, downtrendSignal) : null;
+
+  let sentence: string;
+  if (quadrant) sentence = quadrantSentence(quadrant);
+  else if (buyPrice != null && !unlocked) sentence = "Sign up to see your Loss Severity";
+  else sentence = "Add your buy price to see the full Stop-Loss read";
 
   return {
     lossSeverity,
     downtrendSignal,
     quadrant,
-    sentence: quadrant ? quadrantSentence(quadrant) : "Add your buy price to see the full Stop-Loss read",
+    sentence,
     breakEvenPct,
+    buyPriceProvided: buyPrice != null,
     signalDeltaVsLastWeek: null, // requires a stored week-ago snapshot — not wired up yet
     asOfDate,
   };
