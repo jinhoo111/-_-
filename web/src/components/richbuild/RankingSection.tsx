@@ -7,6 +7,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { useRichbuildRanking } from "@/lib/queries/useRichbuildRanking";
 import { useRichbuildMarket } from "@/lib/richbuild/MarketProvider";
 import { RICHBUILD_THRESHOLDS } from "@/lib/richbuild/constants";
+import { useT } from "@/lib/i18n/LanguageProvider";
 import type { Market } from "@/lib/richbuild/types";
 
 function heatTone(score: number): "negative" | "warning" | "neutral" {
@@ -16,20 +17,21 @@ function heatTone(score: number): "negative" | "warning" | "neutral" {
 }
 
 export function RankingSection({ depth }: { depth: "guest" | "member" }) {
+  const t = useT();
   const { market, setMarket } = useRichbuildMarket();
   const { data: rows, isLoading } = useRichbuildRanking(market, depth);
 
   return (
     <Card id="ranking">
       <CardHeader
-        title="Today's Ranking"
-        subtitle={depth === "guest" ? "Top 10 · fixed, no scroll" : "Top 50 · fixed frame, scrollable list"}
+        title={t("richbuild.ranking.title")}
+        subtitle={depth === "guest" ? t("richbuild.ranking.subtitleGuest") : t("richbuild.ranking.subtitleMember")}
         action={
           <Tabs
             size="sm"
             items={[
-              { id: "kr", label: "KR" },
-              { id: "us", label: "US" },
+              { id: "kr", label: t("richbuild.ranking.marketKr") },
+              { id: "us", label: t("richbuild.ranking.marketUs") },
             ]}
             value={market}
             onChange={(v) => setMarket(v as Market)}
@@ -37,11 +39,7 @@ export function RankingSection({ depth }: { depth: "guest" | "member" }) {
         }
       />
       {isLoading ? null : !rows || rows.length === 0 ? (
-        <EmptyState
-          glyph="○"
-          title="Ranking not available yet"
-          description="The daily ranking batch hasn't run yet — check back after the next update."
-        />
+        <EmptyState glyph="○" title={t("richbuild.ranking.emptyTitle")} description={t("richbuild.ranking.emptyDescription")} />
       ) : (
         <div className="flex flex-col divide-y divide-[var(--border-default)]">
           {rows.map((row) => (

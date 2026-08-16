@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { fetchYahooDailyCandles } from "@/lib/market/yahoo";
 import { createClient } from "@/lib/supabase/server";
 import { getFlowKrStock } from "@/lib/flow/server";
+import type { Lang } from "@/lib/i18n/messages";
 import { buildHeatIndexResult, buildStopLossResult } from "@/lib/richbuild/indicatorEngine";
 import type { IndicatorResponse, Market } from "@/lib/richbuild/types";
 
@@ -29,6 +30,7 @@ async function fetchRetailNetBuyRatio(ticker: string, todaysVolume: number): Pro
 export async function GET(request: NextRequest) {
   const ticker = request.nextUrl.searchParams.get("ticker");
   const buyPriceParam = request.nextUrl.searchParams.get("buyPrice");
+  const lang: Lang = request.nextUrl.searchParams.get("lang") === "en" ? "en" : "ko";
   if (!ticker) return NextResponse.json({ error: "ticker_required" }, { status: 400 });
 
   const buyPrice = buyPriceParam ? Number(buyPriceParam) : null;
@@ -56,7 +58,7 @@ export async function GET(request: NextRequest) {
     ticker,
     price,
     history: candles.closes.slice(-63), // ~3 months of trading days, for the trend chart
-    stopLoss: buildStopLossResult(candles, buyPrice, unlocked, asOfDate),
+    stopLoss: buildStopLossResult(candles, buyPrice, unlocked, asOfDate, lang),
     heat: buildHeatIndexResult(candles, market, asOfDate, { retailNetBuyRatio }),
   };
   return NextResponse.json(body);

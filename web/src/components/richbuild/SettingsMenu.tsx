@@ -3,12 +3,14 @@
 import { useEffect, useRef, useState } from "react";
 import { LanguageToggle } from "@/components/ui/LanguageToggle";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
+import { useT } from "@/lib/i18n/LanguageProvider";
 import { useDisplayPrefs, CURRENCIES, type CurrencyCode } from "@/lib/displayPrefs";
 
 // Language + currency + color scheme, grouped behind a gear icon next to Login/Logout
 // — reuses the dashboard's existing LanguageToggle/ThemeToggle/displayPrefs instead of
 // building parallel controls.
 export function SettingsMenu() {
+  const t = useT();
   const [open, setOpen] = useState(false);
   const { currency, setCurrency } = useDisplayPrefs();
   const ref = useRef<HTMLDivElement>(null);
@@ -27,8 +29,8 @@ export function SettingsMenu() {
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        aria-label="Settings"
-        title="Settings"
+        aria-label={t("richbuild.nav.settings")}
+        title={t("richbuild.nav.settings")}
         className="flex h-9 w-9 items-center justify-center rounded-full border border-[var(--border-default)] bg-[var(--surface-1)] text-[var(--text-secondary)] hover:bg-[var(--surface-2)] hover:text-[var(--text-primary)]"
       >
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -39,15 +41,15 @@ export function SettingsMenu() {
       {open && (
         <div className="absolute top-[46px] right-0 z-30 flex w-56 flex-col gap-3 rounded-[var(--radius-lg)] border border-[var(--border-strong)] bg-[var(--surface-1)] p-3 shadow-[var(--shadow-raised)]">
           <div className="flex items-center justify-between gap-2">
-            <span className="text-[var(--text-sm)] text-[var(--text-secondary)]">Language</span>
+            <span className="text-[var(--text-sm)] text-[var(--text-secondary)]">{t("richbuild.settings.language")}</span>
             <LanguageToggle />
           </div>
           <div className="flex items-center justify-between gap-2">
-            <span className="text-[var(--text-sm)] text-[var(--text-secondary)]">Currency</span>
+            <span className="text-[var(--text-sm)] text-[var(--text-secondary)]">{t("richbuild.settings.currency")}</span>
             <select
               value={currency}
               onChange={(e) => setCurrency(e.target.value as CurrencyCode)}
-              aria-label="Display currency"
+              aria-label={t("richbuild.settings.currency")}
               className="h-8 cursor-pointer rounded-[var(--radius-pill)] border border-[var(--border-default)] bg-[var(--surface-1)] px-2 text-[var(--text-sm)] text-[var(--text-primary)] hover:bg-[var(--surface-2)] focus:border-[var(--border-focus)] focus:outline-none"
             >
               {CURRENCIES.map((c) => (
@@ -58,7 +60,7 @@ export function SettingsMenu() {
             </select>
           </div>
           <div className="flex items-center justify-between gap-2">
-            <span className="text-[var(--text-sm)] text-[var(--text-secondary)]">Theme</span>
+            <span className="text-[var(--text-sm)] text-[var(--text-secondary)]">{t("richbuild.settings.theme")}</span>
             <ThemeToggle />
           </div>
         </div>

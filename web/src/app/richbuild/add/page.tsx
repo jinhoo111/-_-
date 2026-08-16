@@ -8,8 +8,10 @@ import { Input } from "@/components/ui/Input";
 import { useTickerSearch } from "@/lib/queries/useTickerSearch";
 import { useHoldings } from "@/lib/queries/useHoldings";
 import { resolveTickerFromName } from "@/lib/portfolio/constants";
+import { useT } from "@/lib/i18n/LanguageProvider";
 
 export default function AddHoldingPage() {
+  const t = useT();
   const router = useRouter();
   const { addHolding } = useHoldings();
   const [query, setQuery] = useState("");
@@ -30,17 +32,17 @@ export default function AddHoldingPage() {
       if (resolved) ticker = { symbol: resolved, name: query.trim(), market: /\.(KS|KQ)$/i.test(resolved) ? "kr" : "us" };
     }
     if (!ticker) {
-      setError("Pick a ticker from the search results.");
+      setError(t("richbuild.add.errorPickTicker"));
       return;
     }
     const qty = Number(quantity);
     if (!qty || qty <= 0) {
-      setError("Quantity must be a positive number.");
+      setError(t("richbuild.add.errorQuantity"));
       return;
     }
     const price = buyPrice.trim() ? Number(buyPrice) : null;
     if (buyPrice.trim() && (!price || price <= 0)) {
-      setError("Buy price must be a positive number.");
+      setError(t("richbuild.add.errorBuyPrice"));
       return;
     }
 
@@ -57,12 +59,12 @@ export default function AddHoldingPage() {
 
   return (
     <Card className="mx-auto w-full max-w-md">
-      <CardHeader title="Add Holding" />
+      <CardHeader title={t("richbuild.add.title")} />
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
         <div className="relative">
-          <label className="mb-2 block text-[var(--text-sm)] font-medium text-[var(--text-secondary)]">Ticker</label>
+          <label className="mb-2 block text-[var(--text-sm)] font-medium text-[var(--text-secondary)]">{t("richbuild.add.tickerLabel")}</label>
           <Input
-            placeholder="Search (e.g. Samsung Elec.)"
+            placeholder={t("richbuild.add.tickerPlaceholder")}
             value={query}
             onChange={(e) => {
               setQuery(e.target.value);
@@ -89,20 +91,18 @@ export default function AddHoldingPage() {
           )}
         </div>
         <div>
-          <label className="mb-2 block text-[var(--text-sm)] font-medium text-[var(--text-secondary)]">Buy Price</label>
-          <Input placeholder="Numbers only" inputMode="decimal" value={buyPrice} onChange={(e) => setBuyPrice(e.target.value)} />
+          <label className="mb-2 block text-[var(--text-sm)] font-medium text-[var(--text-secondary)]">{t("richbuild.add.buyPriceLabel")}</label>
+          <Input placeholder={t("richbuild.add.numbersOnly")} inputMode="decimal" value={buyPrice} onChange={(e) => setBuyPrice(e.target.value)} />
         </div>
         <div>
-          <label className="mb-2 block text-[var(--text-sm)] font-medium text-[var(--text-secondary)]">Quantity</label>
-          <Input placeholder="Numbers only" inputMode="decimal" value={quantity} onChange={(e) => setQuantity(e.target.value)} />
+          <label className="mb-2 block text-[var(--text-sm)] font-medium text-[var(--text-secondary)]">{t("richbuild.add.quantityLabel")}</label>
+          <Input placeholder={t("richbuild.add.numbersOnly")} inputMode="decimal" value={quantity} onChange={(e) => setQuantity(e.target.value)} />
         </div>
         {error && <p className="text-[var(--text-sm)] text-[var(--negative)]">{error}</p>}
         <Button type="submit" variant="primary" disabled={pending} className="mt-2 w-full">
-          {pending ? "Checking…" : "Check My Holding's Status"}
+          {pending ? t("richbuild.add.submitPending") : t("richbuild.add.submit")}
         </Button>
-        <p className="text-center text-[var(--text-xs)] text-[var(--text-muted)]">
-          See results instantly, no signup needed (local storage)
-        </p>
+        <p className="text-center text-[var(--text-xs)] text-[var(--text-muted)]">{t("richbuild.add.helperText")}</p>
       </form>
     </Card>
   );

@@ -1,4 +1,5 @@
 import { RICHBUILD_THRESHOLDS } from "@/lib/richbuild/constants";
+import { t, type Lang } from "@/lib/i18n/messages";
 import type { Quadrant } from "@/lib/richbuild/types";
 
 // Two independent axes → a quadrant, never a bare number (spec §6). Sort priority is
@@ -20,14 +21,15 @@ export function classifyQuadrant(lossSeverity: number, downtrendSignal: number):
 }
 
 // Plain-language, descriptive-not-prescriptive per spec §7 non-negotiable #1 — never
-// "sell this" / "stop-loss this stock", only a factual read of the two axes.
-const QUADRANT_SENTENCE: Record<Quadrant, string> = {
-  Q1: "Loss is small, and the trend is holding",
-  Q2: "Loss is large, but the trend is holding",
-  Q3: "Loss is small, but the trend has broken",
-  Q4: "Loss is large, and the trend has broken",
+// "sell this" / "stop-loss this stock", only a factual read of the two axes. v1 is
+// Korean-primary (service plan mockups); English exists for the debug toggle.
+const QUADRANT_KEY: Record<Quadrant, string> = {
+  Q1: "richbuild.quadrant.q1",
+  Q2: "richbuild.quadrant.q2",
+  Q3: "richbuild.quadrant.q3",
+  Q4: "richbuild.quadrant.q4",
 };
 
-export function quadrantSentence(q: Quadrant): string {
-  return QUADRANT_SENTENCE[q];
+export function quadrantSentence(q: Quadrant, lang: Lang): string {
+  return t(lang, QUADRANT_KEY[q]);
 }

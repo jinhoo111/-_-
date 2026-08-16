@@ -6,29 +6,31 @@ import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { HoldingCard } from "@/components/richbuild/HoldingCard";
 import { useHoldings } from "@/lib/queries/useHoldings";
+import { useT } from "@/lib/i18n/LanguageProvider";
 
 export function HoldingsSection() {
+  const t = useT();
   const { holdings, loading } = useHoldings();
 
   return (
     <Card id="holdings">
       <CardHeader
-        title="My Holdings"
+        title={t("richbuild.holdings.title")}
         action={
           <Link href="/richbuild/add">
-            <Button size="sm">+ Add</Button>
+            <Button size="sm">{t("richbuild.holdings.add")}</Button>
           </Link>
         }
       />
       {loading ? null : holdings.length === 0 ? (
         <EmptyState
           glyph="+"
-          title="No holdings registered yet"
-          description="Add a ticker, buy price, and quantity — no signup needed."
+          title={t("richbuild.holdings.emptyTitle")}
+          description={t("richbuild.holdings.emptyDescription")}
           action={
             <Link href="/richbuild/add">
               <Button variant="primary" size="sm">
-                Add a holding
+                {t("richbuild.holdings.addCta")}
               </Button>
             </Link>
           }
@@ -40,7 +42,7 @@ export function HoldingsSection() {
           ))}
         </div>
       )}
-      <p className="mt-4 text-[var(--text-xs)] text-[var(--text-muted)]">This indicator is a calculated result, not investment advice.</p>
+      <p className="mt-4 text-[var(--text-xs)] text-[var(--text-muted)]">{t("richbuild.holdings.disclaimer")}</p>
     </Card>
   );
 }

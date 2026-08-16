@@ -7,6 +7,7 @@ import { useFxRates } from "@/lib/queries/useIndices";
 import { useDisplayPrefs } from "@/lib/displayPrefs";
 import { convertToDisplay, formatCurrency } from "@/lib/richbuild/currency";
 import { RICHBUILD_THRESHOLDS } from "@/lib/richbuild/constants";
+import { useT } from "@/lib/i18n/LanguageProvider";
 import type { Holding } from "@/lib/richbuild/types";
 
 function formatQty(qty: number) {
@@ -14,6 +15,7 @@ function formatQty(qty: number) {
 }
 
 export function HoldingCard({ holding }: { holding: Holding }) {
+  const t = useT();
   const { data, isLoading } = useRichbuildIndicator(holding.ticker, holding.buyPrice);
   const { currency } = useDisplayPrefs();
   const { data: fxRates } = useFxRates(true);
@@ -46,11 +48,11 @@ export function HoldingCard({ holding }: { holding: Holding }) {
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="font-display font-semibold text-[var(--text-primary)]">{holding.name}</div>
-          <div className="mt-0.5 text-[var(--text-xs)] text-[var(--text-muted)]">{formatQty(holding.quantity)} shares</div>
+          <div className="mt-0.5 text-[var(--text-xs)] text-[var(--text-muted)]">{t("richbuild.holdings.shares", { qty: formatQty(holding.quantity) })}</div>
           <div className="mt-1 text-[var(--text-sm)] text-[var(--text-secondary)]">&ldquo;{stopLoss.sentence}&rdquo;</div>
           {stopLoss.breakEvenPct != null && stopLoss.breakEvenPct > 0 && (
             <div className="mt-1 text-[var(--text-xs)] text-[var(--text-muted)]">
-              Needs +{stopLoss.breakEvenPct.toFixed(1)}% to break even
+              {t("richbuild.holdings.breakEven", { pct: stopLoss.breakEvenPct.toFixed(1) })}
             </div>
           )}
         </div>
@@ -59,7 +61,7 @@ export function HoldingCard({ holding }: { holding: Holding }) {
             {formatCurrency(convertToDisplay(price, holding.market, currency, fxRates), currency)}
           </div>
           <div className="mt-0.5 font-mono text-[var(--text-xs)] text-[var(--text-muted)]">
-            {formatCurrency(convertToDisplay(price * holding.quantity, holding.market, currency, fxRates), currency)} total
+            {t("richbuild.holdings.total", { amount: formatCurrency(convertToDisplay(price * holding.quantity, holding.market, currency, fxRates), currency) })}
           </div>
         </div>
       </div>

@@ -1,5 +1,6 @@
 import { atr14, maAt, stdev, winsorize } from "@/lib/market/technical";
 import type { DailyCandles } from "@/lib/market/yahoo";
+import { t, type Lang } from "@/lib/i18n/messages";
 import { RICHBUILD_THRESHOLDS } from "@/lib/richbuild/constants";
 import { classifyQuadrant, quadrantSentence } from "@/lib/richbuild/quadrant";
 import type { HeatIndexResult, Market, StopLossResult } from "@/lib/richbuild/types";
@@ -129,6 +130,7 @@ export function buildStopLossResult(
   buyPrice: number | null,
   unlocked: boolean,
   asOfDate: string,
+  lang: Lang,
 ): StopLossResult {
   const downtrendSignal = computeDowntrendSignal(candles);
   const price = candles.closes[candles.closes.length - 1];
@@ -138,9 +140,9 @@ export function buildStopLossResult(
   const quadrant = lossSeverity != null ? classifyQuadrant(lossSeverity, downtrendSignal) : null;
 
   let sentence: string;
-  if (quadrant) sentence = quadrantSentence(quadrant);
-  else if (buyPrice != null && !unlocked) sentence = "Sign up to see your Loss Severity";
-  else sentence = "Add your buy price to see the full Stop-Loss read";
+  if (quadrant) sentence = quadrantSentence(quadrant, lang);
+  else if (buyPrice != null && !unlocked) sentence = t(lang, "richbuild.quadrant.gatedSignUp");
+  else sentence = t(lang, "richbuild.quadrant.needBuyPrice");
 
   return {
     lossSeverity,

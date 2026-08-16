@@ -7,22 +7,23 @@ import { Card, CardHeader } from "@/components/ui/Card";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Sparkline } from "@/components/ui/Sparkline";
-import { RangeDropdown, type RangeKey } from "@/components/ui/RangeDropdown";
+import { RangeDropdown, RANGE_KEYS, type RangeKey } from "@/components/ui/RangeDropdown";
 import { useHoldings } from "@/lib/queries/useHoldings";
 import { useRichbuildIndicator } from "@/lib/queries/useRichbuildIndicator";
 import { useHistory, useFxRates } from "@/lib/queries/useIndices";
 import { useDisplayPrefs } from "@/lib/displayPrefs";
 import { convertToDisplay, formatCurrency } from "@/lib/richbuild/currency";
+import { useT } from "@/lib/i18n/LanguageProvider";
 
-const RANGE_NAME: Record<RangeKey, string> = {
-  "1D": "1 day",
-  "7D": "7 days",
-  "1M": "1 month",
-  "3M": "3 months",
-  "9M": "9 months",
-  YTD: "Year to date",
-  "1Y": "1 year",
-  All: "All time",
+const RANGE_NAME_KEY: Record<RangeKey, string> = {
+  "1D": "portfolio.range.1d",
+  "7D": "portfolio.range.7d",
+  "1M": "portfolio.range.1m",
+  "3M": "portfolio.range.3m",
+  "9M": "portfolio.range.9m",
+  YTD: "portfolio.range.ytd",
+  "1Y": "portfolio.range.1y",
+  All: "portfolio.range.all",
 };
 
 function formatQty(qty: number) {
@@ -30,6 +31,7 @@ function formatQty(qty: number) {
 }
 
 export default function HoldingDetailPage() {
+  const t = useT();
   const params = useParams<{ ticker: string }>();
   const ticker = decodeURIComponent(params.ticker);
   const { holdings } = useHoldings();
@@ -53,7 +55,7 @@ export default function HoldingDetailPage() {
   }
 
   if (isError || !data) {
-    return <EmptyState glyph="!" title="Couldn't load this ticker" description="Market data is temporarily unavailable — try again shortly." />;
+    return <EmptyState glyph="!" title={t("richbuild.detail.couldNotLoad")} description={t("richbuild.detail.couldNotLoadDesc")} />;
   }
 
   const { stopLoss, heat, price } = data;
@@ -69,8 +71,8 @@ export default function HoldingDetailPage() {
           </p>
           {holding && (
             <p className="text-[var(--text-xs)] text-[var(--text-muted)]">
-              {formatQty(holding.quantity)} shares ·{" "}
-              {formatCurrency(convertToDisplay(price * holding.quantity, market, currency, fxRates), currency)} total
+              {t("richbuild.holdings.shares", { qty: formatQty(holding.quantity) })} ·{" "}
+              {t("richbuild.holdings.total", { amount: formatCurrency(convertToDisplay(price * holding.quantity, market, currency, fxRates), currency) })}
             </p>
           )}
         </div>
@@ -78,46 +80,58 @@ export default function HoldingDetailPage() {
 
       <Card>
         <div className="mb-2 flex items-center justify-between gap-3">
-          <span className="text-[var(--text-xs)] text-[var(--text-muted)]">Trend</span>
-          <RangeDropdown value={range} onChange={setRange} names={RANGE_NAME} />
+          <span className="text-[var(--text-xs)] text-[var(--text-muted)]">{t("richbuild.detail.trend")}</span>
+          <RangeDropdown
+            value={range}
+            onChange={setRange}
+            names={Object.fromEntries(RANGE_KEYS.map((k) => [k, t(RANGE_NAME_KEY[k])])) as Record<RangeKey, string>}
+          />
         </div>
         {historyPending && chartHistory.length < 2 ? (
           <Skeleton className="h-[72px] w-full" />
         ) : chartHistory.length > 1 ? (
           <Sparkline data={chartHistory} height={72} stroke={trendUp ? "var(--price-up)" : "var(--price-down)"} />
         ) : (
-          <p className="py-4 text-center text-[var(--text-sm)] text-[var(--text-muted)]">No chart data for this range.</p>
+          <p className="py-4 text-center text-[var(--text-sm)] text-[var(--text-muted)]">{t("richbuild.detail.noChartData")}</p>
         )}
       </Card>
 
       <Card>
-        <CardHeader title="Attention Heat Index" action={<span className="font-display text-[var(--text-2xl)] font-bold text-[var(--text-primary)]">{heat.score}</span>} />
+        <CardHeader
+          title={t("richbuild.detail.heatTitle")}
+          action={<span className="font-display text-[var(--text-2xl)] font-bold text-[var(--text-primary)]">{heat.score}</span>}
+        />
         <div className="flex flex-col gap-1 text-[var(--text-sm)] text-[var(--text-secondary)]">
-          <span>
-            Volume {heat.volumeMultiple}× · Return Z {heat.returnZ}
-          </span>
-          {heat.retailNetBuyPct != null && <span>Retail net-buy {heat.retailNetBuyPct}%</span>}
+          <span>{t("richbuild.detail.volumeReturn", { vol: heat.volumeMultiple, z: heat.returnZ })}</span>
+          {heat.retailNetBuyPct != null && <span>{t("richbuild.detail.retailNetBuy", { pct: heat.retailNetBuyPct })}</span>}
         </div>
       </Card>
 
       <Card>
-        <CardHeader title="Stop-Loss Indicator" />
+        <CardHeader title={t("richbuild.detail.stopLossTitle")} />
         <p className="font-semibold text-[var(--text-primary)]">&ldquo;{stopLoss.sentence}&rdquo;</p>
         <div className="mt-2 flex flex-col gap-1 text-[var(--text-sm)] text-[var(--text-secondary)]">
-          <span>Loss Severity {stopLoss.lossSeverity != null ? stopLoss.lossSeverity : stopLoss.buyPriceProvided ? "🔒" : "— (add a buy price)"}</span>
-          <span>Downtrend Signal {stopLoss.downtrendSignal}</span>
-          {stopLoss.breakEvenPct != null && stopLoss.breakEvenPct > 0 && <span>Needs +{stopLoss.breakEvenPct.toFixed(1)}% to break even</span>}
+          <span>
+            {t("richbuild.detail.lossSeverityLabel")}{" "}
+            {stopLoss.lossSeverity != null ? stopLoss.lossSeverity : stopLoss.buyPriceProvided ? "🔒" : t("richbuild.detail.addBuyPriceHint")}
+          </span>
+          <span>
+            {t("richbuild.detail.downtrendSignalLabel")} {stopLoss.downtrendSignal}
+          </span>
+          {stopLoss.breakEvenPct != null && stopLoss.breakEvenPct > 0 && (
+            <span>{t("richbuild.holdings.breakEven", { pct: stopLoss.breakEvenPct.toFixed(1) })}</span>
+          )}
         </div>
         {stopLoss.buyPriceProvided && stopLoss.lossSeverity == null && (
           <Link
             href={`/richbuild/login?redirectTo=${encodeURIComponent(`/richbuild/holding/${encodeURIComponent(ticker)}`)}`}
             className="mt-2 inline-block text-[var(--text-sm)] font-semibold text-[var(--accent)]"
           >
-            Sign up to see Loss Severity →
+            {t("richbuild.detail.signUpToSeeLink")}
           </Link>
         )}
-        <p className="mt-3 text-[var(--text-xs)] text-[var(--text-muted)]">Closing price as of {stopLoss.asOfDate}</p>
-        <p className="mt-3 text-[var(--text-xs)] text-[var(--text-muted)]">This indicator is a calculated result, not investment advice.</p>
+        <p className="mt-3 text-[var(--text-xs)] text-[var(--text-muted)]">{t("richbuild.detail.asOfDate", { date: stopLoss.asOfDate })}</p>
+        <p className="mt-3 text-[var(--text-xs)] text-[var(--text-muted)]">{t("richbuild.holdings.disclaimer")}</p>
       </Card>
     </div>
   );
