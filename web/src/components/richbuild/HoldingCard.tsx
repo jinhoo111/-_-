@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { Badge } from "@/components/ui/Badge";
 import { useRichbuildIndicator } from "@/lib/queries/useRichbuildIndicator";
 import { useFxRates } from "@/lib/queries/useIndices";
 import { useDisplayPrefs } from "@/lib/displayPrefs";
@@ -49,8 +50,14 @@ export function HoldingCard({ holding }: { holding: Holding }) {
         <div className="min-w-0">
           <div className="font-display font-semibold text-[var(--text-primary)]">{holding.name}</div>
           <div className="mt-0.5 text-[var(--text-xs)] text-[var(--text-muted)]">{t("richbuild.holdings.shares", { qty: formatQty(holding.quantity) })}</div>
-          <div className="mt-1 text-[var(--text-sm)] text-[var(--text-secondary)]">
-            {stopLoss.quadrant ? <>&ldquo;{stopLoss.sentence}&rdquo;</> : stopLoss.sentence}
+          <div className="mt-1">
+            {stopLoss.quadrant ? (
+              <span className="text-[var(--text-sm)] text-[var(--text-secondary)]">&ldquo;{stopLoss.sentence}&rdquo;</span>
+            ) : (
+              <Badge tone="accent" size="sm">
+                {stopLoss.sentence}
+              </Badge>
+            )}
           </div>
           {stopLoss.breakEvenPct != null && stopLoss.breakEvenPct > 0 && (
             <div className="mt-1 text-[var(--text-xs)] text-[var(--text-muted)]">

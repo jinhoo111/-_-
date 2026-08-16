@@ -4,6 +4,7 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 import { useState } from "react";
 import { Card, CardHeader } from "@/components/ui/Card";
+import { Badge } from "@/components/ui/Badge";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Sparkline } from "@/components/ui/Sparkline";
@@ -109,9 +110,13 @@ export default function HoldingDetailPage() {
 
       <Card>
         <CardHeader title={t("richbuild.detail.stopLossTitle")} />
-        <p className="font-semibold text-[var(--text-primary)]">
-          {stopLoss.quadrant ? <>&ldquo;{stopLoss.sentence}&rdquo;</> : stopLoss.sentence}
-        </p>
+        {stopLoss.quadrant ? (
+          <p className="font-semibold text-[var(--text-primary)]">&ldquo;{stopLoss.sentence}&rdquo;</p>
+        ) : (
+          <Badge tone="accent" size="sm">
+            {stopLoss.sentence}
+          </Badge>
+        )}
         <div className="mt-2 flex flex-col gap-1 text-[var(--text-sm)] text-[var(--text-secondary)]">
           <span>
             {t("richbuild.detail.lossSeverityLabel")}{" "}
