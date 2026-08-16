@@ -46,18 +46,33 @@ export function SettingsMenu() {
           </div>
           <div className="flex items-center justify-between gap-2">
             <span className="text-[var(--text-sm)] text-[var(--text-secondary)]">{t("richbuild.settings.currency")}</span>
-            <select
-              value={currency}
-              onChange={(e) => setCurrency(e.target.value as CurrencyCode)}
-              aria-label={t("richbuild.settings.currency")}
-              className="h-8 cursor-pointer rounded-[var(--radius-pill)] border border-[var(--border-default)] bg-[var(--surface-1)] py-0 pr-6 pl-2 text-[var(--text-sm)] text-[var(--text-primary)] hover:bg-[var(--surface-2)] focus:border-[var(--border-focus)] focus:outline-none"
-            >
-              {CURRENCIES.map((c) => (
-                <option key={c.code} value={c.code}>
-                  {c.symbol} {c.code}
-                </option>
-              ))}
-            </select>
+            <div className="relative">
+              <select
+                value={currency}
+                onChange={(e) => setCurrency(e.target.value as CurrencyCode)}
+                aria-label={t("richbuild.settings.currency")}
+                className="h-8 cursor-pointer appearance-none rounded-[var(--radius-pill)] border border-[var(--border-default)] bg-[var(--surface-1)] py-0 pr-7 pl-2 text-[var(--text-sm)] text-[var(--text-primary)] hover:bg-[var(--surface-2)] focus:border-[var(--border-focus)] focus:outline-none"
+              >
+                {CURRENCIES.map((c) => (
+                  <option key={c.code} value={c.code}>
+                    {c.symbol} {c.code}
+                  </option>
+                ))}
+              </select>
+              <svg
+                width="12"
+                height="12"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="pointer-events-none absolute top-1/2 right-2.5 -translate-y-1/2 text-[var(--text-muted)]"
+              >
+                <path d="m6 9 6 6 6-6" />
+              </svg>
+            </div>
           </div>
           <div className="flex items-center justify-between gap-2">
             <span className="text-[var(--text-sm)] text-[var(--text-secondary)]">{t("richbuild.settings.theme")}</span>
