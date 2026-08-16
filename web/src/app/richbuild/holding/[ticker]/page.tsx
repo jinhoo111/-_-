@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/Badge";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { TrendChart } from "@/components/richbuild/TrendChart";
+import { HeatGauge } from "@/components/richbuild/HeatGauge";
 import { RangeDropdown, RANGE_KEYS, type RangeKey } from "@/components/ui/RangeDropdown";
 import { useHoldings } from "@/lib/queries/useHoldings";
 import { useRichbuildIndicator } from "@/lib/queries/useRichbuildIndicator";
@@ -16,9 +17,12 @@ import { useDisplayPrefs } from "@/lib/displayPrefs";
 import { convertToDisplay, formatCurrency } from "@/lib/richbuild/currency";
 import { useT } from "@/lib/i18n/LanguageProvider";
 
+// "7D" actually fetches Yahoo's range=5d (5 trading days, weekends excluded) — labeling
+// it "7 days" promised a point count it never delivers. "1 Week" matches what trading
+// apps conventionally mean by a calendar week of daily closes.
 const RANGE_NAME_KEY: Record<RangeKey, string> = {
   "1D": "portfolio.range.1d",
-  "7D": "portfolio.range.7d",
+  "7D": "richbuild.detail.range1w",
   "1M": "portfolio.range.1m",
   "3M": "portfolio.range.3m",
   "9M": "portfolio.range.9m",
@@ -42,6 +46,7 @@ export default function HoldingDetailPage() {
   const { currency } = useDisplayPrefs();
   const { data: fxRates } = useFxRates(true);
   const [range, setRange] = useState<RangeKey>("3M");
+  const [showBreakdown, setShowBreakdown] = useState(false);
   const { data: historyData, isFetching: historyPending } = useHistory([ticker], range);
   // No fallback to the indicator route's fixed 3-month history here on purpose: falling
   // back to it while a different range is loading briefly showed the WRONG range's shape
@@ -106,14 +111,21 @@ export default function HoldingDetailPage() {
       </Card>
 
       <Card>
-        <CardHeader
-          title={t("richbuild.detail.heatTitle")}
-          action={<span className="font-display text-[var(--text-2xl)] font-bold text-[var(--text-primary)]">{heat.score}</span>}
-        />
-        <div className="flex flex-col gap-1 text-[var(--text-sm)] text-[var(--text-secondary)]">
-          <span>{t("richbuild.detail.volumeReturn", { vol: heat.volumeMultiple, z: heat.returnZ })}</span>
-          {heat.retailNetBuyPct != null && <span>{t("richbuild.detail.retailNetBuy", { pct: heat.retailNetBuyPct })}</span>}
-        </div>
+        <CardHeader title={t("richbuild.detail.heatTitle")} />
+        <HeatGauge score={heat.score} />
+        <button
+          type="button"
+          onClick={() => setShowBreakdown((v) => !v)}
+          className="mt-1 w-full text-center text-[var(--text-xs)] font-medium text-[var(--text-muted)] hover:text-[var(--text-secondary)]"
+        >
+          {showBreakdown ? t("richbuild.detail.hideBreakdown") : t("richbuild.detail.showBreakdown")} {showBreakdown ? "︿" : "﹀"}
+        </button>
+        {showBreakdown && (
+          <div className="mt-2 flex flex-col gap-1 border-t border-[var(--border-default)] pt-2 text-[var(--text-sm)] text-[var(--text-secondary)]">
+            <span>{t("richbuild.detail.volumeReturn", { vol: heat.volumeMultiple, z: heat.returnZ })}</span>
+            {heat.retailNetBuyPct != null && <span>{t("richbuild.detail.retailNetBuy", { pct: heat.retailNetBuyPct })}</span>}
+          </div>
+        )}
       </Card>
 
       <Card>
