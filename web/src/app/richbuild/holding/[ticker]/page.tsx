@@ -7,7 +7,7 @@ import { Card, CardHeader } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { Sparkline } from "@/components/ui/Sparkline";
+import { TrendChart } from "@/components/richbuild/TrendChart";
 import { RangeDropdown, RANGE_KEYS, type RangeKey } from "@/components/ui/RangeDropdown";
 import { useHoldings } from "@/lib/queries/useHoldings";
 import { useRichbuildIndicator } from "@/lib/queries/useRichbuildIndicator";
@@ -43,7 +43,12 @@ export default function HoldingDetailPage() {
   const { data: fxRates } = useFxRates(true);
   const [range, setRange] = useState<RangeKey>("3M");
   const { data: historyData, isFetching: historyPending } = useHistory([ticker], range);
-  const chartHistory = historyData?.[ticker] ?? data?.history ?? [];
+  // No fallback to the indicator route's fixed 3-month history here on purpose: falling
+  // back to it while a different range is loading briefly showed the WRONG range's shape
+  // under the newly-selected range's label (e.g. picking "7D" would flash the 3-month
+  // curve) -- show a skeleton instead of any data until this exact range has loaded.
+  const chartHistory = historyData?.[ticker] ?? [];
+  const chartReady = !historyPending && chartHistory.length > 1;
 
   if (isLoading) {
     return (
@@ -60,7 +65,7 @@ export default function HoldingDetailPage() {
   }
 
   const { stopLoss, heat, price } = data;
-  const trendUp = chartHistory.length > 1 && chartHistory[chartHistory.length - 1] >= chartHistory[0];
+  const formatPrice = (v: number) => formatCurrency(convertToDisplay(v, market, currency, fxRates), currency);
 
   return (
     <div className="mx-auto flex w-full max-w-md flex-col gap-4">
@@ -88,10 +93,13 @@ export default function HoldingDetailPage() {
             names={Object.fromEntries(RANGE_KEYS.map((k) => [k, t(RANGE_NAME_KEY[k])])) as Record<RangeKey, string>}
           />
         </div>
-        {historyPending && chartHistory.length < 2 ? (
-          <Skeleton className="h-[72px] w-full" />
-        ) : chartHistory.length > 1 ? (
-          <Sparkline data={chartHistory} height={72} stroke={trendUp ? "var(--price-up)" : "var(--price-down)"} />
+        {historyPending ? (
+          <div className="flex flex-col gap-2">
+            <Skeleton className="h-6 w-28" />
+            <Skeleton className="h-[180px] w-full" />
+          </div>
+        ) : chartReady ? (
+          <TrendChart data={chartHistory} height={180} formatPrice={formatPrice} />
         ) : (
           <p className="py-4 text-center text-[var(--text-sm)] text-[var(--text-muted)]">{t("richbuild.detail.noChartData")}</p>
         )}
