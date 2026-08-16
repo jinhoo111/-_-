@@ -50,7 +50,7 @@ export function SettingsMenu() {
               value={currency}
               onChange={(e) => setCurrency(e.target.value as CurrencyCode)}
               aria-label={t("richbuild.settings.currency")}
-              className="h-8 cursor-pointer rounded-[var(--radius-pill)] border border-[var(--border-default)] bg-[var(--surface-1)] px-2 text-[var(--text-sm)] text-[var(--text-primary)] hover:bg-[var(--surface-2)] focus:border-[var(--border-focus)] focus:outline-none"
+              className="h-8 cursor-pointer rounded-[var(--radius-pill)] border border-[var(--border-default)] bg-[var(--surface-1)] py-0 pr-6 pl-2 text-[var(--text-sm)] text-[var(--text-primary)] hover:bg-[var(--surface-2)] focus:border-[var(--border-focus)] focus:outline-none"
             >
               {CURRENCIES.map((c) => (
                 <option key={c.code} value={c.code}>

@@ -1019,8 +1019,7 @@ const ko: Messages = {
   "richbuild.settings.currency": "통화",
   "richbuild.settings.theme": "테마",
 
-  "richbuild.home.guestBanner": "비회원 순서 — 오늘의 랭킹을 먼저 보여주고, 보유종목은 그 다음에 노출합니다",
-  "richbuild.home.memberBanner": "회원 순서 — 보유종목을 먼저 보여주고, 오늘의 랭킹(TOP 50)은 그 다음에 노출합니다",
+  "richbuild.home.guestLimitedBanner": "비회원은 일부 기능이 제한돼요 — 가입하면 손실 심각도 등 모든 기능을 이용할 수 있어요",
 
   "richbuild.holdings.title": "내 보유종목",
   "richbuild.holdings.add": "+ 종목 등록",
@@ -2134,8 +2133,7 @@ const en: Messages = {
   "richbuild.settings.currency": "Currency",
   "richbuild.settings.theme": "Theme",
 
-  "richbuild.home.guestBanner": "Guest order — today's ranking is shown first, holdings follow after",
-  "richbuild.home.memberBanner": "Member order — holdings shown first, today's ranking (Top 50) follows after",
+  "richbuild.home.guestLimitedBanner": "Some features are limited for guests — sign up to unlock Loss Severity and more",
 
   "richbuild.holdings.title": "My Holdings",
   "richbuild.holdings.add": "+ Add",

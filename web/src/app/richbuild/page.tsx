@@ -14,9 +14,11 @@ export default function RichBuildHomePage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="rounded-[var(--radius-md)] bg-[var(--accent-soft)] px-4 py-2 text-center text-[var(--text-sm)] text-[var(--accent)]">
-        {isGuest ? t("richbuild.home.guestBanner") : t("richbuild.home.memberBanner")}
-      </div>
+      {isGuest && (
+        <div className="rounded-[var(--radius-md)] bg-[var(--warning-soft)] px-4 py-2 text-center text-[var(--text-sm)] text-[var(--warning)]">
+          {t("richbuild.home.guestLimitedBanner")}
+        </div>
+      )}
       <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
         {isGuest ? (
           <>
