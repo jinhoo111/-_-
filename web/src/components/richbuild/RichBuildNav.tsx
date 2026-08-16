@@ -4,10 +4,8 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/browser";
-import { Tabs } from "@/components/ui/Tabs";
-import { useDisplayPrefs, CURRENCIES, type CurrencyCode } from "@/lib/displayPrefs";
-import { useRichbuildMarket } from "@/lib/richbuild/MarketProvider";
-import type { Market } from "@/lib/richbuild/types";
+import { Button } from "@/components/ui/Button";
+import { SettingsMenu } from "@/components/richbuild/SettingsMenu";
 
 const BOTTOM_ITEMS = [
   { href: "/richbuild", label: "Home" },
@@ -15,13 +13,19 @@ const BOTTOM_ITEMS = [
   { href: "/richbuild#holdings", label: "Holdings" },
 ];
 
+// Desktop-only page nav — the bottom tab bar is mobile-only (md:hidden), so without
+// this there was no way to move between pages at all on a desktop viewport.
+const TOP_NAV_ITEMS = [
+  { href: "/richbuild", label: "Home" },
+  { href: "/richbuild/add", label: "Add Holding" },
+  { href: "/richbuild/help", label: "Help" },
+];
+
 // RichBuild's own nav — deliberately separate from the dashboard's AppNav (spec §3:
 // this is a 5-screen guest-first product, not another tab in the big dashboard).
 export function RichBuildNav() {
   const pathname = usePathname();
   const [signedIn, setSignedIn] = useState(false);
-  const { market, setMarket } = useRichbuildMarket();
-  const { currency, setCurrency } = useDisplayPrefs();
 
   useEffect(() => {
     const supabase = createClient();
@@ -47,28 +51,25 @@ export function RichBuildNav() {
         >
           Rich<span className="text-[var(--accent)]">Build</span>
         </Link>
+        <div className="hidden items-center gap-1 md:flex">
+          {TOP_NAV_ITEMS.map((item) => {
+            const active = pathname === item.href;
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                aria-current={active ? "page" : undefined}
+                className={`inline-flex h-9 items-center rounded-[var(--radius-pill)] px-3 text-[var(--text-sm)] ${
+                  active ? "font-semibold text-[var(--accent)]" : "font-medium text-[var(--text-secondary)] hover:bg-[var(--surface-2)]"
+                }`}
+              >
+                {item.label}
+              </Link>
+            );
+          })}
+        </div>
         <div className="flex items-center gap-3">
-          <Tabs
-            size="sm"
-            items={[
-              { id: "kr", label: "KR" },
-              { id: "us", label: "US" },
-            ]}
-            value={market}
-            onChange={(v) => setMarket(v as Market)}
-          />
-          <select
-            value={currency}
-            onChange={(e) => setCurrency(e.target.value as CurrencyCode)}
-            aria-label="Display currency"
-            className="h-9 shrink-0 cursor-pointer rounded-[var(--radius-pill)] border border-[var(--border-default)] bg-[var(--surface-1)] px-3 text-[var(--text-sm)] text-[var(--text-primary)] hover:bg-[var(--surface-2)] focus:border-[var(--border-focus)] focus:outline-none"
-          >
-            {CURRENCIES.map((c) => (
-              <option key={c.code} value={c.code}>
-                {c.symbol} {c.code}
-              </option>
-            ))}
-          </select>
+          <SettingsMenu />
           {signedIn ? (
             <form action="/auth/signout" method="post">
               <button type="submit" className="text-[var(--text-sm)] font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)]">
@@ -76,8 +77,10 @@ export function RichBuildNav() {
               </button>
             </form>
           ) : (
-            <Link href="/richbuild/login" className="text-[var(--text-sm)] font-semibold text-[var(--accent)]">
-              Login
+            <Link href="/richbuild/login">
+              <Button variant="primary" size="sm">
+                Login
+              </Button>
             </Link>
           )}
         </div>

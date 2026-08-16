@@ -2,10 +2,12 @@
 
 import { Card, CardHeader } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
+import { Tabs } from "@/components/ui/Tabs";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { useRichbuildRanking } from "@/lib/queries/useRichbuildRanking";
 import { useRichbuildMarket } from "@/lib/richbuild/MarketProvider";
 import { RICHBUILD_THRESHOLDS } from "@/lib/richbuild/constants";
+import type { Market } from "@/lib/richbuild/types";
 
 function heatTone(score: number): "negative" | "warning" | "neutral" {
   if (score >= RICHBUILD_THRESHOLDS.heatIndex.hot) return "negative";
@@ -13,10 +15,8 @@ function heatTone(score: number): "negative" | "warning" | "neutral" {
   return "neutral";
 }
 
-// Market is a single global filter (top-right nav), not a per-card toggle — every
-// market-scoped section on the page reads the same selection.
 export function RankingSection({ depth }: { depth: "guest" | "member" }) {
-  const { market } = useRichbuildMarket();
+  const { market, setMarket } = useRichbuildMarket();
   const { data: rows, isLoading } = useRichbuildRanking(market, depth);
 
   return (
@@ -24,6 +24,17 @@ export function RankingSection({ depth }: { depth: "guest" | "member" }) {
       <CardHeader
         title="Today's Ranking"
         subtitle={depth === "guest" ? "Top 10 · fixed, no scroll" : "Top 50 · fixed frame, scrollable list"}
+        action={
+          <Tabs
+            size="sm"
+            items={[
+              { id: "kr", label: "KR" },
+              { id: "us", label: "US" },
+            ]}
+            value={market}
+            onChange={(v) => setMarket(v as Market)}
+          />
+        }
       />
       {isLoading ? null : !rows || rows.length === 0 ? (
         <EmptyState
