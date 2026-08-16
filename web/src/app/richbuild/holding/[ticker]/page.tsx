@@ -109,7 +109,9 @@ export default function HoldingDetailPage() {
 
       <Card>
         <CardHeader title={t("richbuild.detail.stopLossTitle")} />
-        <p className="font-semibold text-[var(--text-primary)]">&ldquo;{stopLoss.sentence}&rdquo;</p>
+        <p className="font-semibold text-[var(--text-primary)]">
+          {stopLoss.quadrant ? <>&ldquo;{stopLoss.sentence}&rdquo;</> : stopLoss.sentence}
+        </p>
         <div className="mt-2 flex flex-col gap-1 text-[var(--text-sm)] text-[var(--text-secondary)]">
           <span>
             {t("richbuild.detail.lossSeverityLabel")}{" "}
