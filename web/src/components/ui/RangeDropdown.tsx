@@ -11,12 +11,15 @@ export function RangeDropdown({
   value,
   onChange,
   names,
+  keys = RANGE_KEYS,
   className = "",
 }: {
   value: RangeKey;
   onChange: (k: RangeKey) => void;
   /** Full-name lookup, e.g. { "1D": "1 day", "1M": "1 month", ... } */
   names: Record<RangeKey, string>;
+  /** Subset/order of ranges to offer — defaults to all of RANGE_KEYS. */
+  keys?: RangeKey[];
   className?: string;
 }) {
   const [open, setOpen] = useState(false);
@@ -48,7 +51,7 @@ export function RangeDropdown({
           <div
             className="absolute top-[42px] right-0 z-[30] flex w-[200px] flex-col rounded-[var(--radius-lg)] border border-[var(--border-strong)] bg-[var(--surface-1)] p-1.5 shadow-[var(--shadow-raised)]"
           >
-            {RANGE_KEYS.map((k) => (
+            {keys.map((k) => (
               <button
                 key={k}
                 onClick={() => {

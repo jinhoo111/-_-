@@ -9,7 +9,7 @@ import { Skeleton } from "@/components/ui/Skeleton";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { TrendChart } from "@/components/richbuild/TrendChart";
 import { HeatGauge } from "@/components/richbuild/HeatGauge";
-import { RangeDropdown, RANGE_KEYS, type RangeKey } from "@/components/ui/RangeDropdown";
+import { RangeDropdown, type RangeKey } from "@/components/ui/RangeDropdown";
 import { useHoldings } from "@/lib/queries/useHoldings";
 import { useRichbuildIndicator } from "@/lib/queries/useRichbuildIndicator";
 import { useHistory, useFxRates } from "@/lib/queries/useIndices";
@@ -17,12 +17,13 @@ import { useDisplayPrefs } from "@/lib/displayPrefs";
 import { convertToDisplay, formatCurrency } from "@/lib/richbuild/currency";
 import { useT } from "@/lib/i18n/LanguageProvider";
 
-// "7D" actually fetches Yahoo's range=5d (5 trading days, weekends excluded) — labeling
-// it "7 days" promised a point count it never delivers. "1 Week" matches what trading
-// apps conventionally mean by a calendar week of daily closes.
-const RANGE_NAME_KEY: Record<RangeKey, string> = {
+// "7D" dropped entirely (not just relabeled) — it fetches Yahoo's range=5d (5 trading
+// days, weekends excluded), never actually delivering a week's worth of daily points,
+// and there's no other daily-close range that honestly represents "1 week" here.
+const RICHBUILD_RANGE_KEYS: RangeKey[] = ["1D", "1M", "3M", "9M", "YTD", "1Y", "All"];
+
+const RANGE_NAME_KEY: Partial<Record<RangeKey, string>> = {
   "1D": "portfolio.range.1d",
-  "7D": "richbuild.detail.range1w",
   "1M": "portfolio.range.1m",
   "3M": "portfolio.range.3m",
   "9M": "portfolio.range.9m",
@@ -95,7 +96,8 @@ export default function HoldingDetailPage() {
           <RangeDropdown
             value={range}
             onChange={setRange}
-            names={Object.fromEntries(RANGE_KEYS.map((k) => [k, t(RANGE_NAME_KEY[k])])) as Record<RangeKey, string>}
+            keys={RICHBUILD_RANGE_KEYS}
+            names={Object.fromEntries(RICHBUILD_RANGE_KEYS.map((k) => [k, t(RANGE_NAME_KEY[k]!)])) as Record<RangeKey, string>}
           />
         </div>
         {historyPending ? (

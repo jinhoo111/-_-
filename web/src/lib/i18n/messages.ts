@@ -1053,7 +1053,6 @@ const ko: Messages = {
   "richbuild.add.errorBuyPrice": "매수가는 0보다 큰 숫자여야 해요.",
 
   "richbuild.detail.trend": "추세",
-  "richbuild.detail.range1w": "1주",
   "richbuild.detail.noChartData": "이 기간에는 차트 데이터가 없어요.",
   "richbuild.detail.heatTitle": "관심 과열 지수",
   "richbuild.detail.heatBandNormal": "평시",
@@ -2173,7 +2172,6 @@ const en: Messages = {
   "richbuild.add.errorBuyPrice": "Buy price must be a positive number.",
 
   "richbuild.detail.trend": "Trend",
-  "richbuild.detail.range1w": "1 Week",
   "richbuild.detail.noChartData": "No chart data for this range.",
   "richbuild.detail.heatTitle": "Attention Heat Index",
   "richbuild.detail.heatBandNormal": "Calm",
