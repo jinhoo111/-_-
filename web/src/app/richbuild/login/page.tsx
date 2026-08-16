@@ -42,6 +42,7 @@ function RichBuildLoginForm() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [pending, setPending] = useState(false);
+  const [googlePending, setGooglePending] = useState(false);
 
   async function handleEmailSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -69,17 +70,37 @@ function RichBuildLoginForm() {
   }
 
   async function handleGoogle() {
+    setError("");
+    setGooglePending(true);
     const supabase = createClient();
     // signup_completed for the Google path is logged in /auth/callback (new-user
     // heuristic there) since this redirects away before we'd know the outcome.
-    await supabase.auth.signInWithOAuth({
+    const { error: authError } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: { redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(redirectTo)}` },
     });
+    // Only reachable on failure — success navigates away to Google's consent screen
+    // before this resolves. Without this, an unconfigured/misconfigured provider (e.g.
+    // "Google" not yet enabled in Supabase) just did nothing visible on click.
+    if (authError) {
+      setGooglePending(false);
+      setError(
+        authError.message.toLowerCase().includes("provider is not enabled")
+          ? "Google sign-in isn't set up yet — use email instead, or ask an admin to enable it in Supabase."
+          : "Couldn't start Google sign-in — please try again.",
+      );
+    }
   }
 
   return (
     <Card className="mx-auto w-full max-w-md text-center">
+      <button
+        onClick={() => (window.history.length > 1 ? router.back() : router.push("/richbuild"))}
+        aria-label="Back"
+        className="mb-2 -ml-1 inline-flex items-center gap-1 text-[var(--text-sm)] text-[var(--text-muted)] hover:text-[var(--text-secondary)]"
+      >
+        ← Back
+      </button>
       <h1 className="font-display text-[var(--text-xl)] font-bold text-[var(--text-primary)]">Login / Sign Up</h1>
       <div className="mt-4 flex justify-center">
         <Tabs
@@ -122,9 +143,10 @@ function RichBuildLoginForm() {
             Continue with Email
           </Button>
         )}
-        <Button variant="secondary" onClick={handleGoogle}>
-          Continue with Google
+        <Button variant="secondary" onClick={handleGoogle} disabled={googlePending}>
+          {googlePending ? "Redirecting…" : "Continue with Google"}
         </Button>
+        {!showEmailForm && error && <p className="text-[var(--text-sm)] text-[var(--negative)]">{error}</p>}
       </div>
 
       <button
