@@ -1,6 +1,7 @@
 import { PriceChange } from "@/components/ui/PriceChange";
 import { MarketStatus, type MarketState } from "@/components/ui/MarketStatus";
 import { Sparkline } from "@/components/ui/Sparkline";
+import { Skeleton } from "@/components/ui/Skeleton";
 
 const STATE_LABEL_KEY: Record<string, string> = {
   PRE: "market.state.pre",
@@ -54,6 +55,22 @@ export function IndexCard({
   else displayValue = value;
 
   const losing = (changePercent ?? 0) < 0;
+
+  // Shimmer placeholder while the quote/graph is loading — mirrors the card layout
+  // (name row, big value, delta, sparkline) so the user sees a skeleton, not text.
+  if (status === "loading") {
+    return (
+      <div className="flex min-w-0 flex-col gap-2.5 rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--surface-1)] px-5 py-4" aria-busy="true">
+        <div className="flex items-center justify-between gap-2">
+          <Skeleton className="h-4 w-24" />
+          <Skeleton className="h-3 w-12" />
+        </div>
+        <Skeleton className="h-7 w-32" />
+        <Skeleton className="h-4 w-20" />
+        <Skeleton className="mt-1 h-9 w-full" />
+      </div>
+    );
+  }
 
   const content = (
     <div className="flex min-w-0 flex-col gap-1.5 rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--surface-1)] px-5 py-4 shadow-[var(--shadow-card)] transition-colors duration-[var(--duration-fast)] ease-[var(--ease-out)] hover:border-[var(--border-strong)]">

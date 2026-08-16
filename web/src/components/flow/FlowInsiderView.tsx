@@ -182,7 +182,10 @@ export function FlowInsiderView() {
       </Card>
 
       {active.isLoading ? (
-        <Skeleton className="h-96 w-full" />
+        <div className="flex flex-col gap-4" aria-busy="true">
+          <Skeleton className="h-12 w-full rounded-[var(--radius-xl)]" />
+          <Skeleton className="h-72 w-full rounded-[var(--radius-xl)]" />
+        </div>
       ) : active.error || !active.data ? (
         <EmptyState title={t("flow.error")} />
       ) : (

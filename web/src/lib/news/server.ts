@@ -232,12 +232,12 @@ export function parseRssItems(xml: string, source: string, limit = 8): RssItem[]
     };
     const linkAttr = block.match(/<link[^>]*href="([^"]+)"/i);
     const link = pick("link") || (linkAttr ? linkAttr[1] : "");
-    const title = pick("title");
+    const title = cleanHtml(pick("title"));
     if (!title) continue;
     items.push({
       title,
       link,
-      summary: pick("description") || pick("summary"),
+      summary: cleanHtml(pick("description") || pick("summary")),
       date: pick("pubDate") || pick("published") || pick("updated"),
       source,
     });

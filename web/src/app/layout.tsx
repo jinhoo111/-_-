@@ -1,9 +1,11 @@
 import type { Metadata } from "next";
-import { Space_Grotesk, IBM_Plex_Mono } from "next/font/google";
+import { Inter, IBM_Plex_Mono } from "next/font/google";
 import { Providers } from "./providers";
 import "./globals.css";
 
-const grotesk = Space_Grotesk({
+// Inter is a neutral, highly-readable UI font (replaces Space Grotesk, whose
+// geometric look read as "goofy"). Pairs with IBM Plex Mono for figures.
+const inter = Inter({
   variable: "--font-body",
   subsets: ["latin"],
   weight: ["400", "500", "600", "700"],
@@ -28,7 +30,7 @@ export default function RootLayout({
   return (
     <html
       lang="ko"
-      className={`${grotesk.variable} ${plexMono.variable} h-full antialiased`}
+      className={`${inter.variable} ${plexMono.variable} h-full antialiased`}
       suppressHydrationWarning
     >
       <body className="min-h-full flex flex-col">

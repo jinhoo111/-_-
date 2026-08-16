@@ -49,7 +49,17 @@ export function FlowF13View() {
       </Card>
 
       {f13.isLoading ? (
-        <Skeleton className="h-96 w-full" />
+        <div className="flex flex-col gap-4" aria-busy="true">
+          <Card className="flex flex-wrap items-center gap-6">
+            <Skeleton className="h-10 w-32" />
+            <Skeleton className="h-10 w-24" />
+            <Skeleton className="h-5 w-48" />
+          </Card>
+          <Card className="flex flex-col gap-3">
+            <Skeleton className="h-5 w-40" />
+            <Skeleton className="h-64 w-full" />
+          </Card>
+        </div>
       ) : f13.error || !f13.data ? (
         <EmptyState title={t("flow.error")} />
       ) : (

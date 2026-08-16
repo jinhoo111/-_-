@@ -4,7 +4,8 @@ import { REG_FEEDS_KR, REG_FEEDS_US, REG_FEED_TTL_MS, type RssItem } from "@/lib
 import { fetchRssXml, parseRssItems } from "@/lib/news/server";
 
 async function fetchFeed(feed: { key: string; url: string }): Promise<RssItem[]> {
-  const key = `reg:feed:${feed.key}`;
+  // v2: v1 rows held raw HTML in titles/summaries (entities unescaped + tags stripped now).
+  const key = `reg:feed:v2:${feed.key}`;
   const cached = await cacheGet(key, REG_FEED_TTL_MS);
   if (cached) return cached as RssItem[];
   try {

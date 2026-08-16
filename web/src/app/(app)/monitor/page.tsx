@@ -25,7 +25,25 @@ export default function MonitorPage() {
   const [selectedCorpCode, setSelectedCorpCode] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  if (isLoading) return <Skeleton className="h-96 w-full" />;
+  if (isLoading) {
+    return (
+      <div className="flex flex-col gap-6" aria-busy="true">
+        <div className="flex flex-wrap items-end justify-between gap-4">
+          <div className="flex flex-col gap-2">
+            <Skeleton className="h-8 w-40" />
+            <Skeleton className="h-4 w-64" />
+          </div>
+          <Skeleton className="h-9 w-72 rounded-[var(--radius-pill)]" />
+        </div>
+        <Skeleton className="h-12 w-full rounded-[var(--radius-xl)]" />
+        <div className="flex flex-col gap-3">
+          {[0, 1].map((i) => (
+            <Skeleton key={i} className="h-40 w-full rounded-[var(--radius-xl)]" />
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   const companies = userData?.monitor_companies ?? [];
   const memoArchive = userData?.memo_archive ?? [];

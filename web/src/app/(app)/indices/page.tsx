@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import { useUserData, useUpdateUserData } from "@/lib/queries/useUserData";
 import { useQuotes } from "@/lib/queries/useQuotes";
-import { useCrypto, useFxRates } from "@/lib/queries/useIndices";
+import { useCrypto, useFxRates, useHistory } from "@/lib/queries/useIndices";
 import {
   SECTION_DEFAULT,
+  SECTIONS,
   KR_INDICES,
   US_INDICES,
   VIX_INDEX,
@@ -21,28 +22,15 @@ import {
 } from "@/lib/indices/constants";
 import { Button } from "@/components/ui/Button";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { Modal } from "@/components/ui/Modal";
 import { IndexCard } from "@/components/indices/IndexCard";
 import { YieldCurveCard } from "@/components/indices/YieldCurveCard";
 import { IndexGrid } from "@/components/indices/IndexGrid";
-import { IndicesSettingsPanel } from "@/components/indices/IndicesSettingsPanel";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { FilterChip } from "@/components/ui/FilterChip";
 import { Tabs } from "@/components/ui/Tabs";
 import { useT } from "@/lib/i18n/LanguageProvider";
 import type { IndexCardStatus } from "@/components/indices/IndexCard";
-
-/** Deterministic synthetic intraday series for cards without a real series. */
-function syntheticSeries(changePercent: number | null, n = 10): number[] {
-  const drift = (changePercent ?? 0) / 100;
-  const base = 50;
-  const out: number[] = [];
-  for (let i = 0; i < n; i++) {
-    const t = i / (n - 1);
-    const wobble = Math.sin(i * 1.7) * 3 + Math.cos(i * 0.9) * 2;
-    out.push(base + drift * 120 * t + wobble);
-  }
-  return out;
-}
 
 const SECTION_CHIPS: { key: SectionKey; labelKey: string }[] = [
   { key: "kr", labelKey: "indices.section.kr" },
@@ -60,29 +48,6 @@ function fmtFx(currency: string, value: number | null): string | null {
   return currency === "KRW" ? Math.round(value).toLocaleString() : value.toFixed(4);
 }
 
-const LOAD_TIME_STORAGE_KEY = "indices.loadTimeHistory";
-const LOAD_TIME_HISTORY_SIZE = 5;
-
-function loadHistory(): number[] {
-  if (typeof window === "undefined") return [];
-  try {
-    const raw = window.localStorage.getItem(LOAD_TIME_STORAGE_KEY);
-    const parsed = raw ? JSON.parse(raw) : [];
-    return Array.isArray(parsed) ? parsed.filter((n) => typeof n === "number") : [];
-  } catch {
-    return [];
-  }
-}
-
-function saveHistory(history: number[]) {
-  if (typeof window === "undefined") return;
-  try {
-    window.localStorage.setItem(LOAD_TIME_STORAGE_KEY, JSON.stringify(history));
-  } catch {
-    // ignore storage errors (private mode, quota, etc.)
-  }
-}
-
 export default function IndicesPage() {
   const t = useT();
   const { data: userData, isLoading } = useUserData();
@@ -96,12 +61,12 @@ export default function IndicesPage() {
   // Quick multi-select category chips (a fast version of the settings panel).
   // Empty = show all enabled sections; otherwise only the selected ones.
   const [activeChips, setActiveChips] = useState<SectionKey[]>([]);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const enabledSections = SECTION_CHIPS.filter((c) => settings[c.key]);
   const visibleSections = activeChips.length ? enabledSections.filter((c) => activeChips.includes(c.key)) : enabledSections;
 
-  // Sparkline range selector (mockup: 1W/1M/3M/1Y tabs).
+  // Sparkline range selector (mockup: 1W/1M/3M/1Y tabs) — drives the history fetch.
   const [ixRange, setIxRange] = useState<string>("1M");
-  const ixRangePts: Record<string, number> = { "1W": 7, "1M": 10, "3M": 12, "1Y": 14 };
 
   const yahooSymbols = useMemo(() => yahooSymbolsForSections(settings), [settings]);
   const {
@@ -123,43 +88,50 @@ export default function IndicesPage() {
     refetch: refetchFx,
   } = useFxRates(settings.fx);
 
+  // Real daily close series per symbol for the sparklines (drives the range tabs).
+  const { data: history } = useHistory(yahooSymbols, ixRange);
+
   const refreshing = quotesFetching || cryptoFetching || fxFetching;
-
-  // Rolling average of the last few refresh durations, mirroring legacy's
-  // "소요시간 : 평균 약 N초" header indicator. Persisted so it survives reloads.
-  const historyRef = useRef<number[]>([]);
-  const refreshStartRef = useRef<number | null>(null);
-  const [avgLoadSeconds, setAvgLoadSeconds] = useState<number | null>(null);
-  const wasRefreshingRef = useRef(false);
-
-  useEffect(() => {
-    historyRef.current = loadHistory();
-    if (historyRef.current.length > 0) {
-      const avg = historyRef.current.reduce((a, b) => a + b, 0) / historyRef.current.length;
-      setAvgLoadSeconds(avg);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (refreshing && !wasRefreshingRef.current) {
-      refreshStartRef.current = Date.now();
-    } else if (!refreshing && wasRefreshingRef.current && refreshStartRef.current != null) {
-      const elapsedSeconds = (Date.now() - refreshStartRef.current) / 1000;
-      const next = [...historyRef.current, elapsedSeconds].slice(-LOAD_TIME_HISTORY_SIZE);
-      historyRef.current = next;
-      saveHistory(next);
-      const avg = next.reduce((a, b) => a + b, 0) / next.length;
-      setAvgLoadSeconds(avg);
-      refreshStartRef.current = null;
-    }
-    wasRefreshingRef.current = refreshing;
-  }, [refreshing]);
 
   if (isLoading || !userData) {
     return (
-      <div className="flex flex-col gap-4">
-        <Skeleton className="h-24 w-full" />
-        <Skeleton className="h-96 w-full" />
+      <div className="flex flex-col gap-6" aria-busy="true">
+        {/* PageHeader */}
+        <div className="flex flex-wrap items-end justify-between gap-4">
+          <div className="flex flex-col gap-2">
+            <Skeleton className="h-8 w-40" />
+            <Skeleton className="h-4 w-64" />
+          </div>
+          <div className="flex items-center gap-3">
+            <Skeleton className="h-8 w-44 rounded-[var(--radius-pill)]" />
+            <Skeleton className="h-9 w-24 rounded-[var(--radius-pill)]" />
+          </div>
+        </div>
+
+        {/* Filter chips */}
+        <div className="flex flex-wrap items-center gap-2">
+          {[0, 1, 2, 3, 4].map((i) => (
+            <Skeleton key={i} className="h-8 w-24 rounded-[var(--radius-pill)]" />
+          ))}
+        </div>
+
+        {/* Settings panel */}
+        <Skeleton className="h-12 w-full rounded-[var(--radius-xl)]" />
+
+        {/* Index cards grid */}
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {[0, 1, 2, 3, 4, 5].map((i) => (
+            <div key={i} className="flex flex-col gap-2.5 rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--surface-1)] px-5 py-4">
+              <div className="flex items-center justify-between gap-2">
+                <Skeleton className="h-4 w-20" />
+                <Skeleton className="h-3 w-10" />
+              </div>
+              <Skeleton className="h-7 w-28" />
+              <Skeleton className="h-4 w-20" />
+              <Skeleton className="mt-1 h-9 w-full" />
+            </div>
+          ))}
+        </div>
       </div>
     );
   }
@@ -184,18 +156,40 @@ export default function IndicesPage() {
   function renderItems(items: IndexItem[]) {
     return items.map((item) => {
       const q = quotes?.[item.symbol];
+      const hist = history?.[item.symbol];
+      // For 1D the "one day" change is today's move vs previous close (the quote);
+      // for longer ranges (1W/1M/3M/1Y) compute the gain over the SELECTED period
+      // from the real daily series, so 1W shows the one-week gain, etc.
+      const is1D = ixRange === "1D";
+      let changePercent = q?.changePercent ?? null;
+      let deltaAbs: number | null = null;
+      if (!is1D && hist && hist.length >= 2) {
+        const first = hist[0];
+        const last = hist[hist.length - 1];
+        if (first && isFinite(first)) {
+          changePercent = ((last - first) / first) * 100;
+          deltaAbs = last - first;
+        }
+      }
+      const fmtDelta = (v: number) =>
+        (v >= 0 ? "+" : "−") + Math.abs(v).toLocaleString(undefined, { maximumFractionDigits: q && q.price >= 100 ? 0 : 2 });
       const delta =
-        q != null && q.changePercent != null
-          ? (q.changePercent >= 0 ? "+" : "−") + Math.abs(q.changePercent * q.price / 100).toLocaleString(undefined, { maximumFractionDigits: q.price >= 100 ? 0 : 2 })
-          : null;
+        q != null && deltaAbs != null
+          ? fmtDelta(deltaAbs)
+          : q != null && q.changePercent != null
+            ? fmtDelta(q.changePercent * q.price / 100)
+            : null;
+      // Real curve when history exists; otherwise a single day's close (no fake
+      // synthetic wobble) so the card still shows today's real value.
+      const sparkData = hist && hist.length >= 2 ? hist : q ? [q.price] : null;
       return (
         <IndexCard
           key={item.symbol}
           name={t(item.nameKey)}
           value={q ? q.price.toLocaleString(undefined, { maximumFractionDigits: 2 }) : null}
-          changePercent={q?.changePercent ?? null}
+          changePercent={changePercent}
           delta={delta}
-          sparkData={q?.changePercent != null ? syntheticSeries(q.changePercent, ixRangePts[ixRange] ?? 10) : null}
+          sparkData={sparkData}
           href={INDEX_LINK_MAP[item.symbol]}
           noDataLabel={t("indices.noData")}
           loadingLabel={t("indices.loading")}
@@ -220,16 +214,11 @@ export default function IndicesPage() {
         action={
           <div className="flex items-center gap-3">
             <Tabs
-              items={["1W", "1M", "3M", "1Y"].map((k) => ({ id: k, label: t(`indices.range.${k.toLowerCase()}`) }))}
+              items={["1D", "1W", "1M", "3M", "1Y"].map((k) => ({ id: k, label: t(`indices.range.${k.toLowerCase()}`) }))}
               value={ixRange}
               onChange={setIxRange}
               size="sm"
             />
-            {avgLoadSeconds != null && (
-              <span className="hidden text-[var(--text-xs)] text-[var(--text-muted)] sm:inline">
-                {t(refreshing ? "indices.loadTime.refreshing" : "indices.loadTime.idle", { seconds: avgLoadSeconds.toFixed(1) })}
-              </span>
-            )}
             <Button size="sm" variant="secondary" onClick={handleRefresh} disabled={refreshing}>
               {refreshing ? t("indices.refreshing") : t("indices.refresh")}
             </Button>
@@ -238,6 +227,18 @@ export default function IndicesPage() {
       />
 
       <div className="flex flex-wrap items-center gap-2">
+        <button
+          type="button"
+          onClick={() => setSettingsOpen(true)}
+          aria-label={t("indices.settings")}
+          title={t("indices.settings")}
+          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[var(--radius-md)] border border-[var(--border-default)] bg-[var(--surface-1)] text-[var(--text-secondary)] transition-colors duration-[var(--duration-fast)] ease-[var(--ease-out)] hover:bg-[var(--surface-2)] hover:text-[var(--text-primary)]"
+        >
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="3" />
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+          </svg>
+        </button>
         <FilterChip
           label={t("indices.filter.all")}
           active={activeChips.length === 0}
@@ -256,11 +257,34 @@ export default function IndicesPage() {
           />
         ))}
         <span className="ml-1 font-mono text-[var(--text-xs)] text-[var(--text-muted)]">
-          {visibleSections.length} / {enabledSections.length}
+          {t("indices.filter.count", { visible: String(visibleSections.length), total: String(enabledSections.length) })}
         </span>
       </div>
 
-      <IndicesSettingsPanel settings={settings} onToggle={handleToggleSection} />
+      <Modal
+        open={settingsOpen}
+        onClose={() => setSettingsOpen(false)}
+        title={t("indices.settings")}
+      >
+        <div className="flex flex-wrap gap-1.5">
+          {SECTIONS.map(({ key, labelKey }) => {
+            const on = !!settings[key];
+            return (
+              <button
+                key={key}
+                onClick={() => handleToggleSection(key, !on)}
+                className={`h-9 rounded-[var(--radius-pill)] border px-4 text-[var(--text-sm)] transition-colors duration-[var(--duration-fast)] ease-[var(--ease-out)] ${
+                  on
+                    ? "border-[var(--accent-soft-border)] bg-[var(--accent-soft)] font-semibold text-[var(--accent)]"
+                    : "border-[var(--border-default)] bg-[var(--surface-2)] font-medium text-[var(--text-secondary)]"
+                }`}
+              >
+                {t(labelKey)}
+              </button>
+            );
+          })}
+        </div>
+      </Modal>
 
       {settings.kr && visibleSections.some((c) => c.key === "kr") && (
         <IndexGrid title={t("indices.section.kr")} subtitle={t("indices.source.yahooDelayed")}>
@@ -302,7 +326,7 @@ export default function IndicesPage() {
                 value={q ? "$" + q.price.toLocaleString(undefined, { maximumFractionDigits: 0 }) : null}
                 changePercent={q?.changePercent ?? null}
                 delta={q ? (q.changePercent != null && q.changePercent >= 0 ? "+" : "−") + "$" + (q.price * (q.changePercent ?? 0) / 100).toLocaleString(undefined, { maximumFractionDigits: 0 }) : null}
-                sparkData={q ? syntheticSeries(q.changePercent, ixRangePts[ixRange] ?? 10) : null}
+                sparkData={q ? [q.price] : null}
                 href={INDEX_LINK_MAP[id]}
                 noDataLabel={t("indices.noData")}
                 loadingLabel={t("indices.loading")}

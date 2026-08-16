@@ -258,17 +258,18 @@
   --color-broker-daesin-bg: #ccfbf1;
   --color-broker-daesin-text: #134e4a;
 
-  /* Type scale — roomier (12px floor) */
+  /* Type scale — roomier (12px floor), matches design_reference tokens/typography.css */
   --text-2xs: 12px;
   --text-xs: 12px;
   --text-sm: 13px;
-  --text-base: 14px;
+  --text-base: 15px;
   --text-table: 14px;
-  --text-md: 15px;
-  --text-lg: 16px;
-  --text-xl: 18px;
-  --text-2xl: 22px;
-  --text-3xl: 28px;
+  --text-md: 16px;
+  --text-lg: 18px;
+  --text-xl: 22px;
+  --text-2xl: 28px;
+  --text-3xl: 36px;
+  --text-display: 48px;
 
   /* Radii */
   --radius-control: var(--radius-minted-md);
@@ -318,6 +319,22 @@ body {
   font-family: var(--font-body), "Helvetica Neue", sans-serif;
 }
 
+/* Font-size utilities — Tailwind v4 treats `text-[var(...)]` as COLOR when the
+   value is ambiguous, so `text-[var(--text-2xl)]` etc. never set a font-size
+   (every element fell back to the inherited 16px, flattening the type scale).
+   These attribute rules force the size tokens to behave as font-sizes; color
+   tokens like `--text-primary` are untouched (different substrings). */
+[class*="var(--text-2xs)"] { font-size: var(--text-2xs); }
+[class*="var(--text-xs)"] { font-size: var(--text-xs); }
+[class*="var(--text-sm)"] { font-size: var(--text-sm); }
+[class*="var(--text-base)"] { font-size: var(--text-base); }
+[class*="var(--text-md)"] { font-size: var(--text-md); }
+[class*="var(--text-lg)"] { font-size: var(--text-lg); }
+[class*="var(--text-xl)"] { font-size: var(--text-xl); }
+[class*="var(--text-2xl)"] { font-size: var(--text-2xl); }
+[class*="var(--text-3xl)"] { font-size: var(--text-3xl); }
+[class*="var(--text-table)"] { font-size: var(--text-table); }
+
 @keyframes pulse-dot {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.4; }
@@ -328,3 +345,26 @@ body {
   0% { background-position: 200% 0; }
   100% { background-position: -200% 0; }
 }
+
+/* Skeleton loading: shimmer sweep + gentle opacity pulse so placeholders
+   clearly read as "loading" rather than static gray blocks. */
+@keyframes minted-skeleton-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.55; }
+}
+.animate-skeleton {
+  background-size: 200% 100%;
+  animation: minted-shimmer 1.6s ease-in-out infinite, minted-skeleton-pulse 2.2s ease-in-out infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+.animate-spin { animation: spin 0.8s linear infinite; }
+
+/* Indeterminate progress bar — a bar sweeping left→right to signal activity. */
+@keyframes minted-progress {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(400%); }
+}
+.animate-progress-bar { animation: minted-progress 1.1s ease-in-out infinite; }

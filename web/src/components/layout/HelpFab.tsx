@@ -108,9 +108,13 @@ export function HelpFab() {
           type="button"
           onClick={() => setOpen((o) => !o)}
           aria-label={t("help.toggle")}
-          className="flex h-12 w-12 items-center justify-center rounded-full bg-[var(--color-accent-primary)] text-[var(--text-xl)] text-[var(--color-accent-on)] shadow-lg"
+          className="flex h-12 w-12 items-center justify-center rounded-full border border-[var(--border-default)] bg-[var(--surface-2)] text-[var(--accent)] shadow-[var(--shadow-card)] transition-colors duration-[var(--duration-fast)] ease-[var(--ease-out)] hover:bg-[var(--surface-3)]"
         >
-          💬
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="10" />
+            <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
+            <path d="M12 17h.01" />
+          </svg>
         </button>
       </div>
     </>

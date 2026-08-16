@@ -15,6 +15,7 @@ import {
 } from "@/lib/market/technical";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
+import { ProgressBar, Spinner } from "@/components/ui/Loader";
 import { useT } from "@/lib/i18n/LanguageProvider";
 
 // Ported from legacy scanTechSignals / renderTechCard. Eligible = held/buy/watch (not
@@ -112,7 +113,15 @@ export function TechSignalScanner() {
 
   let body: ReactNode;
   if (scanning && !scanned) {
-    body = <p className="text-[var(--text-sm)] text-[var(--color-text-tertiary)]">⟳ {t("home.tech.analyzing")}</p>;
+    body = (
+      <div className="flex flex-col gap-2">
+        <p className="flex items-center gap-1.5 text-[var(--text-sm)] text-[var(--color-text-tertiary)]">
+          <Spinner size={13} />
+          {t("home.tech.analyzing")}
+        </p>
+        <ProgressBar />
+      </div>
+    );
   } else if (!scanned) {
     body = <p className="text-[var(--text-sm)] text-[var(--color-text-tertiary)]">{t("home.tech.idle")}</p>;
   } else if (!hit.length) {
@@ -150,7 +159,14 @@ export function TechSignalScanner() {
       <div className="flex items-center justify-between gap-2">
         <span className="text-[var(--text-base)] font-bold text-[var(--color-text-primary)]">{t("home.tech.title")}</span>
         <Button size="sm" onClick={handleScan} disabled={scanning} className="font-semibold">
-          {scanning ? `⟳ ${t("home.tech.scanning")}` : t("home.tech.scan")}
+          {scanning ? (
+            <span className="inline-flex items-center gap-1.5">
+              <Spinner size={13} />
+              {t("home.tech.scanning")}
+            </span>
+          ) : (
+            t("home.tech.scan")
+          )}
         </Button>
       </div>
       {body}

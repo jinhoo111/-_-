@@ -128,23 +128,44 @@ export function RegFeedsView() {
       </Card>
 
       {isLoading ? (
-        <Skeleton className="h-96 w-full" />
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2" aria-busy="true">
+          {[0, 1].map((i) => (
+            <div key={i} className="flex flex-col gap-3 rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--surface-1)] px-5 py-4">
+              <Skeleton className="h-5 w-40" />
+              <Skeleton className="h-4 w-full" />
+              <Skeleton className="h-4 w-5/6" />
+              <Skeleton className="h-4 w-2/3" />
+              <Skeleton className="mt-2 h-4 w-full" />
+              <Skeleton className="h-4 w-4/5" />
+            </div>
+          ))}
+        </div>
       ) : error || !data ? (
         <EmptyState title={t("news.error")} />
       ) : !showingResults ? (
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <Card>
-            <p className="mb-2 text-[var(--text-md)] font-semibold text-[var(--color-text-primary)]">{t("research.reg.us.title")}</p>
-            <RssList items={data.us} />
+            <p className="mb-2 text-[var(--text-md)] font-semibold text-[var(--color-text-primary)]">
+              {t("research.reg.us.title")}
+              <span className="ml-1 text-[var(--text-sm)] font-normal text-[var(--color-text-tertiary)]">
+                {t("research.search.resultsCount", { count: data.us.length })}
+              </span>
+            </p>
+            <RssList items={data.us.slice(0, 12)} />
           </Card>
           <Card>
-            <p className="mb-2 text-[var(--text-md)] font-semibold text-[var(--color-text-primary)]">{t("research.reg.kr.title")}</p>
-            <RssList items={data.kr} />
+            <p className="mb-2 text-[var(--text-md)] font-semibold text-[var(--color-text-primary)]">
+              {t("research.reg.kr.title")}
+              <span className="ml-1 text-[var(--text-sm)] font-normal text-[var(--color-text-tertiary)]">
+                {t("research.search.resultsCount", { count: data.kr.length })}
+              </span>
+            </p>
+            <RssList items={data.kr.slice(0, 12)} />
           </Card>
         </div>
       ) : keyword ? (
         search.isLoading ? (
-          <Skeleton className="h-96 w-full" />
+          <Skeleton className="h-64 w-full rounded-[var(--radius-xl)]" />
         ) : search.error || !liveItems ? (
           <EmptyState title={t("news.error")} />
         ) : liveItems.length === 0 ? (

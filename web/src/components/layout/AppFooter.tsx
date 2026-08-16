@@ -7,7 +7,7 @@ export function AppFooter() {
 
   return (
     <footer
-      className="mx-auto mt-8 w-full max-w-[1080px] px-6 py-8 text-[var(--text-xs)] leading-[1.65] text-[var(--text-muted)]"
+      className="mx-auto mt-8 w-full max-w-[1188px] px-[1.65rem] py-8 text-[var(--text-xs)] leading-[1.65] text-[var(--text-muted)]"
       style={{ borderTop: "1px solid var(--border-default)" }}
     >
       <div>

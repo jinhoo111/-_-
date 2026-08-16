@@ -47,3 +47,22 @@ export function useFxRates(enabled: boolean) {
     refetchOnWindowFocus: false,
   });
 }
+
+async function fetchHistory(symbols: string[], range: string): Promise<Record<string, number[] | null>> {
+  const res = await fetch(`/api/market/history?symbols=${encodeURIComponent(symbols.join(","))}&range=${range}`);
+  if (!res.ok) throw new Error("history_fetch_failed");
+  return res.json();
+}
+
+// Real daily close series per symbol for the indices sparklines (1W/1M/3M/1Y).
+// Refetched when the range tab changes; kept fresh for a few minutes.
+export function useHistory(symbols: string[], range: string) {
+  const key = [...new Set(symbols)].sort();
+  return useQuery({
+    queryKey: ["history", key, range],
+    queryFn: () => fetchHistory(key, range),
+    enabled: key.length > 0,
+    staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
+  });
+}

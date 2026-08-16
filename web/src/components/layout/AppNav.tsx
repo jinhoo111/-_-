@@ -33,7 +33,7 @@ export function AppNav() {
 
   return (
     <>
-      <nav className="mx-auto flex h-[68px] max-w-[1080px] items-center gap-6 px-6">
+      <nav className="mx-auto flex h-[68px] max-w-[1188px] items-center gap-6 px-[1.65rem]">
         <Link href="/portfolio" className="shrink-0 font-display text-[22px] font-bold tracking-[var(--tracking-display)] text-[var(--text-primary)]">
           RichHub<span className="text-[var(--accent)]">.</span>
         </Link>
@@ -45,7 +45,7 @@ export function AppNav() {
                 key={item.href}
                 href={item.href}
                 aria-current={active ? "page" : undefined}
-                className={`h-10 shrink-0 rounded-[var(--radius-pill)] px-4 text-[var(--text-base)] transition-colors duration-[var(--duration-fast)] ease-[var(--ease-out)] ${
+                className={`inline-flex h-10 shrink-0 items-center justify-center rounded-[var(--radius-pill)] px-4 text-[var(--text-base)] transition-colors duration-[var(--duration-fast)] ease-[var(--ease-out)] ${
                   active
                     ? "bg-[var(--accent-soft)] font-semibold text-[var(--accent)]"
                     : "font-medium text-[var(--text-secondary)] hover:bg-[var(--surface-2)]"
@@ -73,7 +73,7 @@ export function AppNav() {
           <form action="/auth/signout" method="post">
             <button
               type="submit"
-              className="h-10 rounded-[var(--radius-pill)] px-3 text-[var(--text-sm)] font-medium text-[var(--text-secondary)] transition-colors duration-[var(--duration-fast)] ease-[var(--ease-out)] hover:bg-[var(--surface-2)]"
+              className="inline-flex h-10 items-center rounded-[var(--radius-pill)] px-3 text-[var(--text-sm)] font-medium text-[var(--text-secondary)] transition-colors duration-[var(--duration-fast)] ease-[var(--ease-out)] hover:bg-[var(--surface-2)]"
             >
               {t("nav.logout")}
             </button>

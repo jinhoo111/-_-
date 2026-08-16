@@ -46,3 +46,22 @@ async function fetchFxRate(): Promise<number> {
 export function useFxRate() {
   return useQuery({ queryKey: ["fxRate"], queryFn: fetchFxRate, staleTime: Infinity });
 }
+
+async function fetchPortfolioHistory(symbols: string[], range: string): Promise<Record<string, number[] | null>> {
+  const res = await fetch(`/api/market/history?symbols=${encodeURIComponent(symbols.join(","))}&range=${encodeURIComponent(range)}`);
+  if (!res.ok) throw new Error("history_fetch_failed");
+  return res.json();
+}
+
+// Real daily/intraday close series per held ticker for the portfolio hero chart.
+// Refetched when the range dropdown changes; kept fresh for a few minutes.
+export function usePortfolioHistory(symbols: string[], range: string) {
+  const key = [...new Set(symbols)].sort();
+  return useQuery({
+    queryKey: ["portfolioHistory", key, range],
+    queryFn: () => fetchPortfolioHistory(key, range),
+    enabled: key.length > 0,
+    staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
+  });
+}

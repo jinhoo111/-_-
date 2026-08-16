@@ -345,9 +345,30 @@ export default function JournalPage() {
 
   if (isLoading || !userData) {
     return (
-      <div className="flex flex-col gap-4">
-        <Skeleton className="h-10 w-full" />
-        <Skeleton className="h-96 w-full" />
+      <div className="flex flex-col gap-6" aria-busy="true">
+        <div className="flex flex-wrap items-end justify-between gap-4">
+          <div className="flex flex-col gap-2">
+            <Skeleton className="h-8 w-40" />
+            <Skeleton className="h-4 w-64" />
+          </div>
+          <div className="flex items-center gap-2">
+            <Skeleton className="h-9 w-24 rounded-[var(--radius-pill)]" />
+            <Skeleton className="h-9 w-40 rounded-[var(--radius-pill)]" />
+          </div>
+        </div>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+          {[0, 1, 2].map((i) => (
+            <div key={i} className="flex flex-col gap-3 rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--surface-1)] px-5 py-4">
+              <Skeleton className="h-4 w-28" />
+              <Skeleton className="h-8 w-24" />
+              <Skeleton className="h-4 w-36" />
+            </div>
+          ))}
+        </div>
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
+          <Skeleton className="h-96 w-full rounded-[var(--radius-xl)]" />
+          <Skeleton className="h-96 w-full rounded-[var(--radius-xl)]" />
+        </div>
       </div>
     );
   }

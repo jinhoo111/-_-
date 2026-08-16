@@ -14,14 +14,14 @@ export function RssList({ items }: { items: RssItem[] }) {
         return (
           <div
             key={`${item.link}-${i}`}
-            className="rounded-[var(--radius-control)] border border-[var(--color-border-default)] p-3"
+            className="overflow-hidden rounded-[var(--radius-control)] border border-[var(--color-border-default)] p-3"
           >
             <div className="mb-1 flex items-start justify-between gap-2">
               <a
                 href={item.link}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="min-w-0 flex-1 text-[var(--text-md)] font-semibold leading-snug text-[var(--color-text-primary)] hover:underline"
+                className="line-clamp-2 min-w-0 flex-1 break-words text-[var(--text-md)] font-semibold leading-snug text-[var(--color-text-primary)] hover:underline"
               >
                 {item.title}
               </a>
@@ -35,19 +35,13 @@ export function RssList({ items }: { items: RssItem[] }) {
               )}
             </div>
             {item.summary && (
-              <p className="mb-1 text-[var(--text-base)] leading-relaxed text-[var(--color-text-subtle)]">{item.summary}</p>
+              <p className="line-clamp-2 mb-1 break-words text-[var(--text-sm)] leading-snug text-[var(--color-text-subtle)]">
+                {item.summary}
+              </p>
             )}
-            <div className="flex flex-wrap items-center gap-2.5 text-[var(--text-sm)] text-[var(--color-text-muted)]">
+            <div className="flex flex-wrap items-center gap-2.5 text-[var(--text-xs)] text-[var(--color-text-muted)]">
               <span>{meta?.label ?? item.source}</span>
               {item.date && <span>{new Date(item.date).toLocaleString()}</span>}
-              {meta && (
-                <span
-                  className="rounded-[20px] px-[7px] py-[1px] text-[var(--text-xs)] font-bold"
-                  style={{ background: meta.bg, color: meta.color }}
-                >
-                  {meta.label}
-                </span>
-              )}
             </div>
           </div>
         );

@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useUserData, useUpdateUserData } from "@/lib/queries/useUserData";
-import { useQuotes } from "@/lib/queries/useQuotes";
+import { useQuotes, usePortfolioHistory } from "@/lib/queries/useQuotes";
 import { useFxRates } from "@/lib/queries/useIndices";
 import { useDisplayPrefs, CURRENCIES, type CurrencyCode } from "@/lib/displayPrefs";
 import { isKrTicker, type Stock, type StockStatus, type StockStyle } from "@/lib/types/userData";
@@ -44,19 +44,8 @@ const MARKET_STATE_KEY: Record<string, string> = {
   CLOSED: "market.state.close",
 };
 
-// Range-dropdown config: synthetic change factor + point count per range, so the
-// hero behaves like the mockup (range changes the % / delta / sparkline).
-const RANGE_FACTOR: Record<string, { f: number; pts: number }> = {
-  "1D": { f: 0.06, pts: 9 },
-  "7D": { f: 0.18, pts: 7 },
-  "1M": { f: 0.4, pts: 10 },
-  "3M": { f: 0.7, pts: 10 },
-  "9M": { f: 1.2, pts: 10 },
-  YTD: { f: 1.1, pts: 10 },
-  "1Y": { f: 1.5, pts: 12 },
-  All: { f: 2.0, pts: 13 },
-};
-
+// Range-dropdown config: just the display labels; the actual change/sparkline is
+// computed from REAL historical prices per range (see portfolioSeries below).
 const RANGE_NAME_KEY: Record<string, string> = {
   "1D": "portfolio.range.1d",
   "7D": "portfolio.range.7d",
@@ -67,17 +56,6 @@ const RANGE_NAME_KEY: Record<string, string> = {
   "1Y": "portfolio.range.1y",
   All: "portfolio.range.all",
 };
-
-function syntheticSeries(endValue: number, changeFactor: number, n = 10): number[] {
-  const start = endValue / (1 + changeFactor / 100);
-  const out: number[] = [];
-  for (let i = 0; i < n; i++) {
-    const t = i / (n - 1);
-    const wobble = Math.sin(i * 1.7) * 0.008 + Math.cos(i * 0.9) * 0.006;
-    out.push(start + (endValue - start) * t + (endValue * wobble));
-  }
-  return out;
-}
 
 type StatusFilter = "all" | "hidden" | StockStatus;
 type MarketFilter = "all" | "kr" | "us";
@@ -125,13 +103,94 @@ export default function PortfolioPage() {
 
   const stocks = useMemo(() => userData?.stocks ?? [], [userData]);
   const tickers = useMemo(() => stocks.filter((s) => !s.hidden).map((s) => s.ticker), [stocks]);
-  const { isFetching: quotesFetching, refetch: refetchQuotes } = useQuotes(tickers);
+  const { data: quotes, isFetching: quotesFetching, refetch: refetchQuotes } = useQuotes(tickers);
+  // Real historical closes per held ticker for the hero chart (driven by the range dropdown).
+  const { data: history, isPending: historyPending } = usePortfolioHistory(tickers, range);
 
   if (isLoading || !userData) {
     return (
-      <div className="flex flex-col gap-4">
-        <Skeleton className="h-24 w-full" />
-        <Skeleton className="h-96 w-full" />
+      <div className="flex flex-col gap-6" aria-busy="true">
+        {/* PageHeader */}
+        <div className="flex items-end justify-between gap-4">
+          <div className="flex flex-col gap-2">
+            <Skeleton className="h-8 w-48" />
+            <Skeleton className="h-4 w-64" />
+          </div>
+          <Skeleton className="h-9 w-40 rounded-[var(--radius-pill)]" />
+        </div>
+
+        {/* Hero: 2fr / 1fr */}
+        <div className="grid grid-cols-1 items-stretch gap-4 lg:grid-cols-[2fr_1fr]">
+          <div className="flex flex-col gap-3 rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--surface-1)] px-6 py-5">
+            <div className="flex items-center justify-between gap-3">
+              <Skeleton className="h-4 w-28" />
+              <Skeleton className="h-8 w-28 rounded-[var(--radius-pill)]" />
+            </div>
+            <Skeleton className="h-11 w-44" />
+            <Skeleton className="h-5 w-56" />
+            <Skeleton className="mt-2 h-[88px] w-full" />
+          </div>
+          <div className="flex flex-col gap-4">
+            {[0, 1].map((i) => (
+              <div key={i} className="flex flex-1 flex-col gap-3 rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--surface-1)] px-6 py-5">
+                <Skeleton className="h-4 w-28" />
+                <Skeleton className="h-10 w-40" />
+                <Skeleton className="h-5 w-48" />
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Holdings (3fr) + Allocation / Next step (2fr) */}
+        <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-[3fr_2fr]">
+          <div className="flex flex-col gap-3 rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--surface-1)] px-5 py-4">
+            <div className="mb-1 flex items-center justify-between gap-4">
+              <Skeleton className="h-6 w-32" />
+              <Skeleton className="h-8 w-36 rounded-[var(--radius-pill)]" />
+            </div>
+            <div className="flex flex-col gap-4">
+              {[0, 1, 2, 3].map((i) => (
+                <div key={i} className="flex items-center gap-3">
+                  <Skeleton className="h-9 w-9 rounded-full" />
+                  <div className="flex flex-1 flex-col gap-1.5">
+                    <Skeleton className="h-4 w-40" />
+                    <Skeleton className="h-3 w-28" />
+                  </div>
+                  <div className="flex flex-col items-end gap-1.5">
+                    <Skeleton className="h-5 w-20" />
+                    <Skeleton className="h-3 w-14" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="flex flex-col gap-4">
+            {[0, 1].map((i) => (
+              <div key={i} className="flex flex-col gap-4 rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--surface-1)] px-5 py-4">
+                <Skeleton className="h-6 w-28" />
+                <Skeleton className="h-3.5 w-full rounded-[var(--radius-pill)]" />
+                <Skeleton className="h-4 w-24" />
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Cash tiles */}
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          {[0, 1].map((i) => (
+            <div key={i} className="flex flex-col gap-3 rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--surface-1)] px-5 py-4">
+              <div className="flex items-center justify-between gap-3">
+                <Skeleton className="h-4 w-24" />
+                <Skeleton className="h-4 w-10" />
+              </div>
+              <Skeleton className="h-8 w-36" />
+            </div>
+          ))}
+        </div>
+
+        {/* Table / signal panels */}
+        <Skeleton className="h-64 w-full rounded-[var(--radius-xl)]" />
+        <Skeleton className="h-48 w-full rounded-[var(--radius-xl)]" />
       </div>
     );
   }
@@ -241,6 +300,63 @@ export default function PortfolioPage() {
   const cashTotalUSD = (userData.cash_usd || 0) + (userData.cash_krw || 0) / fxRate;
   const grandTotalUSD = totalValueUSD + cashTotalUSD;
 
+  // REAL portfolio value over the selected range, computed from each held
+  // ticker's actual historical closes (summed to USD + cash). Series are aligned
+  // by array index (Yahoo returns the same date order for a range); a shorter
+  // series (e.g. KR vs US trading calendars) forward-fills its last close.
+  // Plain computation (not useMemo) — it lives after the loading early-return,
+  // so it must not add hooks conditionally.
+  const portfolioSeries = (() => {
+    if (!history || !held.length) return null;
+    const arrs = held.map((s) => history[s.ticker] ?? []);
+    const maxLen = arrs.reduce((m, a) => Math.max(m, a.length), 0);
+    if (maxLen < 2) return null;
+    const out: number[] = [];
+    for (let i = 0; i < maxLen; i++) {
+      let v = cashTotalUSD;
+      held.forEach((s, idx) => {
+        const arr = arrs[idx];
+        if (!arr.length) return;
+        const c = arr[Math.min(i, arr.length - 1)];
+        v += (isKrTicker(s.ticker) ? c / fxRate : c) * s.qty;
+      });
+      out.push(v);
+    }
+    // Yahoo has no 9mo range — 9M fetches 1y; slice to ~the last 9 months.
+    if (range === "9M" && out.length > 3) {
+      const slice = Math.max(2, Math.round(out.length * 0.75));
+      return out.slice(out.length - slice);
+    }
+    return out;
+  })();
+
+  const seriesStart = portfolioSeries && portfolioSeries.length ? portfolioSeries[0] : null;
+  // 1D shows today's change vs previous close (computed from each quote's daily
+  // changePercent), matching the indices page — the intraday first bar isn't the
+  // same reference. Longer ranges use the real series' start value.
+  const is1D = range === "1D";
+  let rangeChangePct: number | null = null;
+  let rangeDelta: number | null = null;
+  if (is1D) {
+    let prevValue = 0;
+    let any = false;
+    for (const s of held) {
+      const q = quotes?.[s.ticker];
+      if (q?.price && q.changePercent != null && isFinite(q.changePercent)) {
+        prevValue += (isKrTicker(s.ticker) ? q.price / (1 + q.changePercent / 100) / fxRate : q.price / (1 + q.changePercent / 100)) * s.qty;
+        any = true;
+      }
+    }
+    if (any) {
+      const prevTotal = prevValue + cashTotalUSD;
+      rangeDelta = grandTotalUSD - prevTotal;
+      rangeChangePct = prevTotal > 0 ? (rangeDelta / prevTotal) * 100 : null;
+    }
+  } else {
+    rangeChangePct = seriesStart && seriesStart > 0 ? ((grandTotalUSD - seriesStart) / seriesStart) * 100 : null;
+    rangeDelta = seriesStart != null ? grandTotalUSD - seriesStart : null;
+  }
+
   const ratePerUSD: Record<CurrencyCode, number> = {
     USD: 1,
     KRW: fxRate,
@@ -339,19 +455,29 @@ export default function PortfolioPage() {
             />
           }
           change={
-            <span className="inline-flex items-center gap-2.5">
-              <PriceChange value={profitRate * (RANGE_FACTOR[range]?.f ?? 0.4)} badge />
-              <span className="font-mono text-[var(--text-sm)] text-[var(--text-secondary)]">
-                {(profitUSD * (RANGE_FACTOR[range]?.f ?? 0.4) >= 0 ? "+" : "−") + fmtTop(Math.abs(profitUSD * (RANGE_FACTOR[range]?.f ?? 0.4)))}
+            historyPending && !is1D ? (
+              <div className="flex items-center gap-2.5">
+                <Skeleton className="h-6 w-20 rounded-full" />
+                <Skeleton className="h-4 w-24" />
+              </div>
+            ) : (
+              <span className="inline-flex items-center gap-2.5">
+                {rangeChangePct != null ? <PriceChange value={rangeChangePct} badge /> : <span className="text-[var(--text-sm)] text-[var(--text-muted)]">—</span>}
+                {rangeDelta != null ? (
+                  <span className="font-mono text-[var(--text-sm)] text-[var(--text-secondary)]">
+                    {(rangeDelta >= 0 ? "+" : "−") + fmtTop(Math.abs(rangeDelta))}
+                  </span>
+                ) : null}
               </span>
-            </span>
+            )
           }
           note={t("portfolio.hero.note")}
           spark={
-            <Sparkline
-              data={syntheticSeries(grandTotalUSD || 1, profitRate * (RANGE_FACTOR[range]?.f ?? 0.4), RANGE_FACTOR[range]?.pts ?? 10)}
-              height={88}
-            />
+            portfolioSeries && portfolioSeries.length > 1 ? (
+              <Sparkline data={portfolioSeries} height={88} />
+            ) : (
+              <Skeleton className="h-[88px] w-full" />
+            )
           }
         />
         <div className="flex flex-col gap-4">
@@ -726,7 +852,7 @@ function AllocationBar({
   const cashPct = pct(cashTotalUSD);
   const rows = [
     { label: t("portfolio.alloc.kr"), pct: krPct, color: "var(--chart-line)" },
-    { label: t("portfolio.alloc.us"), pct: usPct, color: "var(--chart-alt-1)" },
+    { label: t("portfolio.alloc.us"), pct: usPct, color: "var(--chart-alt-2)" },
     { label: t("portfolio.alloc.cash"), pct: cashPct, color: "var(--chart-alt-3)" },
   ];
   return (

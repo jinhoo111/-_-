@@ -17,7 +17,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       <ServiceNoticeBanner />
       <AttachEmailBanner />
       <DisclaimerBanner />
-      <main className="mx-auto flex w-full max-w-[1080px] flex-1 flex-col gap-6 px-6 pt-8 pb-[calc(96px+env(safe-area-inset-bottom))] md:pb-16">
+      <main className="mx-auto flex w-full max-w-[1188px] flex-1 flex-col gap-6 px-[1.65rem] pt-8 pb-[calc(96px+env(safe-area-inset-bottom))] md:pb-16">
         {children}
       </main>
       <AppFooter />

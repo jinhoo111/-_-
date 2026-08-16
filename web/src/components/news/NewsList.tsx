@@ -82,9 +82,12 @@ export function NewsList({ items, limit }: { items: NewsItem[]; limit?: number }
             <button
               onClick={() => handleSaveToJournal(item)}
               title={t("news.saveToJournal")}
-              className="shrink-0 rounded-[var(--radius-md)] px-2.5 py-1.5 text-[var(--text-xs)] font-medium text-[var(--text-muted)] transition-colors duration-[var(--duration-fast)] ease-[var(--ease-out)] hover:bg-[var(--surface-2)] hover:text-[var(--text-secondary)]"
+              className="inline-flex shrink-0 items-center gap-1.5 rounded-[var(--radius-md)] px-2.5 py-1.5 text-[var(--text-xs)] font-medium text-[var(--text-muted)] transition-colors duration-[var(--duration-fast)] ease-[var(--ease-out)] hover:bg-[var(--surface-2)] hover:text-[var(--text-secondary)]"
             >
-              📝 {t("news.saveToJournal")}
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z" />
+              </svg>
+              {t("news.saveToJournal")}
             </button>
           </div>
         );
