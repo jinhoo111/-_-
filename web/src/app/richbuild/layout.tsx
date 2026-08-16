@@ -1,5 +1,6 @@
 import { RichBuildNav } from "@/components/richbuild/RichBuildNav";
 import { RichBuildVisitTracker } from "@/components/richbuild/RichBuildVisitTracker";
+import { HelpFab } from "@/components/richbuild/HelpFab";
 
 export default function RichBuildLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -11,6 +12,7 @@ export default function RichBuildLayout({ children }: { children: React.ReactNod
       <main className="mx-auto flex w-full max-w-[1188px] flex-1 flex-col gap-6 px-[1.65rem] pt-8 pb-[calc(72px+env(safe-area-inset-bottom))] md:pb-16">
         {children}
       </main>
+      <HelpFab />
     </div>
   );
 }

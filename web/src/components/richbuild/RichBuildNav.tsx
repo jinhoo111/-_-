@@ -35,9 +35,6 @@ export function RichBuildNav() {
           Rich<span className="text-[var(--accent)]">Build</span>
         </Link>
         <div className="flex items-center gap-4">
-          <Link href="/richbuild/help" className="text-[var(--text-sm)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]">
-            Help
-          </Link>
           {signedIn ? (
             <form action="/auth/signout" method="post">
               <button type="submit" className="text-[var(--text-sm)] font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)]">

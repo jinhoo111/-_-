@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/Input";
 import { Tabs } from "@/components/ui/Tabs";
 import { createClient } from "@/lib/supabase/browser";
 import { authErrText } from "@/lib/auth/errors";
+import { logRichbuildEvent } from "@/lib/richbuild/logEvent";
 
 // authErrText returns an i18n message KEY (the dashboard resolves it via t()); RichBuild
 // has no i18n layer yet (spec's mockups are English-only for v1), so map the same keys
@@ -51,7 +52,7 @@ function RichBuildLoginForm() {
     }
     setPending(true);
     const supabase = createClient();
-    const { error: authError } =
+    const { data, error: authError } =
       mode === "signup"
         ? await supabase.auth.signUp({ email: email.trim(), password })
         : await supabase.auth.signInWithPassword({ email: email.trim(), password });
@@ -61,11 +62,16 @@ function RichBuildLoginForm() {
       setError(AUTH_ERROR_TEXT[key] ?? AUTH_ERROR_TEXT["authError.unknown"]);
       return;
     }
+    // Working-flow diagram §4: signup fires a discrete signup_completed event (distinct
+    // from the plain visit-timestamp log) at guest→member conversion.
+    if (mode === "signup") await logRichbuildEvent("signup_completed", data.user?.id ?? null);
     router.push(redirectTo);
   }
 
   async function handleGoogle() {
     const supabase = createClient();
+    // signup_completed for the Google path is logged in /auth/callback (new-user
+    // heuristic there) since this redirects away before we'd know the outcome.
     await supabase.auth.signInWithOAuth({
       provider: "google",
       options: { redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(redirectTo)}` },

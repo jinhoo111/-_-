@@ -2,18 +2,7 @@
 
 import { useEffect } from "react";
 import { createClient } from "@/lib/supabase/browser";
-
-const VISITOR_ID_KEY = "richbuild_visitor_id";
-
-function getVisitorId(userId: string | null): string {
-  if (userId) return userId;
-  let id = window.localStorage.getItem(VISITOR_ID_KEY);
-  if (!id) {
-    id = crypto.randomUUID();
-    window.localStorage.setItem(VISITOR_ID_KEY, id);
-  }
-  return id;
-}
+import { getVisitorId } from "@/lib/richbuild/visitorId";
 
 // D7 retention is the v1 North Star (spec §8), not DAU — the ostrich-effect finding
 // (§2) means daily engagement is the wrong yardstick. Logs first_visit/last_visit per
