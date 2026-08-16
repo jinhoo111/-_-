@@ -1,7 +1,21 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
-const PUBLIC_PATHS = ["/login", "/signup", "/forgot-password", "/auth", "/richbuild", "/api/richbuild"];
+const PUBLIC_PATHS = [
+  "/login",
+  "/signup",
+  "/forgot-password",
+  "/auth",
+  "/richbuild",
+  "/api/richbuild",
+  // Stateless public market-data proxies (no user data, no auth-scoped logic) that
+  // RichBuild's guest flow depends on: ticker search fallback, price/history for the
+  // trend chart. Were previously gated by the dashboard's default auth wall, which
+  // silently broke guest ticker search (fetch followed the redirect to /login's HTML).
+  "/api/market/search",
+  "/api/market/quote",
+  "/api/market/history",
+];
 
 // Admin-only routes. Business/Pro-gated routes (Monitor) check
 // user_profiles.business_approved the same way once that page exists.

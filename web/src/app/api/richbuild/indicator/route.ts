@@ -27,6 +27,7 @@ export async function GET(request: NextRequest) {
   const body: IndicatorResponse = {
     ticker,
     price,
+    history: candles.closes.slice(-63), // ~3 months of trading days, for the trend chart
     stopLoss: buildStopLossResult(candles, buyPrice, asOfDate),
     heat: buildHeatIndexResult(candles, asOfDate),
   };

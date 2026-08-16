@@ -4,6 +4,10 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/browser";
+import { Tabs } from "@/components/ui/Tabs";
+import { useDisplayPrefs, CURRENCIES, type CurrencyCode } from "@/lib/displayPrefs";
+import { useRichbuildMarket } from "@/lib/richbuild/MarketProvider";
+import type { Market } from "@/lib/richbuild/types";
 
 const BOTTOM_ITEMS = [
   { href: "/richbuild", label: "Home" },
@@ -16,6 +20,8 @@ const BOTTOM_ITEMS = [
 export function RichBuildNav() {
   const pathname = usePathname();
   const [signedIn, setSignedIn] = useState(false);
+  const { market, setMarket } = useRichbuildMarket();
+  const { currency, setCurrency } = useDisplayPrefs();
 
   useEffect(() => {
     const supabase = createClient();
@@ -34,7 +40,28 @@ export function RichBuildNav() {
         >
           Rich<span className="text-[var(--accent)]">Build</span>
         </Link>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3">
+          <Tabs
+            size="sm"
+            items={[
+              { id: "kr", label: "KR" },
+              { id: "us", label: "US" },
+            ]}
+            value={market}
+            onChange={(v) => setMarket(v as Market)}
+          />
+          <select
+            value={currency}
+            onChange={(e) => setCurrency(e.target.value as CurrencyCode)}
+            aria-label="Display currency"
+            className="h-9 shrink-0 cursor-pointer rounded-[var(--radius-pill)] border border-[var(--border-default)] bg-[var(--surface-1)] px-3 text-[var(--text-sm)] text-[var(--text-primary)] hover:bg-[var(--surface-2)] focus:border-[var(--border-focus)] focus:outline-none"
+          >
+            {CURRENCIES.map((c) => (
+              <option key={c.code} value={c.code}>
+                {c.symbol} {c.code}
+              </option>
+            ))}
+          </select>
           {signedIn ? (
             <form action="/auth/signout" method="post">
               <button type="submit" className="text-[var(--text-sm)] font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)]">

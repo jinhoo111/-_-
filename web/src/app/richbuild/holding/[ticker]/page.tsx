@@ -1,14 +1,31 @@
 "use client";
 
 import { useParams } from "next/navigation";
+import { useState } from "react";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { Sparkline } from "@/components/ui/Sparkline";
+import { RangeDropdown, type RangeKey } from "@/components/ui/RangeDropdown";
 import { useHoldings } from "@/lib/queries/useHoldings";
 import { useRichbuildIndicator } from "@/lib/queries/useRichbuildIndicator";
+import { useHistory, useFxRates } from "@/lib/queries/useIndices";
+import { useDisplayPrefs } from "@/lib/displayPrefs";
+import { convertToDisplay, formatCurrency } from "@/lib/richbuild/currency";
 
-function formatPrice(price: number, market: "kr" | "us") {
-  return market === "kr" ? `₩${Math.round(price).toLocaleString()}` : `$${price.toFixed(2)}`;
+const RANGE_NAME: Record<RangeKey, string> = {
+  "1D": "1 day",
+  "7D": "7 days",
+  "1M": "1 month",
+  "3M": "3 months",
+  "9M": "9 months",
+  YTD: "Year to date",
+  "1Y": "1 year",
+  All: "All time",
+};
+
+function formatQty(qty: number) {
+  return Number.isInteger(qty) ? qty.toLocaleString("en-US") : qty.toLocaleString("en-US", { maximumFractionDigits: 4 });
 }
 
 export default function HoldingDetailPage() {
@@ -18,6 +35,11 @@ export default function HoldingDetailPage() {
   const holding = holdings.find((h) => h.ticker === ticker);
   const market = holding?.market ?? (/\.(KS|KQ)$/i.test(ticker) ? "kr" : "us");
   const { data, isLoading, isError } = useRichbuildIndicator(ticker, holding?.buyPrice ?? null);
+  const { currency } = useDisplayPrefs();
+  const { data: fxRates } = useFxRates(true);
+  const [range, setRange] = useState<RangeKey>("3M");
+  const { data: historyData, isFetching: historyPending } = useHistory([ticker], range);
+  const chartHistory = historyData?.[ticker] ?? data?.history ?? [];
 
   if (isLoading) {
     return (
@@ -34,15 +56,38 @@ export default function HoldingDetailPage() {
   }
 
   const { stopLoss, heat, price } = data;
+  const trendUp = chartHistory.length > 1 && chartHistory[chartHistory.length - 1] >= chartHistory[0];
 
   return (
     <div className="mx-auto flex w-full max-w-md flex-col gap-4">
-      <div>
-        <h1 className="font-display text-[var(--text-lg)] font-semibold text-[var(--text-primary)]">{holding?.name ?? ticker}</h1>
-        <p className="text-[var(--text-sm)] text-[var(--text-secondary)]">
-          {ticker} · {formatPrice(price, market)}
-        </p>
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h1 className="font-display text-[var(--text-lg)] font-semibold text-[var(--text-primary)]">{holding?.name ?? ticker}</h1>
+          <p className="text-[var(--text-sm)] text-[var(--text-secondary)]">
+            {ticker} · {formatCurrency(convertToDisplay(price, market, currency, fxRates), currency)}
+          </p>
+          {holding && (
+            <p className="text-[var(--text-xs)] text-[var(--text-muted)]">
+              {formatQty(holding.quantity)} shares ·{" "}
+              {formatCurrency(convertToDisplay(price * holding.quantity, market, currency, fxRates), currency)} total
+            </p>
+          )}
+        </div>
       </div>
+
+      <Card>
+        <div className="mb-2 flex items-center justify-between gap-3">
+          <span className="text-[var(--text-xs)] text-[var(--text-muted)]">Trend</span>
+          <RangeDropdown value={range} onChange={setRange} names={RANGE_NAME} />
+        </div>
+        {historyPending && chartHistory.length < 2 ? (
+          <Skeleton className="h-[72px] w-full" />
+        ) : chartHistory.length > 1 ? (
+          <Sparkline data={chartHistory} height={72} stroke={trendUp ? "var(--price-up)" : "var(--price-down)"} />
+        ) : (
+          <p className="py-4 text-center text-[var(--text-sm)] text-[var(--text-muted)]">No chart data for this range.</p>
+        )}
+      </Card>
 
       <Card>
         <CardHeader title="Attention Heat Index" action={<span className="font-display text-[var(--text-2xl)] font-bold text-[var(--text-primary)]">{heat.score}</span>} />

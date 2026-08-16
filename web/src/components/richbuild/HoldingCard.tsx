@@ -3,15 +3,20 @@
 import Link from "next/link";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { useRichbuildIndicator } from "@/lib/queries/useRichbuildIndicator";
+import { useFxRates } from "@/lib/queries/useIndices";
+import { useDisplayPrefs } from "@/lib/displayPrefs";
+import { convertToDisplay, formatCurrency } from "@/lib/richbuild/currency";
 import { RICHBUILD_THRESHOLDS } from "@/lib/richbuild/constants";
 import type { Holding } from "@/lib/richbuild/types";
 
-function formatPrice(price: number, market: "kr" | "us") {
-  return market === "kr" ? `₩${Math.round(price).toLocaleString()}` : `$${price.toFixed(2)}`;
+function formatQty(qty: number) {
+  return Number.isInteger(qty) ? qty.toLocaleString("en-US") : qty.toLocaleString("en-US", { maximumFractionDigits: 4 });
 }
 
 export function HoldingCard({ holding }: { holding: Holding }) {
   const { data, isLoading } = useRichbuildIndicator(holding.ticker, holding.buyPrice);
+  const { currency } = useDisplayPrefs();
+  const { data: fxRates } = useFxRates(true);
 
   if (isLoading || !data) {
     return (
@@ -41,6 +46,7 @@ export function HoldingCard({ holding }: { holding: Holding }) {
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="font-display font-semibold text-[var(--text-primary)]">{holding.name}</div>
+          <div className="mt-0.5 text-[var(--text-xs)] text-[var(--text-muted)]">{formatQty(holding.quantity)} shares</div>
           <div className="mt-1 text-[var(--text-sm)] text-[var(--text-secondary)]">&ldquo;{stopLoss.sentence}&rdquo;</div>
           {stopLoss.breakEvenPct != null && stopLoss.breakEvenPct > 0 && (
             <div className="mt-1 text-[var(--text-xs)] text-[var(--text-muted)]">
@@ -48,8 +54,13 @@ export function HoldingCard({ holding }: { holding: Holding }) {
             </div>
           )}
         </div>
-        <div className="shrink-0 text-right font-mono text-[var(--text-sm)] text-[var(--text-primary)]">
-          {formatPrice(price, holding.market)}
+        <div className="shrink-0 text-right">
+          <div className="font-mono text-[var(--text-sm)] text-[var(--text-primary)]">
+            {formatCurrency(convertToDisplay(price, holding.market, currency, fxRates), currency)}
+          </div>
+          <div className="mt-0.5 font-mono text-[var(--text-xs)] text-[var(--text-muted)]">
+            {formatCurrency(convertToDisplay(price * holding.quantity, holding.market, currency, fxRates), currency)} total
+          </div>
         </div>
       </div>
     </Link>

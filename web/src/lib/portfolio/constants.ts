@@ -54,7 +54,7 @@ export function acctColor(acct: string) {
   return ACCOUNT_COLOR[acct] || ACCOUNT_COLOR["기타"];
 }
 
-const KR_TICKER_MAP: Record<string, string> = {
+export const KR_TICKER_MAP: Record<string, string> = {
   삼성전자: "005930.KS",
   삼성전자우: "005935.KS",
   sk하이닉스: "000660.KS",
@@ -115,7 +115,7 @@ const KR_TICKER_MAP: Record<string, string> = {
   녹십자: "006280.KS",
 };
 
-const US_TICKER_MAP: Record<string, string> = {
+export const US_TICKER_MAP: Record<string, string> = {
   엔비디아: "NVDA",
   nvidia: "NVDA",
   NVIDIA: "NVDA",

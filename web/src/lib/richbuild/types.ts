@@ -38,6 +38,7 @@ export interface HeatIndexResult {
 export interface IndicatorResponse {
   ticker: string;
   price: number;
+  history: number[]; // trailing daily closes (~3M), for the Holding Detail trend chart
   stopLoss: StopLossResult;
   heat: HeatIndexResult;
 }
