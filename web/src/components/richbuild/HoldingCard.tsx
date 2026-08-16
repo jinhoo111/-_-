@@ -54,7 +54,7 @@ export function HoldingCard({ holding }: { holding: Holding }) {
             {stopLoss.quadrant ? (
               <span className="text-[var(--text-sm)] text-[var(--text-secondary)]">&ldquo;{stopLoss.sentence}&rdquo;</span>
             ) : (
-              <Badge tone="accent" size="sm">
+              <Badge tone="warning" size="sm">
                 {stopLoss.sentence}
               </Badge>
             )}

@@ -113,7 +113,7 @@ export default function HoldingDetailPage() {
         {stopLoss.quadrant ? (
           <p className="font-semibold text-[var(--text-primary)]">&ldquo;{stopLoss.sentence}&rdquo;</p>
         ) : (
-          <Badge tone="accent" size="sm">
+          <Badge tone="warning" size="sm">
             {stopLoss.sentence}
           </Badge>
         )}
