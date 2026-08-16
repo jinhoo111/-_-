@@ -118,7 +118,7 @@ export default function HoldingDetailPage() {
         <button
           type="button"
           onClick={() => setShowBreakdown((v) => !v)}
-          className="mt-1 w-full text-center text-[var(--text-xs)] font-medium text-[var(--text-muted)] hover:text-[var(--text-secondary)]"
+          className="inline-flex items-center gap-1 text-[var(--text-xs)] font-medium text-[var(--text-muted)] hover:text-[var(--text-secondary)]"
         >
           {showBreakdown ? t("richbuild.detail.hideBreakdown") : t("richbuild.detail.showBreakdown")} {showBreakdown ? "︿" : "﹀"}
         </button>

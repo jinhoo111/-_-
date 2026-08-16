@@ -74,7 +74,7 @@ export function HeatGauge({ score }: { score: number }) {
         </div>
       </div>
       <div className="flex min-w-0 flex-col gap-1">
-        <span className="text-[var(--text-sm)] font-semibold" style={{ color: band.color }}>
+        <span className="font-display text-[var(--text-lg)] font-bold" style={{ color: band.color }}>
           {t(band.labelKey)}
         </span>
         <p className="text-[var(--text-sm)] leading-[var(--leading-normal)] text-[var(--text-secondary)]">{t(band.takeawayKey)}</p>
