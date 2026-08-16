@@ -95,13 +95,6 @@ function RichBuildLoginForm() {
 
   return (
     <Card className="mx-auto w-full max-w-md text-center">
-      <button
-        onClick={() => (window.history.length > 1 ? router.back() : router.push("/richbuild"))}
-        aria-label={t("richbuild.login.back")}
-        className="mb-2 -ml-1 inline-flex items-center gap-1 text-[var(--text-sm)] text-[var(--text-muted)] hover:text-[var(--text-secondary)]"
-      >
-        {t("richbuild.login.back")}
-      </button>
       <h1 className="font-display text-[var(--text-xl)] font-bold text-[var(--text-primary)]">{t("richbuild.login.title")}</h1>
       <div className="mt-4 flex justify-center">
         <Tabs
@@ -152,7 +145,7 @@ function RichBuildLoginForm() {
 
       <button
         onClick={() => router.push("/richbuild")}
-        className="mt-5 text-[var(--text-sm)] text-[var(--text-muted)] hover:text-[var(--text-secondary)]"
+        className="mt-5 text-[var(--text-xs)] text-[var(--text-muted)] opacity-60 transition-opacity duration-[var(--duration-fast)] ease-[var(--ease-out)] hover:opacity-100"
       >
         {t("richbuild.login.continueGuest")}
       </button>

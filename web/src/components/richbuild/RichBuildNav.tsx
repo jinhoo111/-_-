@@ -54,7 +54,7 @@ export function RichBuildNav() {
         >
           Rich<span className="text-[var(--accent)]">Build</span>
         </Link>
-        <div className="hidden items-center gap-2 md:flex">
+        <div className="hidden items-center gap-1 md:flex">
           {topNavItems.map((item) => {
             const active = pathname === item.href;
             return (
@@ -62,13 +62,16 @@ export function RichBuildNav() {
                 key={item.href}
                 href={item.href}
                 aria-current={active ? "page" : undefined}
-                className={`inline-flex h-9 items-center rounded-[var(--radius-pill)] border px-4 text-[var(--text-sm)] transition-all duration-[var(--duration-fast)] ease-[var(--ease-out)] active:scale-[0.97] ${
-                  active
-                    ? "border-transparent bg-[var(--accent)] font-semibold text-[var(--text-on-accent)] shadow-[var(--shadow-glow-accent)]"
-                    : "border-[var(--border-default)] bg-[var(--surface-1)] font-medium text-[var(--text-secondary)] hover:border-[var(--border-strong)] hover:bg-[var(--surface-2)] hover:text-[var(--text-primary)]"
+                className={`group relative inline-flex h-9 items-center rounded-[var(--radius-pill)] px-3 text-[var(--text-sm)] transition-colors duration-[var(--duration-fast)] ease-[var(--ease-out)] ${
+                  active ? "font-semibold text-[var(--accent)]" : "font-medium text-[var(--text-secondary)] hover:bg-[var(--surface-2)] hover:text-[var(--text-primary)]"
                 }`}
               >
                 {item.label}
+                <span
+                  className={`pointer-events-none absolute right-3 -bottom-1 left-3 h-[2px] origin-center scale-x-0 rounded-full bg-[var(--accent)] transition-transform duration-[var(--duration-base)] ease-[var(--ease-out)] ${
+                    active ? "scale-x-100" : "group-hover:scale-x-100"
+                  }`}
+                />
               </Link>
             );
           })}

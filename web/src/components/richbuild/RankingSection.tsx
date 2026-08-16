@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Tabs } from "@/components/ui/Tabs";
@@ -25,7 +26,17 @@ export function RankingSection({ depth }: { depth: "guest" | "member" }) {
     <Card id="ranking">
       <CardHeader
         title={t("richbuild.ranking.title")}
-        subtitle={depth === "guest" ? t("richbuild.ranking.subtitleGuest") : t("richbuild.ranking.subtitleMember")}
+        subtitle={
+          depth === "guest" ? (
+            <Link href="/richbuild/login" className="inline-block">
+              <Badge tone="warning" size="sm">
+                {t("richbuild.ranking.subtitleGuest")}
+              </Badge>
+            </Link>
+          ) : (
+            t("richbuild.ranking.subtitleMember")
+          )
+        }
         action={
           <Tabs
             size="sm"
