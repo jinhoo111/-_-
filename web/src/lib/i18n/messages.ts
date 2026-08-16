@@ -2149,7 +2149,7 @@ const en: Messages = {
   "richbuild.ranking.subtitleGuest": "Top 10 · fixed, no scroll",
   "richbuild.ranking.subtitleMember": "Top 50 · fixed frame, scrollable list",
   "richbuild.ranking.emptyTitle": "Ranking not available yet",
-  "richbuild.ranking.emptyDescription": "The daily ranking batch hasn't run yet — check back after the next update.",
+  "richbuild.ranking.emptyDescription": "Today's ranking hasn't been calculated yet — check back soon.",
   "richbuild.ranking.marketKr": "KR",
   "richbuild.ranking.marketUs": "US",
 
@@ -2159,9 +2159,9 @@ const en: Messages = {
   "richbuild.add.buyPriceLabel": "Buy Price",
   "richbuild.add.numbersOnly": "Numbers only",
   "richbuild.add.quantityLabel": "Quantity",
-  "richbuild.add.submit": "Check My Holding's Status",
+  "richbuild.add.submit": "Check Stop-Loss Status",
   "richbuild.add.submitPending": "Checking…",
-  "richbuild.add.helperText": "See results instantly, no signup needed (local storage)",
+  "richbuild.add.helperText": "See results instantly, no signup needed — saved on this device",
   "richbuild.add.errorPickTicker": "Pick a ticker from the search results.",
   "richbuild.add.errorQuantity": "Quantity must be a positive number.",
   "richbuild.add.errorBuyPrice": "Buy price must be a positive number.",
@@ -2215,7 +2215,7 @@ const en: Messages = {
   "richbuild.help.item2Body": "Both indicators are 0–100 scores built from daily closing-price data (not real-time). Downtrend Signal combines how far price has fallen relative to recent volatility, whether key moving averages have broken, and whether losses are accelerating. Loss Severity combines how much gain is needed to break even and how long the price has stayed below its 60-day average. Attention Heat Index combines trading-volume spikes and return volatility versus their recent normal range.",
   "richbuild.help.item3Title": "How to Read",
   "richbuild.help.item3Subtitle": "How to read the quadrant sentences",
-  "richbuild.help.item3Body": "Every Stop-Loss read is a plain sentence, never a bare number or an instruction — e.g. \"Loss is large, but the trend is holding.\" A large loss with a stable trend and a small loss with a broken trend are different situations, so the two axes are shown separately rather than blended into one score.",
+  "richbuild.help.item3Body": "Every Stop-Loss result is shown as a plain sentence, never a bare number or an instruction — e.g. \"Loss is large, but the trend is holding.\" A large loss with a stable trend and a small loss with a broken trend are different situations, so the two axes are shown separately rather than blended into one score.",
   "richbuild.help.item4Title": "Disclosures & Terms",
   "richbuild.help.item4Subtitle": "Not-investment-advice notice",
   "richbuild.help.item4Body": "RichBuild's indicators are calculated results based on public market data, not investment advice, and not a recommendation to buy, hold, or sell any security. Every score shows the closing date the data is as of. Nothing in this app tells you what to do with a position — decisions are always yours.",
@@ -2226,7 +2226,7 @@ const en: Messages = {
   "richbuild.quadrant.q3": "Loss is small, but the trend has broken",
   "richbuild.quadrant.q4": "Loss is large, and the trend has broken",
   "richbuild.quadrant.gatedSignUp": "Sign up to see your Loss Severity",
-  "richbuild.quadrant.needBuyPrice": "Add your buy price to see the full Stop-Loss read",
+  "richbuild.quadrant.needBuyPrice": "Add your buy price to see your full Stop-Loss result",
 };
 
 export const messages: Record<Lang, Messages> = { ko, en };

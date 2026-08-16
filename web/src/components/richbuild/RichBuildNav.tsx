@@ -62,11 +62,16 @@ export function RichBuildNav() {
                 key={item.href}
                 href={item.href}
                 aria-current={active ? "page" : undefined}
-                className={`inline-flex h-9 items-center rounded-[var(--radius-pill)] px-3 text-[var(--text-sm)] ${
-                  active ? "font-semibold text-[var(--accent)]" : "font-medium text-[var(--text-secondary)] hover:bg-[var(--surface-2)]"
+                className={`group relative inline-flex h-9 items-center rounded-[var(--radius-pill)] px-3 text-[var(--text-sm)] transition-colors duration-[var(--duration-fast)] ease-[var(--ease-out)] ${
+                  active ? "font-semibold text-[var(--accent)]" : "font-medium text-[var(--text-secondary)] hover:bg-[var(--surface-2)] hover:text-[var(--text-primary)]"
                 }`}
               >
                 {item.label}
+                <span
+                  className={`pointer-events-none absolute right-3 -bottom-1 left-3 h-[2px] origin-center scale-x-0 rounded-full bg-[var(--accent)] transition-transform duration-[var(--duration-base)] ease-[var(--ease-out)] ${
+                    active ? "scale-x-100" : "group-hover:scale-x-100"
+                  }`}
+                />
               </Link>
             );
           })}
@@ -75,7 +80,10 @@ export function RichBuildNav() {
           <SettingsMenu />
           {signedIn ? (
             <form action="/auth/signout" method="post">
-              <button type="submit" className="text-[var(--text-sm)] font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)]">
+              <button
+                type="submit"
+                className="text-[var(--text-sm)] font-medium text-[var(--text-secondary)] transition-colors duration-[var(--duration-fast)] ease-[var(--ease-out)] hover:text-[var(--text-primary)]"
+              >
                 {t("richbuild.nav.logout")}
               </button>
             </form>
