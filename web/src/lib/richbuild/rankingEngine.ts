@@ -22,7 +22,7 @@ export async function computeRanking(market: Market): Promise<RankingRow[]> {
       const price = closes[closes.length - 1];
       const prev = closes[closes.length - 2];
       const changePct = prev ? ((price - prev) / prev) * 100 : null;
-      const heat = buildHeatIndexResult(candles, new Date().toISOString().slice(0, 10));
+      const heat = buildHeatIndexResult(candles, market, new Date().toISOString().slice(0, 10));
       return { ticker: symbol, name, price, changePct, heatScore: heat.score };
     }),
   );

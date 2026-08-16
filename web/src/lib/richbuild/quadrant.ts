@@ -7,9 +7,12 @@ import type { Quadrant } from "@/lib/richbuild/types";
 // "simplify" this to sort by loss % — the ordering is itself a product decision.
 export const QUADRANT_SORT_ORDER: Record<Quadrant, number> = { Q4: 0, Q3: 1, Q2: 2, Q1: 3 };
 
+// Boundary is exactly 50 on BOTH axes (service plan §6.2) — not a separate
+// high/mid split per axis.
 export function classifyQuadrant(lossSeverity: number, downtrendSignal: number): Quadrant {
-  const severeLoss = lossSeverity >= RICHBUILD_THRESHOLDS.lossSeverity.high;
-  const brokenTrend = downtrendSignal >= RICHBUILD_THRESHOLDS.downtrendSignal.broken;
+  const b = RICHBUILD_THRESHOLDS.quadrantBoundary;
+  const severeLoss = lossSeverity >= b;
+  const brokenTrend = downtrendSignal >= b;
   if (severeLoss && brokenTrend) return "Q4";
   if (!severeLoss && brokenTrend) return "Q3";
   if (severeLoss && !brokenTrend) return "Q2";

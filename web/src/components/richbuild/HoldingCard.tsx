@@ -28,7 +28,7 @@ export function HoldingCard({ holding }: { holding: Holding }) {
   }
 
   const { stopLoss, price } = data;
-  const severe = stopLoss.lossSeverity != null && stopLoss.lossSeverity >= RICHBUILD_THRESHOLDS.lossSeverity.high;
+  const severe = stopLoss.lossSeverity != null && stopLoss.lossSeverity >= RICHBUILD_THRESHOLDS.quadrantBoundary;
   const tone = stopLoss.lossSeverity == null ? "neutral" : severe ? "negative" : "positive";
 
   const toneClass =
