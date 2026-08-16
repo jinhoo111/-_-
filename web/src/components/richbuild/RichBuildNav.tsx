@@ -29,6 +29,13 @@ export function RichBuildNav() {
       .getUser()
       .then(({ data }) => setSignedIn(Boolean(data.user)))
       .catch(() => setSignedIn(false));
+    // The nav lives in the persistent layout, so it doesn't remount on client-side
+    // navigation from /richbuild/login back to /richbuild — without this subscription
+    // it would keep showing "Login" right after a successful signup/login.
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => setSignedIn(Boolean(session?.user)));
+    return () => subscription.unsubscribe();
   }, []);
 
   return (
