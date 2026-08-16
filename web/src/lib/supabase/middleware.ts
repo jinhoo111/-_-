@@ -1,7 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
-const PUBLIC_PATHS = ["/login", "/signup", "/forgot-password", "/auth"];
+const PUBLIC_PATHS = ["/login", "/signup", "/forgot-password", "/auth", "/richbuild", "/api/richbuild"];
 
 // Admin-only routes. Business/Pro-gated routes (Monitor) check
 // user_profiles.business_approved the same way once that page exists.

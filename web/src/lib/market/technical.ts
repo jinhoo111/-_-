@@ -119,6 +119,38 @@ export function classifySignal(rsi: number | null, mfi: number | null, isLeverag
   return { grade, rsi, mfi, isLeveraged };
 }
 
+// Average True Range (Wilder), simple-averaged over the trailing `period` — used by
+// RichBuild's Downtrend Signal (drawdown/ATR ratio, spec §6).
+export function atr14(highs: number[], lows: number[], closes: number[], period = 14): number | null {
+  if (closes.length < period + 1) return null;
+  const trs: number[] = [];
+  for (let i = 1; i < closes.length; i++) {
+    trs.push(Math.max(highs[i] - lows[i], Math.abs(highs[i] - closes[i - 1]), Math.abs(lows[i] - closes[i - 1])));
+  }
+  const window = trs.slice(-period);
+  return window.reduce((a, b) => a + b, 0) / window.length;
+}
+
+// Clips a numeric window to its own [pct, 1-pct] percentile band — blunts single-day
+// outliers in 20-day rolling stats (RichBuild spec §1.5: the July-2026 crash-day
+// outliers are still inside the 20-day window at the Sept-2026 launch) without
+// widening the window, which would blunt genuine responsiveness too.
+export function winsorize(values: number[], pct = 0.05): number[] {
+  if (values.length < 3) return values;
+  const sorted = [...values].sort((a, b) => a - b);
+  const lo = sorted[Math.floor(sorted.length * pct)];
+  const hi = sorted[Math.min(sorted.length - 1, Math.ceil(sorted.length * (1 - pct)) - 1)];
+  return values.map((v) => Math.min(Math.max(v, lo), hi));
+}
+
+export function stdev(values: number[]): number {
+  const n = values.length;
+  if (n < 2) return 0;
+  const mean = values.reduce((a, b) => a + b, 0) / n;
+  const variance = values.reduce((a, b) => a + (b - mean) ** 2, 0) / (n - 1);
+  return Math.sqrt(variance);
+}
+
 // Closing/high arrays → signal list. detail values are emitted as i18n keys + params.
 export function computeTechnicals(closes: number[], highs: number[]): TechSignal[] {
   const out: TechSignal[] = [];
