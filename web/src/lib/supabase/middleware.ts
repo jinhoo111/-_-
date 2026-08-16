@@ -2,6 +2,7 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
 const PUBLIC_PATHS = [
+  "/", // root just redirects to /richbuild (page.tsx) — must be public or guests never get there
   "/login",
   "/signup",
   "/forgot-password",
