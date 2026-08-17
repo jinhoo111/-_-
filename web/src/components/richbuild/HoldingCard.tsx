@@ -5,11 +5,10 @@ import { Skeleton } from "@/components/ui/Skeleton";
 import { Badge } from "@/components/ui/Badge";
 import { PriceChange } from "@/components/ui/PriceChange";
 import { useRichbuildIndicator } from "@/lib/queries/useRichbuildIndicator";
-import { useFxRates } from "@/lib/queries/useIndices";
-import { useDisplayPrefs } from "@/lib/displayPrefs";
-import { convertToDisplay, formatCurrency } from "@/lib/richbuild/currency";
+import { formatCurrency } from "@/lib/richbuild/currency";
 import { SparklesIcon } from "@/components/richbuild/SparklesIcon";
 import { useT } from "@/lib/i18n/LanguageProvider";
+import type { CurrencyCode } from "@/lib/displayPrefs";
 import type { Holding } from "@/lib/richbuild/types";
 
 function formatQty(qty: number) {
@@ -19,8 +18,9 @@ function formatQty(qty: number) {
 export function HoldingCard({ holding }: { holding: Holding }) {
   const t = useT();
   const { data, isLoading } = useRichbuildIndicator(holding.ticker, holding.buyPrice);
-  const { currency } = useDisplayPrefs();
-  const { data: fxRates } = useFxRates(true);
+  // Stock face value is always shown in its native market currency (₩ for KR, $ for US);
+  // the display-currency toggle only affects the user's portfolio total (added separately).
+  const nativeCurrency: CurrencyCode = holding.market === "kr" ? "KRW" : "USD";
 
   if (isLoading || !data) {
     return (
@@ -52,7 +52,7 @@ export function HoldingCard({ holding }: { holding: Holding }) {
             {t("richbuild.holdings.shares", { qty: formatQty(holding.quantity) })}
             {holding.buyPrice != null && (
               <>
-                {" "}· {t("richbuild.holdings.buyPrice", { price: formatCurrency(convertToDisplay(holding.buyPrice, holding.market, currency, fxRates), currency) })}
+                {" "}· {t("richbuild.holdings.buyPrice", { price: formatCurrency(holding.buyPrice, nativeCurrency) })}
               </>
             )}
           </div>
@@ -82,12 +82,12 @@ export function HoldingCard({ holding }: { holding: Holding }) {
         <div className="shrink-0 text-right">
           <div className="flex items-center justify-end gap-1.5">
             <span className="font-mono text-[var(--text-sm)] text-[var(--text-primary)]">
-              {formatCurrency(convertToDisplay(price, holding.market, currency, fxRates), currency)}
+              {formatCurrency(price, nativeCurrency)}
             </span>
             {changePct != null && <PriceChange value={changePct} size="sm" badge />}
           </div>
           <div className="mt-1 font-mono text-[var(--text-xs)] text-[var(--text-muted)]">
-            {t("richbuild.holdings.total", { amount: formatCurrency(convertToDisplay(price * holding.quantity, holding.market, currency, fxRates), currency) })}
+            {t("richbuild.holdings.total", { amount: formatCurrency(price * holding.quantity, nativeCurrency) })}
           </div>
         </div>
       </div>

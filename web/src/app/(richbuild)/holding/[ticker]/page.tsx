@@ -15,9 +15,8 @@ import { RangeDropdown, type RangeKey } from "@/components/ui/RangeDropdown";
 import { PriceChange } from "@/components/ui/PriceChange";
 import { useHoldings } from "@/lib/queries/useHoldings";
 import { useRichbuildIndicator } from "@/lib/queries/useRichbuildIndicator";
-import { useHistory, useFxRates } from "@/lib/queries/useIndices";
-import { useDisplayPrefs } from "@/lib/displayPrefs";
-import { convertToDisplay, formatCurrency } from "@/lib/richbuild/currency";
+import { useHistory } from "@/lib/queries/useIndices";
+import { formatCurrency } from "@/lib/richbuild/currency";
 import { useT } from "@/lib/i18n/LanguageProvider";
 
 // "7D" dropped entirely (not just relabeled) — it fetches Yahoo's range=5d (5 trading
@@ -73,8 +72,6 @@ export default function HoldingDetailPage() {
   const holding = holdings.find((h) => h.ticker === ticker);
   const market = holding?.market ?? (/\.(KS|KQ)$/i.test(ticker) ? "kr" : "us");
   const { data, isLoading, isError } = useRichbuildIndicator(ticker, holding?.buyPrice ?? null);
-  const { currency } = useDisplayPrefs();
-  const { data: fxRates } = useFxRates(true);
   const [range, setRange] = useState<RangeKey>("3M");
   const { data: historyData, isFetching: historyPending } = useHistory([ticker], range);
   // No fallback to the indicator route's fixed 3-month history here on purpose: falling
@@ -106,7 +103,9 @@ export default function HoldingDetailPage() {
     history && history.length >= 2 && history[history.length - 2] > 0
       ? ((price - history[history.length - 2]) / history[history.length - 2]) * 100
       : null;
-  const formatPrice = (v: number) => formatCurrency(convertToDisplay(v, market, currency, fxRates), currency);
+  // Stock prices/chart stay in the stock's native market currency — the display-currency
+  // toggle only affects the user's portfolio total (added separately).
+  const formatPrice = (v: number) => formatCurrency(v, market === "kr" ? "KRW" : "USD");
 
   return (
     <div className="mx-auto flex w-full max-w-[1080px] flex-col gap-6">
@@ -117,19 +116,19 @@ export default function HoldingDetailPage() {
           <p className="text-[var(--text-sm)] text-[var(--text-secondary)]">{ticker}</p>
           {holding?.buyPrice != null && (
             <p className="text-[var(--text-xs)] text-[var(--text-muted)]">
-              {t("richbuild.holdings.buyPrice", { price: formatCurrency(convertToDisplay(holding.buyPrice, market, currency, fxRates), currency) })}
+              {t("richbuild.holdings.buyPrice", { price: formatCurrency(holding.buyPrice, market === "kr" ? "KRW" : "USD") })}
             </p>
           )}
           {holding && (
             <p className="text-[var(--text-xs)] text-[var(--text-muted)]">
               {t("richbuild.holdings.shares", { qty: formatQty(holding.quantity) })} ·{" "}
-              {t("richbuild.holdings.total", { amount: formatCurrency(convertToDisplay(price * holding.quantity, market, currency, fxRates), currency) })}
+              {t("richbuild.holdings.total", { amount: formatCurrency(price * holding.quantity, market === "kr" ? "KRW" : "USD") })}
             </p>
           )}
         </div>
         <div className="shrink-0 text-right">
           <div className="font-mono text-[var(--text-2xl)] font-semibold text-[var(--text-primary)]">
-            {formatCurrency(convertToDisplay(price, market, currency, fxRates), currency)}
+            {formatCurrency(price, market === "kr" ? "KRW" : "USD")}
           </div>
           {oneDayChange != null && (
             <div className="mt-1">
