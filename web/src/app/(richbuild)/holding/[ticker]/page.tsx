@@ -4,7 +4,7 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 import { useState } from "react";
 import { Card, CardHeader } from "@/components/ui/Card";
-import { Badge } from "@/components/ui/Badge";
+import { Button } from "@/components/ui/Button";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { TrendChart } from "@/components/richbuild/TrendChart";
@@ -37,6 +37,32 @@ const RANGE_NAME_KEY: Partial<Record<RangeKey, string>> = {
 
 function formatQty(qty: number) {
   return Number.isInteger(qty) ? qty.toLocaleString("en-US") : qty.toLocaleString("en-US", { maximumFractionDigits: 4 });
+}
+
+// Shared body for the Stop-Loss card — AI sentence + quadrant plot + the two axis
+// meters. Unlocked it renders fully; when Loss Severity is gated it renders behind a
+// blur with an overlay CTA (instead of a plain-text message).
+function StopLossBody({ lossSeverity, downtrendSignal, sentence }: { lossSeverity: number; downtrendSignal: number; sentence: string }) {
+  const t = useT();
+  return (
+    <>
+      <div className="flex items-start gap-2 rounded-[var(--radius-md)] border border-[var(--accent-soft-border)] bg-[var(--accent-soft)] px-3 py-2">
+        <SparklesIcon className="mt-0.5 h-4 w-4 shrink-0 text-[var(--accent)]" />
+        <p className="text-[var(--text-sm)] leading-snug text-[var(--accent)]" style={{ textShadow: "0 0 12px var(--accent-soft)" }}>
+          {sentence}
+        </p>
+      </div>
+      <div className="mt-2 flex items-stretch gap-3">
+        <div className="w-[170px] shrink-0">
+          <QuadrantPlot lossSeverity={lossSeverity} downtrendSignal={downtrendSignal} />
+        </div>
+        <div className="flex min-w-0 flex-1 flex-col justify-center gap-2.5">
+          <AxisMeter label={t("richbuild.detail.lossSeverityLabel")} value={lossSeverity} />
+          <AxisMeter label={t("richbuild.detail.downtrendSignalLabel")} value={downtrendSignal} />
+        </div>
+      </div>
+    </>
+  );
 }
 
 export default function HoldingDetailPage() {
@@ -148,21 +174,7 @@ export default function HoldingDetailPage() {
             <CardHeader title={t("richbuild.detail.stopLossTitle")} />
             {stopLoss.lossSeverity != null ? (
               <>
-                <div className="flex items-start gap-2 rounded-[var(--radius-md)] border border-[var(--accent-soft-border)] bg-[var(--accent-soft)] px-3 py-2">
-                  <SparklesIcon className="mt-0.5 h-4 w-4 shrink-0 text-[var(--accent)]" />
-                  <p className="text-[var(--text-sm)] leading-snug text-[var(--accent)]" style={{ textShadow: "0 0 12px var(--accent-soft)" }}>
-                    {stopLoss.sentence}
-                  </p>
-                </div>
-                <div className="mt-2 flex items-stretch gap-3">
-                  <div className="w-[170px] shrink-0">
-                    <QuadrantPlot lossSeverity={stopLoss.lossSeverity} downtrendSignal={stopLoss.downtrendSignal} />
-                  </div>
-                  <div className="flex min-w-0 flex-1 flex-col justify-center gap-2.5">
-                    <AxisMeter label={t("richbuild.detail.lossSeverityLabel")} value={stopLoss.lossSeverity} />
-                    <AxisMeter label={t("richbuild.detail.downtrendSignalLabel")} value={stopLoss.downtrendSignal} />
-                  </div>
-                </div>
+                <StopLossBody lossSeverity={stopLoss.lossSeverity} downtrendSignal={stopLoss.downtrendSignal} sentence={stopLoss.sentence} />
                 {stopLoss.breakEvenPct != null && stopLoss.breakEvenPct > 0 && (
                   <p className="mt-3 text-[var(--text-xs)] text-[var(--text-muted)]">
                     {t("richbuild.holdings.breakEven", { pct: stopLoss.breakEvenPct.toFixed(1) })}
@@ -170,22 +182,31 @@ export default function HoldingDetailPage() {
                 )}
               </>
             ) : (
-              <>
-                <Badge tone="warning" size="sm">
-                  {stopLoss.sentence}
-                </Badge>
-                <div className="mt-3">
-                  <AxisMeter label={t("richbuild.detail.downtrendSignalLabel")} value={stopLoss.downtrendSignal} />
+              <div className="relative">
+                <div className="pointer-events-none select-none blur-[5px] opacity-70" aria-hidden="true">
+                  <StopLossBody lossSeverity={0} downtrendSignal={stopLoss.downtrendSignal} sentence={stopLoss.sentence} />
                 </div>
-                {stopLoss.buyPriceProvided && (
-                  <Link
-                    href={`/login?redirectTo=${encodeURIComponent(`/holding/${encodeURIComponent(ticker)}`)}`}
-                    className="mt-2 inline-block text-[var(--text-sm)] font-semibold text-[var(--accent)]"
-                  >
-                    {t("richbuild.detail.signUpToSeeLink")}
-                  </Link>
-                )}
-              </>
+                <div className="absolute inset-0 flex items-center justify-center p-4">
+                  <div className="flex max-w-[240px] flex-col items-center gap-2.5 text-center">
+                    <p className="text-[var(--text-sm)] font-semibold leading-snug text-[var(--text-primary)]">
+                      {stopLoss.buyPriceProvided
+                        ? t("richbuild.detail.signUpToSeeLink")
+                        : t("richbuild.detail.addBuyPriceCta")}
+                    </p>
+                    <Link
+                      href={
+                        stopLoss.buyPriceProvided
+                          ? `/login?redirectTo=${encodeURIComponent(`/holding/${encodeURIComponent(ticker)}`)}`
+                          : "/add"
+                      }
+                    >
+                      <Button variant="primary" size="sm">
+                        {stopLoss.buyPriceProvided ? t("richbuild.nav.login") : t("richbuild.holdings.addCta")}
+                      </Button>
+                    </Link>
+                  </div>
+                </div>
+              </div>
             )}
             <p className="mt-2 text-[var(--text-xs)] text-[var(--text-muted)]">{t("richbuild.detail.asOfDate", { date: stopLoss.asOfDate })}</p>
             <p className="mt-2 text-[var(--text-xs)] text-[var(--text-muted)]">{t("richbuild.holdings.disclaimer")}</p>
