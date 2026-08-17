@@ -47,7 +47,7 @@ const DisplayPrefsContext = createContext<DisplayPrefsValue | null>(null);
 
 export function DisplayPrefsProvider({ children }: { children: ReactNode }) {
   const [updown, setUpdownState] = useState<UpDownScheme>("kr");
-  const [currency, setCurrencyState] = useState<CurrencyCode>("USD");
+  const [currency, setCurrencyState] = useState<CurrencyCode>("KRW");
 
   // Hydrate from localStorage on mount (mirrors LanguageProvider).
   useEffect(() => {

@@ -1047,6 +1047,7 @@ const ko: Messages = {
   "richbuild.search.noResults": "검색 결과가 없어요",
 
   "richbuild.add.title": "종목 등록",
+  "richbuild.add.back": "뒤로",
   "richbuild.add.tickerLabel": "종목명",
   "richbuild.add.tickerPlaceholder": "검색 (예: 삼성전자)",
   "richbuild.add.buyPriceLabel": "매수가",
@@ -2176,6 +2177,7 @@ const en: Messages = {
   "richbuild.search.noResults": "No results found",
 
   "richbuild.add.title": "Add Holding",
+  "richbuild.add.back": "Back",
   "richbuild.add.tickerLabel": "Ticker",
   "richbuild.add.tickerPlaceholder": "Search (e.g. Samsung Elec.)",
   "richbuild.add.buyPriceLabel": "Buy Price",

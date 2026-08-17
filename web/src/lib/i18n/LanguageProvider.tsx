@@ -12,8 +12,10 @@ const LanguageContext = createContext<LanguageContextValue | null>(null);
 
 const STORAGE_KEY = "rh_lang";
 
+// Korean is the product's default language — we ignore the browser locale on first
+// visit and only switch away from "ko" if the user explicitly picks another language
+// (persisted in rh_lang). English still works for anyone who chooses it.
 function detectLang(): Lang {
-  if (typeof navigator !== "undefined" && navigator.language?.toLowerCase().startsWith("en")) return "en";
   return "ko";
 }
 

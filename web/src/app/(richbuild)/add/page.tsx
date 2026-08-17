@@ -57,9 +57,25 @@ export default function AddHoldingPage() {
     router.push(`/holding/${encodeURIComponent(ticker.symbol)}`);
   }
 
+  function goBack() {
+    if (typeof window !== "undefined" && window.history.length > 1) router.back();
+    else router.push("/home");
+  }
+
   return (
-    <Card className="mx-auto w-full max-w-md">
-      <CardHeader title={t("richbuild.add.title")} />
+    <div className="mx-auto w-full max-w-md">
+      <button
+        type="button"
+        onClick={goBack}
+        className="mb-3 inline-flex items-center gap-1.5 text-[var(--text-sm)] font-medium text-[var(--text-secondary)] transition-colors hover:text-[var(--text-primary)]"
+      >
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <path d="m15 18-6-6 6-6" />
+        </svg>
+        {t("richbuild.add.back")}
+      </button>
+      <Card className="mx-auto w-full max-w-md">
+        <CardHeader title={t("richbuild.add.title")} />
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
         <div className="relative">
           <label className="mb-2 block text-[var(--text-sm)] font-medium text-[var(--text-secondary)]">{t("richbuild.add.tickerLabel")}</label>
@@ -104,6 +120,7 @@ export default function AddHoldingPage() {
         </Button>
         <p className="text-center text-[var(--text-xs)] text-[var(--text-muted)]">{t("richbuild.add.helperText")}</p>
       </form>
-    </Card>
+      </Card>
+    </div>
   );
 }
