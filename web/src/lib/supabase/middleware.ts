@@ -2,12 +2,13 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
 const PUBLIC_PATHS = [
-  "/", // root just redirects to /richbuild (page.tsx) — must be public or guests never get there
+  "/", // root just redirects to /home (page.tsx) — must be public or guests never get there
+  "/home", // RichBuild home — guest-first (spec §3)
+  "/add",
+  "/help",
   "/login",
-  "/signup",
-  "/forgot-password",
+  "/holding", // /holding/[ticker] overview — guests can open any stock
   "/auth",
-  "/richbuild",
   "/api/richbuild",
   // Stateless public market-data proxies (no user data, no auth-scoped logic) that
   // RichBuild's guest flow depends on: ticker search fallback, price/history for the

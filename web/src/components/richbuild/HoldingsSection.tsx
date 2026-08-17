@@ -17,7 +17,7 @@ export function HoldingsSection() {
       <CardHeader
         title={t("richbuild.holdings.title")}
         action={
-          <Link href="/richbuild/add">
+          <Link href="/add">
             <Button size="sm">{t("richbuild.holdings.add")}</Button>
           </Link>
         }
@@ -28,7 +28,7 @@ export function HoldingsSection() {
           title={t("richbuild.holdings.emptyTitle")}
           description={t("richbuild.holdings.emptyDescription")}
           action={
-            <Link href="/richbuild/add">
+            <Link href="/add">
               <Button variant="primary" size="sm">
                 {t("richbuild.holdings.addCta")}
               </Button>

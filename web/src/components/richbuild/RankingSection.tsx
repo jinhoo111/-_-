@@ -36,7 +36,7 @@ export function RankingSection({ depth }: { depth: "guest" | "member" }) {
         subtitle={
           <span className="flex items-center gap-1.5">
             {depth === "guest" ? (
-              <Link href="/richbuild/login" className="inline-block">
+              <Link href="/login" className="inline-block">
                 <Badge tone="warning" size="sm">
                   {t("richbuild.ranking.subtitleGuest")}
                 </Badge>
@@ -90,7 +90,7 @@ export function RankingSection({ depth }: { depth: "guest" | "member" }) {
                   {row.heatScore}
                 </Badge>
                 <Link
-                  href={`/richbuild/holding/${encodeURIComponent(row.ticker)}`}
+                  href={`/holding/${encodeURIComponent(row.ticker)}`}
                   aria-label={t("richbuild.search.title")}
                   title={t("richbuild.search.title")}
                   className="flex h-5 w-5 items-center justify-center rounded-[var(--radius-sm)] text-[var(--text-muted)] transition-colors hover:bg-[var(--surface-2)] hover:text-[var(--accent)]"

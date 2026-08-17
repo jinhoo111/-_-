@@ -179,7 +179,7 @@ export default function HoldingDetailPage() {
                 </div>
                 {stopLoss.buyPriceProvided && (
                   <Link
-                    href={`/richbuild/login?redirectTo=${encodeURIComponent(`/richbuild/holding/${encodeURIComponent(ticker)}`)}`}
+                    href={`/login?redirectTo=${encodeURIComponent(`/holding/${encodeURIComponent(ticker)}`)}`}
                     className="mt-2 inline-block text-[var(--text-sm)] font-semibold text-[var(--accent)]"
                   >
                     {t("richbuild.detail.signUpToSeeLink")}

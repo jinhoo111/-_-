@@ -17,7 +17,7 @@ export async function GET(request: Request) {
       // conversion, including via Google — this is the only place that path lands
       // server-side. Heuristic: a user created in the last 20s is a fresh signup, not
       // a returning login (Supabase has no direct "was this a new user" flag here).
-      if (next.startsWith("/richbuild") && data.user) {
+      if (next.startsWith("/home") && data.user) {
         const createdMs = new Date(data.user.created_at).getTime();
         if (Date.now() - createdMs < 20_000) {
           await supabase

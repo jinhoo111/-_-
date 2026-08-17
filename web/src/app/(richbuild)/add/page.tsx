@@ -51,10 +51,10 @@ export default function AddHoldingPage() {
     setPending(false);
 
     if (result.gated) {
-      router.push(`/richbuild/login?redirectTo=${encodeURIComponent("/richbuild/add")}`);
+      router.push(`/login?redirectTo=${encodeURIComponent("/add")}`);
       return;
     }
-    router.push(`/richbuild/holding/${encodeURIComponent(ticker.symbol)}`);
+    router.push(`/holding/${encodeURIComponent(ticker.symbol)}`);
   }
 
   return (

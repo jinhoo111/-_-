@@ -19,7 +19,7 @@ export function StockSearchModal({ onClose }: { onClose: () => void }) {
 
   function openOverview(ticker: string) {
     onClose();
-    router.push(`/richbuild/holding/${encodeURIComponent(ticker)}`);
+    router.push(`/holding/${encodeURIComponent(ticker)}`);
   }
 
   function handleSubmit(e: React.FormEvent) {

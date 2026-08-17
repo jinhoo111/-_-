@@ -22,7 +22,7 @@ export function RichBuildNav() {
       .then(({ data }) => setSignedIn(Boolean(data.user)))
       .catch(() => setSignedIn(false));
     // The nav lives in the persistent layout, so it doesn't remount on client-side
-    // navigation from /richbuild/login back to /richbuild — without this subscription
+    // navigation from /login back to /home — without this subscription
     // it would keep showing "Login" right after a successful signup/login.
     const {
       data: { subscription },
@@ -33,23 +33,23 @@ export function RichBuildNav() {
   // Desktop-only page nav — the bottom tab bar is mobile-only (md:hidden), so without
   // this there was no way to move between pages at all on a desktop viewport.
   const topNavItems = [
-    { href: "/richbuild", label: t("richbuild.nav.home") },
-    { href: "/richbuild/add", label: t("richbuild.nav.addHolding") },
-    { href: "/richbuild/help", label: t("richbuild.nav.help") },
+    { href: "/home", label: t("richbuild.nav.home") },
+    { href: "/add", label: t("richbuild.nav.addHolding") },
+    { href: "/help", label: t("richbuild.nav.help") },
   ];
   // Bottom nav's 3rd tab label depends on login state per the service plan mockup
   // (guest: 내종목/My Stocks, member: 내정보/My Info).
   const bottomItems = [
-    { href: "/richbuild", label: t("richbuild.nav.bottomHome") },
-    { href: "/richbuild#ranking", label: t("richbuild.nav.bottomRanking") },
-    { href: "/richbuild#holdings", label: signedIn ? t("richbuild.nav.bottomMyInfo") : t("richbuild.nav.bottomMyStocks") },
+    { href: "/home", label: t("richbuild.nav.bottomHome") },
+    { href: "/home#ranking", label: t("richbuild.nav.bottomRanking") },
+    { href: "/home#holdings", label: signedIn ? t("richbuild.nav.bottomMyInfo") : t("richbuild.nav.bottomMyStocks") },
   ];
 
   return (
     <>
       <nav className="mx-auto flex h-[68px] max-w-[1188px] items-center justify-between px-[1.65rem]">
         <Link
-          href="/richbuild"
+          href="/home"
           className="font-display text-[22px] font-bold tracking-[var(--tracking-display)] text-[var(--text-primary)]"
         >
           Rich<span className="text-[var(--accent)]">Build</span>
@@ -88,7 +88,7 @@ export function RichBuildNav() {
               </button>
             </form>
           ) : (
-            <Link href="/richbuild/login">
+            <Link href="/login">
               <Button variant="primary" size="sm">
                 {t("richbuild.nav.login")}
               </Button>
@@ -98,7 +98,7 @@ export function RichBuildNav() {
       </nav>
       <nav className="fixed inset-x-0 bottom-0 z-20 flex border-t border-[var(--border-default)] bg-[var(--surface-1)] pb-[env(safe-area-inset-bottom)] md:hidden">
         {bottomItems.map((item) => {
-          const active = pathname === "/richbuild" && item.href === "/richbuild";
+          const active = pathname === "/home" && item.href === "/home";
           return (
             <Link
               key={item.href}

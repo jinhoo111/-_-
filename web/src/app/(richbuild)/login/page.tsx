@@ -36,7 +36,7 @@ function RichBuildLoginForm() {
   const t = useT();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const redirectTo = searchParams.get("redirectTo") || "/richbuild";
+  const redirectTo = searchParams.get("redirectTo") || "/home";
   const [mode, setMode] = useState<"signup" | "login">("signup");
   const [showEmailForm, setShowEmailForm] = useState(false);
   const [email, setEmail] = useState("");
@@ -144,7 +144,7 @@ function RichBuildLoginForm() {
       </div>
 
       <button
-        onClick={() => router.push("/richbuild")}
+        onClick={() => router.push("/home")}
         className="mt-5 text-[var(--text-xs)] text-[var(--text-muted)] opacity-60 transition-opacity duration-[var(--duration-fast)] ease-[var(--ease-out)] hover:opacity-100"
       >
         {t("richbuild.login.continueGuest")}

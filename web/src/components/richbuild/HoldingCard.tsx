@@ -42,7 +42,7 @@ export function HoldingCard({ holding }: { holding: Holding }) {
   // guest view); the AI insight panel is what carries the signal color.
   return (
     <Link
-      href={`/richbuild/holding/${encodeURIComponent(holding.ticker)}`}
+      href={`/holding/${encodeURIComponent(holding.ticker)}`}
       className="block rounded-[var(--radius-lg)] border border-[var(--border-default)] p-4 transition-colors hover:bg-[var(--surface-2)]"
     >
       <div className="flex items-start justify-between gap-3">
