@@ -36,7 +36,7 @@ export function HoldingsSection() {
           }
         />
       ) : (
-        <div className="flex flex-col gap-3">
+        <div className="scroll-thin flex max-h-[420px] flex-col gap-3 overflow-y-auto pr-3">
           {holdings.map((h) => (
             <HoldingCard key={h.id} holding={h} />
           ))}

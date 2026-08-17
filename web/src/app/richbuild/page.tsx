@@ -5,9 +5,10 @@ import { RankingSection } from "@/components/richbuild/RankingSection";
 import { useHoldings } from "@/lib/queries/useHoldings";
 import { useT } from "@/lib/i18n/LanguageProvider";
 
-// Home is one screen with two states, not two screens (spec §3): order flips by login
-// state — guest sees the ranking first (trust-building before the signup ask), member
-// sees holdings first (retention purpose outweighs re-education).
+// Home keeps a consistent layout regardless of login state: ranking always on the
+// left (fixed-height scrollable list), holdings always on the right (bounded,
+// scrollable). Depth still varies — guest gets the top 10 with a signup upsell,
+// member gets the full top 50 in the same scrollable frame.
 export default function RichBuildHomePage() {
   const t = useT();
   const { isGuest } = useHoldings();
@@ -20,17 +21,8 @@ export default function RichBuildHomePage() {
         </div>
       )}
       <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-        {isGuest ? (
-          <>
-            <RankingSection depth="guest" />
-            <HoldingsSection />
-          </>
-        ) : (
-          <>
-            <HoldingsSection />
-            <RankingSection depth="member" />
-          </>
-        )}
+        <RankingSection depth={isGuest ? "guest" : "member"} />
+        <HoldingsSection />
       </div>
     </div>
   );

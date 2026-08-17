@@ -51,7 +51,8 @@ export function HeatGauge({ score }: { score: number }) {
   return (
     <div className="flex items-center gap-4 py-2">
       <div className="relative shrink-0" style={{ width: SIZE, height: SIZE }}>
-        <svg width={SIZE} height={SIZE} viewBox={`0 0 ${SIZE} ${SIZE}`} className="-rotate-90">
+        {/* overflow visible so the arc's drop-shadow halo isn't clipped at the SVG bounds */}
+        <svg width={SIZE} height={SIZE} viewBox={`0 0 ${SIZE} ${SIZE}`} className="-rotate-90" style={{ overflow: "visible" }}>
           <circle cx={SIZE / 2} cy={SIZE / 2} r={RADIUS} fill="none" stroke="var(--surface-2)" strokeWidth={STROKE} />
           <circle
             cx={SIZE / 2}
